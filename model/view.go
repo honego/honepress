@@ -21,13 +21,9 @@ type TemplateLabels struct {
 type SiteViewData struct {
 	SiteTitle       string
 	SiteDescription string
-	BaseURL         string
 	SiteIconURL     string
-	GitHubURL       string
-	TelegramURL     string
 	ThemeDefault    string
 	Font            string
-	Language        string
 	CanonicalPath   string
 	HomePath        string
 	BlogPath        string
@@ -40,13 +36,9 @@ type SiteViewData struct {
 type PostViewData struct {
 	SiteTitle       string
 	SiteDescription string
-	BaseURL         string
 	SiteIconURL     string
-	GitHubURL       string
-	TelegramURL     string
 	ThemeDefault    string
 	Font            string
-	Language        string
 	CanonicalPath   string
 	HomePath        string
 	BlogPath        string

@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/gorilla/feeds"
-	"github.com/honeok/blog/common/filesystem"
-	"github.com/honeok/blog/model"
-	"github.com/honeok/blog/option"
-	templatefiles "github.com/honeok/blog/template"
+	"github.com/honeok/honepress/common/filesystem"
+	"github.com/honeok/honepress/model"
+	"github.com/honeok/honepress/option"
+	templatefiles "github.com/honeok/honepress/template"
 )
 
 // 静态站点文件渲染器

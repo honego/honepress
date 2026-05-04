@@ -1,6 +1,6 @@
 package constant
 
-const ProjectName = "blog"
+const ProjectName = "honepress"
 
 // 默认监听地址
 const DefaultAddress = ":8080"

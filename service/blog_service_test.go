@@ -6,15 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/honeok/blog/option"
+	"github.com/honeok/honepress/option"
 )
 
 func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
 	testOptions := option.Options{
-		BaseURL:     "https://example.com",
-		Title:       "blog",
+		Title:       "honepress",
 		Description: "测试博客",
 		DataDir:     dataDirectoryPath,
 		ContentDir:  filepath.Join(dataDirectoryPath, "content"),
@@ -61,8 +60,7 @@ func TestRenderAllSkipsDraftPosts(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
 	testOptions := option.Options{
-		BaseURL:     "https://example.com",
-		Title:       "blog",
+		Title:       "honepress",
 		Description: "测试博客",
 		DataDir:     dataDirectoryPath,
 		ContentDir:  filepath.Join(dataDirectoryPath, "content"),
@@ -152,8 +150,7 @@ func TestRenderAllWritesGiscusPlaceholder(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
 	testOptions := option.Options{
-		BaseURL:     "https://example.com",
-		Title:       "blog",
+		Title:       "honepress",
 		Description: "test blog",
 		DataDir:     dataDirectoryPath,
 		ContentDir:  filepath.Join(dataDirectoryPath, "content"),
@@ -165,13 +162,6 @@ func TestRenderAllWritesGiscusPlaceholder(t *testing.T) {
 			GiscusRepoID:     "repo-id",
 			GiscusCategory:   "Comments",
 			GiscusCategoryID: "category-id",
-			GiscusMapping:    "pathname",
-			GiscusStrict:     "0",
-			ReactionsEnabled: "0",
-			EmitMetadata:     "1",
-			InputPosition:    "top",
-			Theme:            "noborder_light",
-			Language:         "en",
 		},
 	}
 
@@ -209,12 +199,6 @@ Comment body.`
 		`data-repo-id="repo-id"`,
 		`data-category="Comments"`,
 		`data-category-id="category-id"`,
-		`data-mapping="pathname"`,
-		`data-reactions-enabled="0"`,
-		`data-emit-metadata="1"`,
-		`data-input-position="top"`,
-		`data-theme="noborder_light"`,
-		`data-lang="en"`,
 	}
 	for _, requiredFragment := range requiredFragments {
 		if !strings.Contains(postHTML, requiredFragment) {

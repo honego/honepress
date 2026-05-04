@@ -8,7 +8,7 @@ import (
 )
 
 func TestResolveConfigPathPriority(t *testing.T) {
-	t.Setenv("BLOG_CONFIG", "env.yaml")
+	t.Setenv("HONEPRESS_CONFIG", "env.yaml")
 
 	configPath, err := ResolveConfigPath([]string{"--config", "long.yaml"})
 	if err != nil {
@@ -28,7 +28,7 @@ func TestResolveConfigPathPriority(t *testing.T) {
 
 	configPath, err = ResolveConfigPath([]string{})
 	if err != nil {
-		t.Fatalf("解析 BLOG_CONFIG 失败：%v", err)
+		t.Fatalf("解析 HONEPRESS_CONFIG 失败：%v", err)
 	}
 	if configPath != "env.yaml" {
 		t.Fatalf("配置路径不一致：got %s want env.yaml", configPath)
@@ -60,5 +60,11 @@ func TestLoadGeneratesDefaultConfig(t *testing.T) {
 	}
 	if strings.Contains(generatedConfig, "provider:") {
 		t.Fatalf("默认配置不应包含固定的评论 provider")
+	}
+	giscusAdvancedKeys := []string{"mapping:", "strict:", "reactionsEnabled:", "emitMetadata:", "inputPosition:", "lang:"}
+	for _, giscusAdvancedKey := range giscusAdvancedKeys {
+		if strings.Contains(generatedConfig, giscusAdvancedKey) {
+			t.Fatalf("默认配置不应包含 giscus 高级项 %s", giscusAdvancedKey)
+		}
 	}
 }

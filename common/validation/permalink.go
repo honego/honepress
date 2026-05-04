@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/honeok/blog/constant"
+	"github.com/honeok/honepress/constant"
 )
 
 var (

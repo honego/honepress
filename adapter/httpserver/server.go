@@ -12,11 +12,11 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/honeok/blog/constant"
-	"github.com/honeok/blog/model"
-	"github.com/honeok/blog/option"
-	"github.com/honeok/blog/service"
-	"github.com/honeok/blog/web"
+	"github.com/honeok/honepress/constant"
+	"github.com/honeok/honepress/model"
+	"github.com/honeok/honepress/option"
+	"github.com/honeok/honepress/service"
+	"github.com/honeok/honepress/web"
 )
 
 // HTTP 服务
@@ -80,7 +80,7 @@ func (server *Server) basicAuth(nextHandler http.Handler) http.Handler {
 		usernameMatches := subtle.ConstantTimeCompare([]byte(username), []byte(server.options.AdminUsername)) == 1
 		passwordMatches := subtle.ConstantTimeCompare([]byte(password), []byte(server.options.AdminPassword)) == 1
 		if !hasCredentials || !usernameMatches || !passwordMatches {
-			responseWriter.Header().Set("WWW-Authenticate", `Basic realm="blog admin"`)
+			responseWriter.Header().Set("WWW-Authenticate", `Basic realm="honepress admin"`)
 			http.Error(responseWriter, "需要后台认证", http.StatusUnauthorized)
 			return
 		}
@@ -139,7 +139,7 @@ func (server *Server) serveAdminIndex(responseWriter http.ResponseWriter, adminD
 func (server *Server) serveAdminFallback(responseWriter http.ResponseWriter) {
 	responseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
 	responseWriter.WriteHeader(http.StatusOK)
-	_, _ = responseWriter.Write([]byte("<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><title>blog 后台</title></head><body><p>后台前端尚未构建，请先构建后台前端。</p></body></html>"))
+	_, _ = responseWriter.Write([]byte("<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><title>honepress 后台</title></head><body><p>后台前端尚未构建，请先构建后台前端。</p></body></html>"))
 }
 
 func (server *Server) servePublic(responseWriter http.ResponseWriter, request *http.Request) {

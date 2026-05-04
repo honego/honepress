@@ -10,12 +10,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/honeok/blog/common/filesystem"
-	"github.com/honeok/blog/common/validation"
-	"github.com/honeok/blog/model"
-	"github.com/honeok/blog/option"
-	"github.com/honeok/blog/renderer"
-	"github.com/honeok/blog/web"
+	"github.com/honeok/honepress/common/filesystem"
+	"github.com/honeok/honepress/common/validation"
+	"github.com/honeok/honepress/model"
+	"github.com/honeok/honepress/option"
+	"github.com/honeok/honepress/renderer"
+	"github.com/honeok/honepress/web"
 )
 
 // 博客业务
@@ -49,9 +49,6 @@ func normalizeRuntimeOptions(options option.Options) option.Options {
 	}
 	if strings.TrimSpace(options.AssetsDir) == "" {
 		options.AssetsDir = filepath.Join(options.DataDir, "assets")
-	}
-	if strings.TrimSpace(options.Language) == "" {
-		options.Language = "zh-CN"
 	}
 	if strings.TrimSpace(options.ThemeDefault) == "" {
 		options.ThemeDefault = "auto"
@@ -242,6 +239,7 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			SourceFileName: directoryEntry.Name(),
 			SourceFilePath: sourceFilePath,
 			Title:          parsedFrontMatter.Title,
+			Icon:           parsedFrontMatter.Icon,
 			DateText:       parsedFrontMatter.Date,
 			PublishedAt:    publishedAt,
 			Description:    parsedFrontMatter.Description,
@@ -252,7 +250,6 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			Comments:       parsedFrontMatter.Comments,
 			BodyMarkdown:   bodyMarkdownContent,
 			BodyHTML:       renderedPostHTML,
-			Language:       blogService.options.Language,
 		}
 		posts = append(posts, post)
 	}
@@ -267,13 +264,9 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 	siteViewData := model.SiteViewData{
 		SiteTitle:       blogService.options.Title,
 		SiteDescription: blogService.options.Description,
-		BaseURL:         blogService.options.BaseURL,
 		SiteIconURL:     blogService.options.SiteIconURL,
-		GitHubURL:       blogService.options.GitHubURL,
-		TelegramURL:     blogService.options.TelegramURL,
 		ThemeDefault:    blogService.options.ThemeDefault,
 		Font:            blogService.options.Font,
-		Language:        blogService.options.Language,
 		CanonicalPath:   "/",
 		HomePath:        "/",
 		BlogPath:        "/blog.html",
@@ -294,13 +287,9 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		postViewData := model.PostViewData{
 			SiteTitle:       blogService.options.Title,
 			SiteDescription: blogService.options.Description,
-			BaseURL:         blogService.options.BaseURL,
 			SiteIconURL:     blogService.options.SiteIconURL,
-			GitHubURL:       blogService.options.GitHubURL,
-			TelegramURL:     blogService.options.TelegramURL,
 			ThemeDefault:    blogService.options.ThemeDefault,
 			Font:            blogService.options.Font,
-			Language:        blogService.options.Language,
 			CanonicalPath:   "/" + currentPost.URL,
 			HomePath:        "/",
 			BlogPath:        "/blog.html",
@@ -398,30 +387,16 @@ func (blogService *BlogService) commentHTMLForPost(post model.Post) htmlTemplate
 	}
 
 	commentAttributes := map[string]string{
-		"data-repo":              blogService.options.Comment.GiscusRepo,
-		"data-repo-id":           blogService.options.Comment.GiscusRepoID,
-		"data-category":          blogService.options.Comment.GiscusCategory,
-		"data-category-id":       blogService.options.Comment.GiscusCategoryID,
-		"data-mapping":           blogService.options.Comment.GiscusMapping,
-		"data-strict":            blogService.options.Comment.GiscusStrict,
-		"data-reactions-enabled": blogService.options.Comment.ReactionsEnabled,
-		"data-emit-metadata":     blogService.options.Comment.EmitMetadata,
-		"data-input-position":    blogService.options.Comment.InputPosition,
-		"data-theme":             blogService.options.Comment.Theme,
-		"data-lang":              blogService.options.Comment.Language,
+		"data-repo":        blogService.options.Comment.GiscusRepo,
+		"data-repo-id":     blogService.options.Comment.GiscusRepoID,
+		"data-category":    blogService.options.Comment.GiscusCategory,
+		"data-category-id": blogService.options.Comment.GiscusCategoryID,
 	}
 	attributeNames := []string{
 		"data-repo",
 		"data-repo-id",
 		"data-category",
 		"data-category-id",
-		"data-mapping",
-		"data-strict",
-		"data-reactions-enabled",
-		"data-emit-metadata",
-		"data-input-position",
-		"data-theme",
-		"data-lang",
 	}
 
 	var htmlBuilder strings.Builder
@@ -461,6 +436,7 @@ func postsToSummaries(posts []model.Post) []model.PostSummary {
 		postSummaries = append(postSummaries, model.PostSummary{
 			ID:          currentPost.SourceFileName,
 			Title:       currentPost.Title,
+			Icon:        currentPost.Icon,
 			Date:        currentPost.DateText,
 			Description: currentPost.Description,
 			Draft:       currentPost.Draft,

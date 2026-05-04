@@ -8,6 +8,7 @@ import (
 // Markdown Front Matter
 type PostFrontMatter struct {
 	Title       string   `yaml:"title"`
+	Icon        string   `yaml:"icon"`
 	Date        string   `yaml:"date"`
 	Description string   `yaml:"description"`
 	Draft       bool     `yaml:"draft"`
@@ -22,6 +23,7 @@ type Post struct {
 	SourceFileName string
 	SourceFilePath string
 	Title          string
+	Icon           string
 	DateText       string
 	PublishedAt    time.Time
 	Description    string
@@ -32,13 +34,13 @@ type Post struct {
 	Comments       bool
 	BodyMarkdown   string
 	BodyHTML       template.HTML
-	Language       string
 }
 
 // 文章摘要
 type PostSummary struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
+	Icon        string   `json:"icon"`
 	Date        string   `json:"date"`
 	Description string   `json:"description"`
 	Draft       bool     `json:"draft"`
@@ -52,6 +54,7 @@ type PostSummary struct {
 type PostDetail struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
+	Icon        string   `json:"icon"`
 	Date        string   `json:"date"`
 	Description string   `json:"description"`
 	Draft       bool     `json:"draft"`
@@ -66,6 +69,7 @@ type PostDetail struct {
 type SavePostRequest struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
+	Icon        string   `json:"icon"`
 	Date        string   `json:"date"`
 	Description string   `json:"description"`
 	Draft       bool     `json:"draft"`

@@ -1,21 +1,21 @@
-# blog
+# honepress
 
-blog 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责 Markdown 渲染、静态 HTML、RSS、sitemap、API 和静态文件服务；TypeScript 负责后台 Vue 页面和前台主题切换脚本。
+honepress 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责 Markdown 渲染、静态 HTML、RSS、sitemap、API 和静态文件服务；TypeScript 负责后台 Vue 页面和前台主题切换脚本。
 
 运行期采用单二进制部署：前台模板、后台构建产物和主题脚本都会嵌入到 `app` 中，外部只需要挂载 `config.yaml` 和 `data`。
 
 ## 功能特性
 
 - Markdown 文件外置存储，启动和保存后自动生成静态页面。
-- 固定链接由 Front Matter 的 `url` 字段决定，标题变更不会影响链接。
+- 固定链接由 Front Matter 的 `url` 字段决定，标题变更不会影响链接。`icon` 可给文章标题加 emoji。
 - 自动生成 `/rss.xml`、`/sitemap.xml`。
 - 后台提供文章列表、新建、编辑、删除、保存、预览、站点 icon 上传、评论配置和站点设置；发布后自动生成公开页面，草稿不生成公开页面。
-- 支持 Basic Auth、giscus 评论开关、auto/light/dark 主题。
+- 支持 Basic Auth、giscus 评论开关、auto/light/dark 主题和 Markdown emoji 短码。
 
 ## 目录结构
 
 ```text
-cmd/blog/main.go
+cmd/honepress/main.go
 adapter/httpserver/
 common/filesystem/
 common/validation/
@@ -60,7 +60,7 @@ docker compose up -d
 Go 构建命令：
 
 ```bash
-go build -trimpath -ldflags="-s -w" -o /out/app ./cmd/blog
+go build -trimpath -ldflags="-s -w" -o /out/app ./cmd/honepress
 ```
 
 手动运行：
@@ -72,20 +72,20 @@ go build -trimpath -ldflags="-s -w" -o /out/app ./cmd/blog
 Docker 内部启动命令：
 
 ```bash
-/app/app -c /app/config.yaml
+/app/honepress -c /app/config.yaml
 ```
 
-容器运行层只复制 `/app/app`。`config.yaml` 通过 compose 挂载到 `/app/config.yaml`；如果直接运行镜像且配置文件不存在，程序会自动生成默认配置。Markdown 内容和生成后的静态文件仍放在 `/app/data`，方便备份和迁移。
+容器运行层只复制 `/app/honepress`。`config.yaml` 通过 compose 挂载到 `/app/config.yaml`；如果直接运行镜像且配置文件不存在，程序会自动生成默认配置。Markdown 内容和生成后的静态文件仍放在 `/app/data`，方便备份和迁移。
 
 ## 配置文件
 
-站点标题、描述、baseURL、后台认证和评论配置都在 `config.yaml` 中管理。配置文件路径优先级：
+站点标题、描述、后台认证和评论配置都在 `config.yaml` 中管理。配置文件路径优先级：
 
 1. 命令行参数 `-c` 或 `--config`
-2. 环境变量 `BLOG_CONFIG`
+2. 环境变量 `HONEPRESS_CONFIG`
 3. 默认 `./config.yaml`
 
-除 `BLOG_CONFIG` 可用于指定配置文件路径外，不再通过其他环境变量配置站点信息。配置文件不存在时，程序会自动生成默认 `config.yaml` 并继续启动。
+除 `HONEPRESS_CONFIG` 可用于指定配置文件路径外，不再通过其他环境变量配置站点信息。配置文件不存在时，程序会自动生成默认 `config.yaml` 并继续启动。
 
 ## Markdown 文章格式
 
@@ -94,6 +94,7 @@ Docker 内部启动命令：
 ```md
 ---
 title: "Docker 搭建 xxxx"
+icon: "✨"
 date: "2026-05-04 12:00:00"
 description: "这是一篇 Docker 部署笔记。"
 draft: false
@@ -109,7 +110,7 @@ tags:
 这里是正文内容。
 ```
 
-Front Matter 只给程序读取，不会出现在渲染后的正文中。`tags` 会显示在文章列表、文章页，并写入 RSS category。
+Front Matter 只给程序读取，不会出现在渲染后的正文中。`icon` 会显示在文章标题前；正文支持 `:sparkles:` 这类 Markdown emoji 短码。`tags` 会显示在文章列表、文章页，并写入 RSS category。
 
 ## 固定链接说明
 
@@ -129,11 +130,11 @@ sitemap 自动生成到 `/sitemap.xml`。后台路径和 API 路径不会进入 
 
 ## 明暗主题说明
 
-前台主题源码位于 `web/theme/src/theme.ts`，构建后生成 `theme.js` 并复制到 `data/public/theme.js`。主题状态保存在 `localStorage` 的 `blog-theme`，支持 `auto`、`light`、`dark`。
+前台主题源码位于 `web/theme/src/theme.ts`，构建后生成 `theme.js` 并复制到 `data/public/theme.js`。主题状态保存在 `localStorage` 的 `honepress-theme`，支持 `auto`、`light`、`dark`。
 
 ## 后台说明
 
-后台路径是 `/admin/`，API 路径是 `/api/`，两者都受 Basic Auth 保护。Markdown 预览调用 Go 后端 `/api/preview`，不会在前端使用 Markdown 渲染库。后台的“站点设置”区域可以修改站点标题、描述、baseURL、网站 icon、社交链接、giscus 评论配置和默认主题，保存后会写回配置并自动更新静态页面。
+后台路径是 `/admin/`，API 路径是 `/api/`，两者都受 Basic Auth 保护。Markdown 预览调用 Go 后端 `/api/preview`，不会在前端使用 Markdown 渲染库。后台的“站点设置”区域可以修改站点标题、描述、网站 icon、字体、giscus 评论配置和默认主题，保存后会写回配置并自动更新静态页面。
 
 ## 反代建议
 

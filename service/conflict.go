@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/honeok/blog/model"
+	"github.com/honeok/honepress/model"
 )
 
 type permalinkOwner struct {

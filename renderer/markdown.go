@@ -6,6 +6,7 @@ import (
 	"html/template"
 
 	"github.com/yuin/goldmark"
+	emoji "github.com/yuin/goldmark-emoji"
 	"github.com/yuin/goldmark/extension"
 	goldmarkHTML "github.com/yuin/goldmark/renderer/html"
 )
@@ -19,7 +20,7 @@ type MarkdownRenderer struct {
 func NewMarkdownRenderer() *MarkdownRenderer {
 	return &MarkdownRenderer{
 		markdown: goldmark.New(
-			goldmark.WithExtensions(extension.GFM),
+			goldmark.WithExtensions(extension.GFM, emoji.Emoji),
 			goldmark.WithRendererOptions(goldmarkHTML.WithUnsafe()),
 		),
 	}

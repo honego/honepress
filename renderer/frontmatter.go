@@ -6,11 +6,12 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/honeok/blog/model"
+	"github.com/honeok/honepress/model"
 )
 
 type postFrontMatterYAML struct {
 	Title       string   `yaml:"title"`
+	Icon        string   `yaml:"icon"`
 	Date        string   `yaml:"date"`
 	Description string   `yaml:"description"`
 	Draft       bool     `yaml:"draft"`
@@ -36,6 +37,7 @@ func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.Pos
 
 	parsedFrontMatter := model.PostFrontMatter{
 		Title:       strings.TrimSpace(decodedFrontMatter.Title),
+		Icon:        strings.TrimSpace(decodedFrontMatter.Icon),
 		Date:        strings.TrimSpace(decodedFrontMatter.Date),
 		Description: strings.TrimSpace(decodedFrontMatter.Description),
 		Draft:       decodedFrontMatter.Draft,
@@ -55,6 +57,7 @@ func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.Pos
 func BuildPostDocument(frontMatter model.PostFrontMatter, bodyMarkdownContent string) ([]byte, error) {
 	encodedFrontMatter, err := yaml.Marshal(postFrontMatterYAML{
 		Title:       frontMatter.Title,
+		Icon:        frontMatter.Icon,
 		Date:        frontMatter.Date,
 		Description: frontMatter.Description,
 		Draft:       frontMatter.Draft,

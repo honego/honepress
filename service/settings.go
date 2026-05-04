@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/honeok/blog/common/filesystem"
-	"github.com/honeok/blog/model"
-	"github.com/honeok/blog/option"
+	"github.com/honeok/honepress/common/filesystem"
+	"github.com/honeok/honepress/model"
+	"github.com/honeok/honepress/option"
 )
 
 var allowedIconMIMETypes = map[string]string{

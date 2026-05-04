@@ -348,3 +348,23 @@ h1 {
     flex-direction: column;
   }
 }
+
+.post-icon {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.content img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 82vh;
+  height: auto;
+  margin: 24px auto;
+  object-fit: contain;
+}
+
+.content video,
+.content iframe {
+  max-width: 100%;
+}

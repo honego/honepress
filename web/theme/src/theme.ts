@@ -6,7 +6,7 @@ type LucideWindow = Window & {
   };
 };
 
-const storageKey = "blog-theme";
+const storageKey = "honepress-theme";
 const themeModes: ThemeMode[] = ["auto", "light", "dark"];
 const themeLabels: Record<ThemeMode, string> = {
   auto: "主题：自动",
@@ -81,13 +81,13 @@ function setGiscusAttributes(giscusScript: HTMLScriptElement, commentContainer: 
     ["data-repo-id", commentContainer.dataset.repoId ?? ""],
     ["data-category", commentContainer.dataset.category ?? ""],
     ["data-category-id", commentContainer.dataset.categoryId ?? ""],
-    ["data-mapping", commentContainer.dataset.mapping ?? "pathname"],
-    ["data-strict", commentContainer.dataset.strict ?? "0"],
-    ["data-reactions-enabled", commentContainer.dataset.reactionsEnabled ?? "1"],
-    ["data-emit-metadata", commentContainer.dataset.emitMetadata ?? "0"],
-    ["data-input-position", commentContainer.dataset.inputPosition ?? "bottom"],
-    ["data-theme", giscusThemeFor(readStoredTheme(), commentContainer.dataset.theme)],
-    ["data-lang", commentContainer.dataset.lang ?? document.documentElement.lang ?? "zh-CN"],
+    ["data-mapping", "pathname"],
+    ["data-strict", "0"],
+    ["data-reactions-enabled", "1"],
+    ["data-emit-metadata", "0"],
+    ["data-input-position", "bottom"],
+    ["data-theme", commentThemeFor(readStoredTheme())],
+    ["data-lang", "zh-CN"],
   ];
 
   giscusAttributes.forEach(([attributeName, attributeValue]) => {
@@ -107,7 +107,7 @@ function syncGiscusTheme(themeMode: ThemeMode): void {
       {
         giscus: {
           setConfig: {
-            theme: giscusThemeFor(themeMode, commentContainer.dataset.theme),
+            theme: commentThemeFor(themeMode),
           },
         },
       },
@@ -116,11 +116,7 @@ function syncGiscusTheme(themeMode: ThemeMode): void {
   });
 }
 
-function giscusThemeFor(themeMode: ThemeMode, configuredTheme?: string): string {
-  const normalizedTheme = configuredTheme?.trim();
-  if (normalizedTheme && normalizedTheme !== "preferred_color_scheme") {
-    return normalizedTheme;
-  }
+function commentThemeFor(themeMode: ThemeMode): string {
   if (themeMode === "light" || themeMode === "dark") {
     return themeMode;
   }

@@ -29,7 +29,6 @@ const tagsText = ref("");
 const previewHTML = ref("");
 const statusMessage = ref("");
 const errorMessage = ref("");
-const isPostsLoading = ref(false);
 const isSaving = ref(false);
 const isPreviewLoading = ref(false);
 const adminTheme = ref<AdminThemeMode>(readStoredAdminTheme());
@@ -75,14 +74,11 @@ watch(
 );
 
 async function loadPosts(): Promise<void> {
-  isPostsLoading.value = true;
   errorMessage.value = "";
   try {
     posts.value = await fetchPosts();
   } catch (error) {
     errorMessage.value = readError(error);
-  } finally {
-    isPostsLoading.value = false;
   }
 }
 
@@ -284,7 +280,7 @@ function cycleAdminTheme(): void {
   const nextThemeIndex = (currentThemeIndex + 1) % adminThemeModes.length;
   adminTheme.value = adminThemeModes[nextThemeIndex];
   try {
-    window.localStorage.setItem("blog-admin-theme", adminTheme.value);
+    window.localStorage.setItem("honepress-admin-theme", adminTheme.value);
   } catch {
     statusMessage.value = "浏览器阻止保存后台主题。";
   }
@@ -297,7 +293,7 @@ function applyAdminTheme(): void {
 
 function readStoredAdminTheme(): AdminThemeMode {
   try {
-    const storedTheme = window.localStorage.getItem("blog-admin-theme");
+    const storedTheme = window.localStorage.getItem("honepress-admin-theme");
     if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "auto") {
       return storedTheme;
     }
@@ -311,6 +307,7 @@ function buildSavePostRequest(): SavePostRequest {
   return {
     id: editorMode.value === "create" ? "" : editorForm.value.id,
     title: editorForm.value.title,
+    icon: editorForm.value.icon,
     date: editorForm.value.date,
     description: editorForm.value.description,
     draft: editorForm.value.draft,
@@ -342,6 +339,7 @@ function createEmptyPost(): PostDetail {
   return {
     id: "",
     title: "未命名文章",
+    icon: "",
     date: formatCurrentDate(),
     description: "",
     draft: false,
@@ -357,23 +355,12 @@ function createEmptySiteSettings(): SiteSettings {
   return {
     title: "",
     description: "",
-    baseUrl: "",
-    language: "zh-CN",
     iconUrl: "",
-    githubUrl: "",
-    telegramUrl: "",
     commentEnabled: false,
     giscusRepo: "",
     giscusRepoId: "",
     giscusCategory: "",
     giscusCategoryId: "",
-    giscusMapping: "pathname",
-    giscusStrict: "0",
-    giscusReactionsEnabled: "1",
-    giscusEmitMetadata: "0",
-    giscusInputPosition: "bottom",
-    giscusTheme: "preferred_color_scheme",
-    giscusLang: "zh-CN",
     themeDefault: "auto",
     font: "default",
   };
@@ -419,7 +406,7 @@ function escapeHTML(rawText: string): string {
     <header class="topbar">
       <a class="topbar-brand" href="/" target="_blank">
         <span class="brand-mark">b</span>
-        <span>blog</span>
+        <span>honepress</span>
       </a>
       <div class="topbar-actions">
         <button type="button" @click="cycleAdminTheme">主题：{{ adminThemeLabel }}</button>
@@ -445,7 +432,7 @@ function escapeHTML(rawText: string): string {
       <main class="main">
         <header class="page-header">
           <div>
-            <p class="eyebrow">blog</p>
+            <p class="eyebrow">honepress</p>
             <h1>{{ pageTitle }}</h1>
           </div>
           <button v-if="activeSection === 'posts'" type="button" @click="createNewPost">新建文章</button>
@@ -460,11 +447,10 @@ function escapeHTML(rawText: string): string {
               <h2>文章列表</h2>
               <span>{{ posts.length }}</span>
             </div>
-            <p v-if="isPostsLoading" class="muted">正在加载...</p>
             <div class="post-list">
               <button v-for="post in posts" :key="post.id" type="button" class="post-row"
                 :class="{ active: post.id === selectedPostID }" @click="selectPost(post.id)">
-                <span>{{ post.title }}</span>
+                <span><span v-if="post.icon" class="post-icon">{{ post.icon }}</span>{{ post.title }}</span>
                 <small>{{ post.date }}</small>
                 <em>{{ post.draft ? "草稿" : "已发布" }}</em>
               </button>
@@ -475,7 +461,8 @@ function escapeHTML(rawText: string): string {
             <header class="editor-header">
               <div>
                 <p class="eyebrow">{{ editorMode === "create" ? "新建文章" : editorForm.id }}</p>
-                <h2>{{ editorForm.title }}</h2>
+                <h2><span v-if="editorForm.icon" class="post-icon">{{ editorForm.icon }}</span>{{ editorForm.title }}
+                </h2>
               </div>
               <div class="actions">
                 <a v-if="canEditExistingPost && !editorForm.draft" :href="`/${editorForm.url}`" target="_blank">查看</a>
@@ -491,6 +478,10 @@ function escapeHTML(rawText: string): string {
               <label>
                 <span>标题</span>
                 <input v-model="editorForm.title" type="text" />
+              </label>
+              <label>
+                <span>Emoji</span>
+                <input v-model="editorForm.icon" type="text" placeholder="✨ 或 :sparkles:" />
               </label>
               <label>
                 <span>固定链接</span>
@@ -607,52 +598,6 @@ function escapeHTML(rawText: string): string {
                   <span>分类 ID</span>
                   <input v-model="siteSettings.giscusCategoryId" type="text" />
                 </label>
-
-                <details class="advanced-settings wide">
-                  <summary>高级设置</summary>
-                  <div class="form-grid nested-grid">
-                    <label>
-                      <span>页面映射</span>
-                      <input v-model="siteSettings.giscusMapping" type="text" />
-                    </label>
-                    <label>
-                      <span>严格匹配</span>
-                      <select v-model="siteSettings.giscusStrict">
-                        <option value="0">关闭</option>
-                        <option value="1">开启</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>评论反应</span>
-                      <select v-model="siteSettings.giscusReactionsEnabled">
-                        <option value="1">开启</option>
-                        <option value="0">关闭</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Metadata</span>
-                      <select v-model="siteSettings.giscusEmitMetadata">
-                        <option value="0">关闭</option>
-                        <option value="1">开启</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>输入框位置</span>
-                      <select v-model="siteSettings.giscusInputPosition">
-                        <option value="bottom">底部</option>
-                        <option value="top">顶部</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>评论主题</span>
-                      <input v-model="siteSettings.giscusTheme" type="text" />
-                    </label>
-                    <label>
-                      <span>评论语言</span>
-                      <input v-model="siteSettings.giscusLang" type="text" />
-                    </label>
-                  </div>
-                </details>
               </template>
             </div>
           </section>

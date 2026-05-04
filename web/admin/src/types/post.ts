@@ -1,6 +1,7 @@
 export interface PostSummary {
   id: string;
   title: string;
+  icon: string;
   date: string;
   description: string;
   draft: boolean;
@@ -13,6 +14,7 @@ export interface PostSummary {
 export interface PostDetail {
   id: string;
   title: string;
+  icon: string;
   date: string;
   description: string;
   draft: boolean;
@@ -26,6 +28,7 @@ export interface PostDetail {
 export interface SavePostRequest {
   id: string;
   title: string;
+  icon: string;
   date: string;
   description: string;
   draft: boolean;
@@ -39,23 +42,12 @@ export interface SavePostRequest {
 export interface SiteSettings {
   title: string;
   description: string;
-  baseUrl: string;
-  language: string;
   iconUrl: string;
-  githubUrl: string;
-  telegramUrl: string;
   commentEnabled: boolean;
   giscusRepo: string;
   giscusRepoId: string;
   giscusCategory: string;
   giscusCategoryId: string;
-  giscusMapping: string;
-  giscusStrict: string;
-  giscusReactionsEnabled: string;
-  giscusEmitMetadata: string;
-  giscusInputPosition: string;
-  giscusTheme: string;
-  giscusLang: string;
   themeDefault: "auto" | "light" | "dark";
   font: "default" | "douyin-sans";
 }

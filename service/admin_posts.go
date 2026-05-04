@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/honeok/blog/common/filesystem"
-	"github.com/honeok/blog/common/validation"
-	"github.com/honeok/blog/model"
-	"github.com/honeok/blog/renderer"
+	"github.com/honeok/honepress/common/filesystem"
+	"github.com/honeok/honepress/common/validation"
+	"github.com/honeok/honepress/model"
+	"github.com/honeok/honepress/renderer"
 )
 
 // 后台文章列表
@@ -51,6 +51,7 @@ func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail
 	return model.PostDetail{
 		ID:          sourceFileName,
 		Title:       frontMatter.Title,
+		Icon:        frontMatter.Icon,
 		Date:        frontMatter.Date,
 		Description: frontMatter.Description,
 		Draft:       frontMatter.Draft,
@@ -188,6 +189,7 @@ func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.Post
 
 	frontMatter := model.PostFrontMatter{
 		Title:       strings.TrimSpace(savePostRequest.Title),
+		Icon:        strings.TrimSpace(savePostRequest.Icon),
 		Date:        strings.TrimSpace(savePostRequest.Date),
 		Description: strings.TrimSpace(savePostRequest.Description),
 		Draft:       savePostRequest.Draft,

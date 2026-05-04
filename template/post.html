@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="{{.Language}}" data-theme="{{.ThemeDefault}}" data-font="{{.Font}}">
+<html lang="zh-CN" data-theme="{{.ThemeDefault}}" data-font="{{.Font}}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{.Post.Title}} - {{.SiteTitle}}</title>
     <meta name="description" content="{{.Post.Description}}" />
-    <link rel="canonical" href="{{.BaseURL}}{{.CanonicalPath}}" />
+    <link rel="canonical" href="{{.CanonicalPath}}" />
     {{if .SiteIconURL}}
     <link rel="icon" href="{{.SiteIconURL}}" />
     {{end}}
@@ -28,11 +28,6 @@
           <a class="icon-link" href="{{.RSSPath}}" aria-label="RSS" title="RSS">
             <i class="nav-icon" data-lucide="rss" aria-hidden="true"></i>
           </a>
-          {{if .GitHubURL}}<a href="{{.GitHubURL}}" rel="me">GitHub</a>{{end}} {{if .TelegramURL}}<a
-            href="{{.TelegramURL}}"
-            rel="me"
-            >Telegram</a
-          >{{end}}
           <button
             type="button"
             class="theme-toggle icon-button"
@@ -51,7 +46,7 @@
         <a class="back-link" href="{{.BlogPath}}">{{.Labels.BackToList}}</a>
         <header class="article-header">
           <time datetime="{{.Post.DateText}}">{{.Labels.PublishedAt}} {{.Post.DateText}}</time>
-          <h1>{{.Post.Title}}</h1>
+          <h1>{{if .Post.Icon}}<span class="post-icon">{{.Post.Icon}}</span>{{end}}{{.Post.Title}}</h1>
           <p>{{.Post.Description}}</p>
           {{if .Post.Tags}}
           <div class="post-tags">{{range .Post.Tags}}<span>{{.}}</span>{{end}}</div>
