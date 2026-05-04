@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="{{.Language}}" data-theme="{{.ThemeDefault}}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Post.Title}} - {{.SiteTitle}}</title>
+    <meta name="description" content="{{.Post.Description}}" />
+    <link rel="canonical" href="{{.BaseURL}}{{.CanonicalPath}}" />
+    {{if .AlternatePath}}
+    <link rel="alternate" href="{{.BaseURL}}{{.AlternatePath}}" />
+    {{end}}
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/theme.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav">
+        <a class="brand" href="{{.HomePath}}">{{.SiteTitle}}</a>
+        <div class="nav-links">
+          <a href="{{.BlogPath}}">{{.Labels.Blog}}</a>
+          {{if .GitHubURL}}<a href="{{.GitHubURL}}" rel="me">GitHub</a>{{end}} {{if .TelegramURL}}<a
+            href="{{.TelegramURL}}"
+            rel="me"
+            >Telegram</a
+          >{{end}} {{if .AlternatePath}}<a href="{{.AlternatePath}}">{{.Labels.LanguageSwitch}}</a>{{end}}
+          <button type="button" class="theme-toggle" data-theme-toggle>{{.Labels.ThemeButtonLabel}}</button>
+        </div>
+      </nav>
+    </header>
+
+    <main class="page">
+      <article class="article">
+        <a class="back-link" href="{{.BlogPath}}">{{.Labels.BackToList}}</a>
+        <header class="article-header">
+          <time datetime="{{.Post.DateText}}">{{.Labels.PublishedAt}} {{.Post.DateText}}</time>
+          <h1>{{.Post.Title}}</h1>
+          <p>{{.Post.Description}}</p>
+        </header>
+        <div class="content">{{.Post.BodyHTML}}</div>
+      </article>
+      {{.CommentHTML}}
+    </main>
+
+    <footer class="site-footer">
+      <p>{{.Labels.Footer}}</p>
+    </footer>
+  </body>
+</html>

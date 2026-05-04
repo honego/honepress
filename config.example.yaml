@@ -1,0 +1,39 @@
+server:
+  listen: ":8080"
+data:
+  directory: "/app/data"
+admin:
+  username: "admin"
+  password: "change-me"
+site:
+  title: "HONEOK"
+  description: "Server. Network. Blog."
+  baseURL: ""
+  language: "zh-CN"
+  githubURL: ""
+  telegramURL: ""
+comment:
+  enabled: false
+  provider: "giscus"
+  giscus:
+    repo: ""
+    repoID: ""
+    category: ""
+    categoryID: ""
+    mapping: "pathname"
+    strict: "0"
+    reactionsEnabled: "1"
+    emitMetadata: "0"
+    inputPosition: "bottom"
+    theme: "preferred_color_scheme"
+    lang: "zh-CN"
+translation:
+  enabled: false
+  provider: "openai-compatible"
+  apiURL: ""
+  apiKey: ""
+  model: ""
+  targetLanguage: "en-US"
+  cacheDirectory: "/app/data/content/translations/en"
+theme:
+  default: "auto"
