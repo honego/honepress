@@ -368,21 +368,13 @@ function escapeHTML(rawText: string): string {
     <div class="admin-layout">
       <aside class="sidebar">
         <nav class="menu" aria-label="后台导航">
-          <button
-            type="button"
-            class="menu-item"
-            :class="{ active: activeSection === 'posts' }"
-            @click="switchSection('posts')"
-          >
+          <button type="button" class="menu-item" :class="{ active: activeSection === 'posts' }"
+            @click="switchSection('posts')">
             <span class="menu-icon">文</span>
             <span>文章</span>
           </button>
-          <button
-            type="button"
-            class="menu-item"
-            :class="{ active: activeSection === 'settings' }"
-            @click="switchSection('settings')"
-          >
+          <button type="button" class="menu-item" :class="{ active: activeSection === 'settings' }"
+            @click="switchSection('settings')">
             <span class="menu-icon">设</span>
             <span>设置</span>
           </button>
@@ -409,14 +401,8 @@ function escapeHTML(rawText: string): string {
             </div>
             <p v-if="isLoading" class="muted">正在加载...</p>
             <div class="post-list">
-              <button
-                v-for="post in posts"
-                :key="post.id"
-                type="button"
-                class="post-row"
-                :class="{ active: post.id === selectedPostID }"
-                @click="selectPost(post.id)"
-              >
+              <button v-for="post in posts" :key="post.id" type="button" class="post-row"
+                :class="{ active: post.id === selectedPostID }" @click="selectPost(post.id)">
                 <span>{{ post.title }}</span>
                 <small>{{ post.date }}</small>
                 <em>{{ post.draft ? "草稿" : "已发布" }}</em>
@@ -433,12 +419,8 @@ function escapeHTML(rawText: string): string {
               <div class="actions">
                 <a v-if="canEditExistingPost && !editorForm.draft" :href="`/${editorForm.url}`" target="_blank">查看</a>
                 <button type="button" :disabled="isSaving" @click="saveCurrentPost">保存</button>
-                <button
-                  type="button"
-                  :disabled="!canEditExistingPost || isSaving"
-                  class="danger"
-                  @click="deleteCurrentPost"
-                >
+                <button type="button" :disabled="!canEditExistingPost || isSaving" class="danger"
+                  @click="deleteCurrentPost">
                   删除
                 </button>
               </div>
