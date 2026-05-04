@@ -10,7 +10,6 @@ type SiteSettings struct {
 	GitHubURL              string `json:"githubUrl"`
 	TelegramURL            string `json:"telegramUrl"`
 	CommentEnabled         bool   `json:"commentEnabled"`
-	CommentProvider        string `json:"commentProvider"`
 	GiscusRepo             string `json:"giscusRepo"`
 	GiscusRepoID           string `json:"giscusRepoId"`
 	GiscusCategory         string `json:"giscusCategory"`

@@ -29,7 +29,7 @@ const tagsText = ref("");
 const previewHTML = ref("");
 const statusMessage = ref("");
 const errorMessage = ref("");
-const isLoading = ref(false);
+const isPostsLoading = ref(false);
 const isSaving = ref(false);
 const isPreviewLoading = ref(false);
 const adminTheme = ref<AdminThemeMode>(readStoredAdminTheme());
@@ -75,14 +75,14 @@ watch(
 );
 
 async function loadPosts(): Promise<void> {
-  isLoading.value = true;
+  isPostsLoading.value = true;
   errorMessage.value = "";
   try {
     posts.value = await fetchPosts();
   } catch (error) {
     errorMessage.value = readError(error);
   } finally {
-    isLoading.value = false;
+    isPostsLoading.value = false;
   }
 }
 
@@ -108,7 +108,6 @@ function switchSection(nextSection: AdminSection): void {
 
 async function selectPost(postID: string): Promise<void> {
   activeSection.value = "posts";
-  isLoading.value = true;
   errorMessage.value = "";
   try {
     const loadedPost = await fetchPost(postID);
@@ -121,8 +120,6 @@ async function selectPost(postID: string): Promise<void> {
     schedulePreview();
   } catch (error) {
     errorMessage.value = readError(error);
-  } finally {
-    isLoading.value = false;
   }
 }
 
@@ -366,7 +363,6 @@ function createEmptySiteSettings(): SiteSettings {
     githubUrl: "",
     telegramUrl: "",
     commentEnabled: false,
-    commentProvider: "giscus",
     giscusRepo: "",
     giscusRepoId: "",
     giscusCategory: "",
@@ -464,7 +460,7 @@ function escapeHTML(rawText: string): string {
               <h2>文章列表</h2>
               <span>{{ posts.length }}</span>
             </div>
-            <p v-if="isLoading" class="muted">正在加载...</p>
+            <p v-if="isPostsLoading" class="muted">正在加载...</p>
             <div class="post-list">
               <button v-for="post in posts" :key="post.id" type="button" class="post-row"
                 :class="{ active: post.id === selectedPostID }" @click="selectPost(post.id)">

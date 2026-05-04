@@ -1,7 +1,4 @@
----
-# 服务监听地址。Docker 默认映射到宿主机 8080 端口。
-server:
-  listen: ":8080"
+# 容器内部固定监听 8080 端口；宿主机端口请通过 Docker 端口映射调整。
 
 # 数据目录。文章、上传资源和渲染后的静态文件都会放在这里。
 data:
@@ -12,51 +9,20 @@ admin:
   username: "admin"
   password: ""
 
-# 站点基础信息。多数项也可以在后台“站点设置”里修改。
+# 站点基础信息。后台“站点设置”也可以修改这些字段。
 site:
-  # 站点名称，会显示在首页、导航和浏览器标题里。
   title: ""
-  # 站点描述，用于首页文案和 meta description。
   description: ""
-  # 站点公开访问地址，例如 "https://example.com"。留空时使用相对链接。
-  baseURL: ""
-  # 页面语言。
-  language: "zh-CN"
-  # 网站 icon，支持 http(s) 外部图床链接，也支持后台上传后生成的 /assets/... 路径。
   iconURL: ""
-  # 可选社交链接。
-  githubURL: ""
-  telegramURL: ""
 
-# 评论设置。后台也能直接修改这些字段。
+# 评论设置。文章还可以用 comments: false 单独关闭评论。
 comment:
-  # 总开关；文章还可以用 comments: false 单独关闭评论。
   enabled: false
-  # 目前支持 giscus。
-  provider: "giscus"
   giscus:
-    # GitHub Discussions 仓库，例如 "owner/repo"。
     repo: ""
-    # giscus 生成的仓库 ID。
     repoID: ""
-    # Discussions 分类名称。
     category: ""
-    # giscus 生成的分类 ID。
     categoryID: ""
-    # 页面映射方式，常用 pathname。
-    mapping: "pathname"
-    # 是否启用严格匹配，"0" 关闭，"1" 开启。
-    strict: "0"
-    # 是否显示评论反应，"0" 关闭，"1" 开启。
-    reactionsEnabled: "1"
-    # 是否输出 metadata，"0" 关闭，"1" 开启。
-    emitMetadata: "0"
-    # 评论框位置：top 或 bottom。
-    inputPosition: "bottom"
-    # giscus 主题；preferred_color_scheme 会跟随系统主题。
-    theme: "preferred_color_scheme"
-    # giscus 界面语言。
-    lang: "zh-CN"
 
 # 前台显示设置。
 theme:

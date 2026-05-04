@@ -115,9 +115,6 @@ func validateSiteSettings(siteSettings model.SiteSettings) error {
 	if strings.TrimSpace(siteSettings.IconURL) != "" && !isSupportedIconURL(siteSettings.IconURL) {
 		return fmt.Errorf("网站 icon 只支持 http(s) 链接或 / 开头的站内路径")
 	}
-	if strings.TrimSpace(siteSettings.CommentProvider) != "" && strings.TrimSpace(siteSettings.CommentProvider) != "giscus" {
-		return fmt.Errorf("评论服务暂只支持 giscus")
-	}
 	return nil
 }
 

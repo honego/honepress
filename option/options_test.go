@@ -3,6 +3,7 @@ package option
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -48,5 +49,16 @@ func TestLoadGeneratesDefaultConfig(t *testing.T) {
 	}
 	if _, err := os.Stat(configPath); err != nil {
 		t.Fatalf("配置文件没有生成：%v", err)
+	}
+	configFileContent, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("读取配置文件失败：%v", err)
+	}
+	generatedConfig := string(configFileContent)
+	if strings.Contains(generatedConfig, "server:") {
+		t.Fatalf("默认配置不应包含可修改的 server.listen")
+	}
+	if strings.Contains(generatedConfig, "provider:") {
+		t.Fatalf("默认配置不应包含固定的评论 provider")
 	}
 }

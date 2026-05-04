@@ -392,10 +392,6 @@ func (blogService *BlogService) commentHTMLForPost(post model.Post) htmlTemplate
 	if !blogService.options.Comment.Enabled || !post.Comments {
 		return ""
 	}
-	if blogService.options.Comment.Provider != "giscus" {
-		log.Printf("警告：不支持的评论服务：%s", blogService.options.Comment.Provider)
-		return ""
-	}
 	if !blogService.options.Comment.HasRequiredGiscusConfig() {
 		log.Println("警告：giscus 配置不完整，已跳过评论容器。")
 		return ""

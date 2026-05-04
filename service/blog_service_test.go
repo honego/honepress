@@ -13,7 +13,6 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
 	testOptions := option.Options{
-		Address:     ":0",
 		BaseURL:     "https://example.com",
 		Title:       "blog",
 		Description: "测试博客",
@@ -62,7 +61,6 @@ func TestRenderAllSkipsDraftPosts(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
 	testOptions := option.Options{
-		Address:     ":0",
 		BaseURL:     "https://example.com",
 		Title:       "blog",
 		Description: "测试博客",
@@ -154,7 +152,6 @@ func TestRenderAllWritesGiscusPlaceholder(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
 	testOptions := option.Options{
-		Address:     ":0",
 		BaseURL:     "https://example.com",
 		Title:       "blog",
 		Description: "test blog",
@@ -164,7 +161,6 @@ func TestRenderAllWritesGiscusPlaceholder(t *testing.T) {
 		PublicDir:   filepath.Join(dataDirectoryPath, "public"),
 		Comment: option.CommentOptions{
 			Enabled:          true,
-			Provider:         "giscus",
 			GiscusRepo:       "owner/repo",
 			GiscusRepoID:     "repo-id",
 			GiscusCategory:   "Comments",

@@ -1,6 +1,7 @@
 package option
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,17 +18,11 @@ import (
 
 // config.yaml 结构
 type Config struct {
-	Server  ServerConfig  `yaml:"server"`
 	Data    DataConfig    `yaml:"data"`
 	Admin   AdminConfig   `yaml:"admin"`
 	Site    SiteConfig    `yaml:"site"`
 	Comment CommentConfig `yaml:"comment"`
 	Theme   ThemeConfig   `yaml:"theme"`
-}
-
-// 监听地址
-type ServerConfig struct {
-	Listen string `yaml:"listen"`
 }
 
 // 数据目录
@@ -54,9 +49,8 @@ type SiteConfig struct {
 
 // 评论配置
 type CommentConfig struct {
-	Enabled  bool         `yaml:"enabled"`
-	Provider string       `yaml:"provider"`
-	Giscus   GiscusConfig `yaml:"giscus"`
+	Enabled bool         `yaml:"enabled"`
+	Giscus  GiscusConfig `yaml:"giscus"`
 }
 
 // giscus 配置
@@ -84,7 +78,6 @@ type ThemeConfig struct {
 type Options struct {
 	ConfigPath    string
 	Config        Config
-	Address       string
 	BaseURL       string
 	Title         string
 	Description   string
@@ -107,7 +100,6 @@ type Options struct {
 // 评论运行配置
 type CommentOptions struct {
 	Enabled          bool
-	Provider         string
 	GiscusRepo       string
 	GiscusRepoID     string
 	GiscusCategory   string
@@ -184,9 +176,6 @@ func Load(configPath string) (Options, error) {
 // 默认配置
 func DefaultConfig() Config {
 	return Config{
-		Server: ServerConfig{
-			Listen: constant.DefaultAddress,
-		},
 		Data: DataConfig{
 			Directory: "data",
 		},
@@ -204,8 +193,7 @@ func DefaultConfig() Config {
 			TelegramURL: "",
 		},
 		Comment: CommentConfig{
-			Enabled:  false,
-			Provider: "giscus",
+			Enabled: false,
 			Giscus: GiscusConfig{
 				Repo:             "",
 				RepoID:           "",
@@ -234,10 +222,16 @@ func WriteConfig(configPath string, config Config) error {
 	if err := os.MkdirAll(configDirectoryPath, 0755); err != nil {
 		return fmt.Errorf("创建配置目录失败：%s：%w", configDirectoryPath, err)
 	}
-	configFileContent, err := yaml.Marshal(config)
-	if err != nil {
+	var configFileBuffer bytes.Buffer
+	configEncoder := yaml.NewEncoder(&configFileBuffer)
+	configEncoder.SetIndent(2)
+	if err := configEncoder.Encode(config); err != nil {
 		return fmt.Errorf("生成配置文件失败：%w", err)
 	}
+	if err := configEncoder.Close(); err != nil {
+		return fmt.Errorf("关闭配置文件编码器失败：%w", err)
+	}
+	configFileContent := configFileBuffer.Bytes()
 	if err := os.WriteFile(configPath, configFileContent, 0644); err != nil {
 		return fmt.Errorf("写入配置文件失败：%s：%w", configPath, err)
 	}
@@ -254,7 +248,6 @@ func OptionsFromConfig(configPath string, config Config) Options {
 	return Options{
 		ConfigPath:    configPath,
 		Config:        config,
-		Address:       config.Server.Listen,
 		BaseURL:       strings.TrimRight(config.Site.BaseURL, "/"),
 		Title:         config.Site.Title,
 		Description:   config.Site.Description,
@@ -273,7 +266,6 @@ func OptionsFromConfig(configPath string, config Config) Options {
 		AdminPassword: config.Admin.Password,
 		Comment: CommentOptions{
 			Enabled:          config.Comment.Enabled,
-			Provider:         config.Comment.Provider,
 			GiscusRepo:       config.Comment.Giscus.Repo,
 			GiscusRepoID:     config.Comment.Giscus.RepoID,
 			GiscusCategory:   config.Comment.Giscus.Category,
@@ -292,9 +284,6 @@ func OptionsFromConfig(configPath string, config Config) Options {
 // 补齐配置默认值
 func NormalizeConfig(config *Config) {
 	defaultConfig := DefaultConfig()
-	if strings.TrimSpace(config.Server.Listen) == "" {
-		config.Server.Listen = defaultConfig.Server.Listen
-	}
 	if strings.TrimSpace(config.Data.Directory) == "" {
 		config.Data.Directory = defaultConfig.Data.Directory
 	}
@@ -310,9 +299,6 @@ func NormalizeConfig(config *Config) {
 	config.Site.IconURL = strings.TrimSpace(config.Site.IconURL)
 	config.Site.GitHubURL = strings.TrimSpace(config.Site.GitHubURL)
 	config.Site.TelegramURL = strings.TrimSpace(config.Site.TelegramURL)
-	if strings.TrimSpace(config.Comment.Provider) == "" {
-		config.Comment.Provider = defaultConfig.Comment.Provider
-	}
 	normalizeGiscusConfig(&config.Comment.Giscus, defaultConfig.Comment.Giscus)
 	config.Theme.Default = normalizeThemeDefault(config.Theme.Default)
 	config.Theme.Font = normalizeThemeFont(config.Theme.Font)
@@ -328,7 +314,6 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 	config.Site.GitHubURL = strings.TrimSpace(siteSettings.GitHubURL)
 	config.Site.TelegramURL = strings.TrimSpace(siteSettings.TelegramURL)
 	config.Comment.Enabled = siteSettings.CommentEnabled
-	config.Comment.Provider = strings.TrimSpace(siteSettings.CommentProvider)
 	config.Comment.Giscus.Repo = strings.TrimSpace(siteSettings.GiscusRepo)
 	config.Comment.Giscus.RepoID = strings.TrimSpace(siteSettings.GiscusRepoID)
 	config.Comment.Giscus.Category = strings.TrimSpace(siteSettings.GiscusCategory)
@@ -357,7 +342,6 @@ func SiteSettingsFromOptions(options Options) model.SiteSettings {
 		GitHubURL:              options.GitHubURL,
 		TelegramURL:            options.TelegramURL,
 		CommentEnabled:         options.Comment.Enabled,
-		CommentProvider:        options.Comment.Provider,
 		GiscusRepo:             options.Comment.GiscusRepo,
 		GiscusRepoID:           options.Comment.GiscusRepoID,
 		GiscusCategory:         options.Comment.GiscusCategory,

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/honeok/blog/constant"
 	"github.com/honeok/blog/model"
 	"github.com/honeok/blog/option"
 	"github.com/honeok/blog/service"
@@ -34,8 +35,8 @@ func New(options option.Options, blogService *service.BlogService) *Server {
 
 // 启动 HTTP 服务
 func (server *Server) ListenAndServe() error {
-	log.Printf("博客服务正在监听：%s", server.options.Address)
-	return http.ListenAndServe(server.options.Address, server.routes())
+	log.Printf("博客服务正在监听：%s", constant.DefaultAddress)
+	return http.ListenAndServe(constant.DefaultAddress, server.routes())
 }
 
 func (server *Server) routes() http.Handler {

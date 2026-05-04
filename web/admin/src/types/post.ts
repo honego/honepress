@@ -45,7 +45,6 @@ export interface SiteSettings {
   githubUrl: string;
   telegramUrl: string;
   commentEnabled: boolean;
-  commentProvider: string;
   giscusRepo: string;
   giscusRepoId: string;
   giscusCategory: string;
