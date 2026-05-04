@@ -106,9 +106,6 @@ type Options struct {
 	ContentDir          string
 	PostsDir            string
 	PublicDir           string
-	TemplateDir         string
-	AdminDistDir        string
-	ThemeDistPath       string
 	TranslationCacheDir string
 	AdminUsername       string
 	AdminPassword       string
@@ -300,9 +297,6 @@ func OptionsFromConfig(configPath string, config Config) Options {
 		ContentDir:          contentDirectory,
 		PostsDir:            filepath.Join(contentDirectory, "posts"),
 		PublicDir:           filepath.Join(dataDirectory, "public"),
-		TemplateDir:         "template",
-		AdminDistDir:        filepath.Join("web", "admin", "dist"),
-		ThemeDistPath:       filepath.Join("web", "theme", "dist", "theme.js"),
 		TranslationCacheDir: translationCacheDirectory,
 		AdminUsername:       config.Admin.Username,
 		AdminPassword:       config.Admin.Password,

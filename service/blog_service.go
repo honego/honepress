@@ -17,6 +17,7 @@ import (
 	"github.com/honeok/blog/model"
 	"github.com/honeok/blog/option"
 	"github.com/honeok/blog/renderer"
+	"github.com/honeok/blog/web"
 )
 
 // BlogService 串联文章扫描、Markdown 渲染、静态文件生成和后台写入操作。
@@ -404,8 +405,13 @@ func (blogService *BlogService) resetPublicDirectory() error {
 
 func (blogService *BlogService) copyThemeScript() {
 	targetThemeScriptPath := filepath.Join(blogService.options.PublicDir, "theme.js")
-	if err := filesystem.CopyFile(blogService.options.ThemeDistPath, targetThemeScriptPath); err != nil {
-		log.Printf("警告：复制前台主题脚本失败，请先构建 web/theme：%v", err)
+	themeScriptContent, err := web.ThemeScript()
+	if err != nil {
+		log.Printf("警告：读取内置主题脚本失败，请先构建 web/theme：%v", err)
+		return
+	}
+	if err := filesystem.WriteFileCreatingDirectory(targetThemeScriptPath, themeScriptContent, 0644); err != nil {
+		log.Printf("警告：写入前台主题脚本失败：%v", err)
 	}
 }
 

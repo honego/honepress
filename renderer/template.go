@@ -12,6 +12,7 @@ import (
 	"github.com/honeok/blog/common/filesystem"
 	"github.com/honeok/blog/model"
 	"github.com/honeok/blog/option"
+	templatefiles "github.com/honeok/blog/template"
 )
 
 // TemplateRenderer 负责把文章模型写成最终静态 HTML、RSS 和 sitemap 文件。
@@ -20,13 +21,9 @@ type TemplateRenderer struct {
 	options   option.Options
 }
 
-// NewTemplateRenderer 读取 template 目录，模板留在文件系统中便于 Docker 镜像启动前检查。
+// NewTemplateRenderer 从二进制内置模板解析页面，运行期只需要 app 自身。
 func NewTemplateRenderer(options option.Options) (*TemplateRenderer, error) {
-	indexTemplatePath := filepath.Join(options.TemplateDir, "index.html")
-	blogTemplatePath := filepath.Join(options.TemplateDir, "blog.html")
-	postTemplatePath := filepath.Join(options.TemplateDir, "post.html")
-
-	parsedTemplates, err := htmlTemplate.ParseFiles(indexTemplatePath, blogTemplatePath, postTemplatePath)
+	parsedTemplates, err := htmlTemplate.ParseFS(templatefiles.FS, "index.html", "blog.html", "post.html")
 	if err != nil {
 		return nil, fmt.Errorf("解析模板失败：%w", err)
 	}
@@ -115,11 +112,14 @@ func (templateRenderer *TemplateRenderer) RenderSitemap(targetFilePath string, p
 	return filesystem.WriteFileCreatingDirectory(targetFilePath, append([]byte(xml.Header), xmlContent...), 0644)
 }
 
-// CopyStyle 把模板目录中的 CSS 复制到 public，静态页面不依赖 Go 服务动态渲染样式。
+// CopyStyle 把内置 CSS 复制到 public，静态页面不依赖外部模板目录。
 func (templateRenderer *TemplateRenderer) CopyStyle() error {
-	sourceStylePath := filepath.Join(templateRenderer.options.TemplateDir, "style.css")
+	styleContent, err := templatefiles.FS.ReadFile("style.css")
+	if err != nil {
+		return fmt.Errorf("读取内置样式失败：%w", err)
+	}
 	targetStylePath := filepath.Join(templateRenderer.options.PublicDir, "style.css")
-	return filesystem.CopyFile(sourceStylePath, targetStylePath)
+	return filesystem.WriteFileCreatingDirectory(targetStylePath, styleContent, 0644)
 }
 
 func (templateRenderer *TemplateRenderer) executeHTMLTemplate(templateName string, targetFilePath string, templateData interface{}) error {

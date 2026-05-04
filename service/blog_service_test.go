@@ -11,10 +11,6 @@ import (
 
 func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
-	themeScriptPath := filepath.Join(dataDirectoryPath, "theme.js")
-	if err := os.WriteFile(themeScriptPath, []byte(""), 0644); err != nil {
-		t.Fatalf("写入主题脚本失败：%v", err)
-	}
 
 	testOptions := option.Options{
 		Address:             ":0",
@@ -25,9 +21,6 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 		ContentDir:          filepath.Join(dataDirectoryPath, "content"),
 		PostsDir:            filepath.Join(dataDirectoryPath, "content", "posts"),
 		PublicDir:           filepath.Join(dataDirectoryPath, "public"),
-		TemplateDir:         filepath.Join("..", "template"),
-		AdminDistDir:        filepath.Join("..", "web", "admin", "dist"),
-		ThemeDistPath:       themeScriptPath,
 		TranslationCacheDir: filepath.Join(dataDirectoryPath, "content", "translations", "en"),
 	}
 

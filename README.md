@@ -2,6 +2,8 @@
 
 blog 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责 Markdown 渲染、静态 HTML、RSS、sitemap、API 和静态文件服务；TypeScript 负责后台 Vue 页面和前台主题切换脚本。
 
+运行期采用单二进制部署：前台模板、后台构建产物和主题脚本都会嵌入到 `app` 中，外部只需要挂载 `config.yaml` 和 `data`。
+
 ## 功能特性
 
 - Markdown 文件外置存储，启动和保存后自动生成静态页面。
@@ -73,6 +75,8 @@ Docker 内部启动命令：
 ```bash
 /app/app -c /app/config.yaml
 ```
+
+容器运行层只复制 `/app/app`。`config.yaml` 通过 compose 挂载到 `/app/config.yaml`；如果直接运行镜像且配置文件不存在，程序会自动生成默认配置。Markdown 内容、翻译缓存和生成后的静态文件仍放在 `/app/data`，方便备份和迁移。
 
 ## 配置文件
 

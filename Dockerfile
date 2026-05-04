@@ -25,10 +25,6 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/app ./cmd/blog
 FROM alpine:latest
 WORKDIR /app
 COPY --from=go-build /out/app /app/app
-COPY --from=go-build /src/template /app/template
-COPY --from=admin-builder /src/web/admin/dist /app/web/admin/dist
-COPY --from=theme-builder /src/web/theme/dist /app/web/theme/dist
-COPY config.example.yaml /app/config.yaml
 VOLUME /app/data
 EXPOSE 8080
 CMD ["/app/app", "-c", "/app/config.yaml"]

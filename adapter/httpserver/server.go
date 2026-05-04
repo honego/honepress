@@ -5,17 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
-	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
-	"github.com/honeok/blog/common/filesystem"
 	"github.com/honeok/blog/model"
 	"github.com/honeok/blog/option"
 	"github.com/honeok/blog/service"
+	"github.com/honeok/blog/web"
 )
 
 // Server 封装 net/http 路由，公开页面、后台和 API 都从这里进入。
@@ -81,35 +80,44 @@ func (server *Server) redirectAdmin(responseWriter http.ResponseWriter, request 
 }
 
 func (server *Server) serveAdmin(responseWriter http.ResponseWriter, request *http.Request) {
+	adminDistFS, err := web.AdminDistFS()
+	if err != nil {
+		server.serveAdminFallback(responseWriter)
+		return
+	}
+
 	cleanRequestPath := path.Clean(strings.TrimPrefix(request.URL.Path, "/admin/"))
 	if cleanRequestPath == "." || cleanRequestPath == "/" {
-		server.serveAdminIndex(responseWriter, request)
+		server.serveAdminIndex(responseWriter, adminDistFS)
 		return
 	}
 
-	targetFilePath, err := filesystem.SafeJoin(server.options.AdminDistDir, cleanRequestPath)
-	if err != nil {
-		http.NotFound(responseWriter, request)
-		return
-	}
-	fileInfo, err := os.Stat(targetFilePath)
+	fileInfo, err := fs.Stat(adminDistFS, cleanRequestPath)
 	if err == nil && !fileInfo.IsDir() {
-		http.ServeFile(responseWriter, request, targetFilePath)
+		fileServerRequest := request.Clone(request.Context())
+		fileServerRequest.URL.Path = "/" + cleanRequestPath
+		http.FileServer(http.FS(adminDistFS)).ServeHTTP(responseWriter, fileServerRequest)
 		return
 	}
 
-	server.serveAdminIndex(responseWriter, request)
+	server.serveAdminIndex(responseWriter, adminDistFS)
 }
 
-func (server *Server) serveAdminIndex(responseWriter http.ResponseWriter, request *http.Request) {
-	indexFilePath := filepath.Join(server.options.AdminDistDir, "index.html")
-	if _, err := os.Stat(indexFilePath); err != nil {
-		responseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
-		responseWriter.WriteHeader(http.StatusOK)
-		_, _ = responseWriter.Write([]byte("<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><title>blog 后台</title></head><body><p>后台前端尚未构建，请先在 web/admin 执行 npm run build。</p></body></html>"))
+func (server *Server) serveAdminIndex(responseWriter http.ResponseWriter, adminDistFS fs.FS) {
+	indexFileContent, err := fs.ReadFile(adminDistFS, "index.html")
+	if err != nil {
+		server.serveAdminFallback(responseWriter)
 		return
 	}
-	http.ServeFile(responseWriter, request, indexFilePath)
+	responseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
+	responseWriter.WriteHeader(http.StatusOK)
+	_, _ = responseWriter.Write(indexFileContent)
+}
+
+func (server *Server) serveAdminFallback(responseWriter http.ResponseWriter) {
+	responseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
+	responseWriter.WriteHeader(http.StatusOK)
+	_, _ = responseWriter.Write([]byte("<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><title>blog 后台</title></head><body><p>后台前端尚未构建，请先构建后台前端。</p></body></html>"))
 }
 
 func (server *Server) servePublic(responseWriter http.ResponseWriter, request *http.Request) {

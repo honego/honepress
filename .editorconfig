@@ -22,7 +22,7 @@ indent_style = space
 indent_size = 4
 space_redirects = true
 
-[*.{css,html,json,ts,yml}]
+[*.{css,html,js,json,ts,yml}]
 indent_style = space
 indent_size = 2
 
