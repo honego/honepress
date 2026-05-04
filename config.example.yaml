@@ -27,13 +27,5 @@ comment:
     inputPosition: "bottom"
     theme: "preferred_color_scheme"
     lang: "zh-CN"
-translation:
-  enabled: false
-  provider: "openai-compatible"
-  apiURL: ""
-  apiKey: ""
-  model: ""
-  targetLanguage: "en-US"
-  cacheDirectory: "/app/data/content/translations/en"
 theme:
   default: "auto"

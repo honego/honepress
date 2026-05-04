@@ -34,7 +34,7 @@ func NewTemplateRenderer(options option.Options) (*TemplateRenderer, error) {
 	}, nil
 }
 
-// RenderIndex 渲染语言首页，中文写入 /index.html，英文写入 /en/index.html。
+// RenderIndex 渲染首页。
 func (templateRenderer *TemplateRenderer) RenderIndex(targetFilePath string, siteViewData model.SiteViewData) error {
 	return templateRenderer.executeHTMLTemplate("index.html", targetFilePath, siteViewData)
 }

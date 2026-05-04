@@ -8,9 +8,9 @@ blog 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责 Mark
 
 - Markdown 文件外置存储，启动和保存后自动生成静态页面。
 - 固定链接由 Front Matter 的 `url` 字段决定，标题变更不会影响链接。
-- 自动生成中文 `/rss.xml`、`/sitemap.xml`，开启翻译后生成 `/en/rss.xml`、`/en/sitemap.xml`。
-- 后台提供文章列表、新建、编辑、删除、保存、预览、重新生成和英文刷新。
-- 支持 Basic Auth、giscus 评论开关、中英双语缓存、auto/light/dark 主题。
+- 自动生成 `/rss.xml`、`/sitemap.xml`。
+- 后台提供文章列表、新建、编辑、删除、保存、预览和重新生成。
+- 支持 Basic Auth、giscus 评论开关、auto/light/dark 主题。
 
 ## 目录结构
 
@@ -28,7 +28,6 @@ web/admin/
 web/theme/
 template/
 data/content/posts/
-data/content/translations/en/
 data/public/
 ```
 
@@ -76,11 +75,11 @@ Docker 内部启动命令：
 /app/app -c /app/config.yaml
 ```
 
-容器运行层只复制 `/app/app`。`config.yaml` 通过 compose 挂载到 `/app/config.yaml`；如果直接运行镜像且配置文件不存在，程序会自动生成默认配置。Markdown 内容、翻译缓存和生成后的静态文件仍放在 `/app/data`，方便备份和迁移。
+容器运行层只复制 `/app/app`。`config.yaml` 通过 compose 挂载到 `/app/config.yaml`；如果直接运行镜像且配置文件不存在，程序会自动生成默认配置。Markdown 内容和生成后的静态文件仍放在 `/app/data`，方便备份和迁移。
 
 ## 配置文件
 
-站点标题、描述、baseURL、后台认证、评论和翻译配置都在 `config.yaml` 中管理。配置文件路径优先级：
+站点标题、描述、baseURL、后台认证和评论配置都在 `config.yaml` 中管理。配置文件路径优先级：
 
 1. 命令行参数 `-c` 或 `--config`
 2. 环境变量 `BLOG_CONFIG`
@@ -100,7 +99,6 @@ description: "这是一篇 Docker 部署笔记。"
 draft: false
 url: "1.html"
 comments: true
-translation: true
 aliases:
   - "docker-old.html"
 ---
@@ -116,19 +114,15 @@ Front Matter 只给程序读取，不会出现在渲染后的正文中。
 
 ## RSS 说明
 
-中文 RSS 自动生成到 `/rss.xml`。开启英文翻译并有英文缓存后，英文 RSS 自动生成到 `/en/rss.xml`。草稿不会进入 RSS。
+RSS 自动生成到 `/rss.xml`。草稿不会进入 RSS。
 
 ## sitemap 说明
 
-中文 sitemap 自动生成到 `/sitemap.xml`，英文 sitemap 自动生成到 `/en/sitemap.xml`。后台路径和 API 路径不会进入 sitemap。
+sitemap 自动生成到 `/sitemap.xml`。后台路径和 API 路径不会进入 sitemap。
 
 ## 评论系统说明
 
 评论使用 giscus，评论数据保存在 GitHub Discussions。设置 `comment.enabled: false` 或文章 `comments: false` 时不会输出评论脚本。giscus 配置缺失不会阻止启动，只会输出中文警告。
-
-## 中英双语说明
-
-中文是主语言，源文件在 `data/content/posts/`。英文缓存放在 `data/content/translations/en/`。开启 `translation.enabled: true` 后，程序会尝试通过 OpenAI-compatible 接口生成英文缓存；`manual: true` 的英文缓存不会被覆盖。
 
 ## 明暗主题说明
 
@@ -136,7 +130,7 @@ Front Matter 只给程序读取，不会出现在渲染后的正文中。
 
 ## 后台说明
 
-后台路径是 `/admin/`，API 路径是 `/api/`，两者都受 Basic Auth 保护。Markdown 预览调用 Go 后端 `/api/preview`，不会在前端使用 Markdown 渲染库。后台的“站点设置”区域可以修改站点标题、描述、baseURL、链接、评论开关、翻译开关和默认主题，保存后会写回 `config.yaml` 并重新渲染静态页面。
+后台路径是 `/admin/`，API 路径是 `/api/`，两者都受 Basic Auth 保护。Markdown 预览调用 Go 后端 `/api/preview`，不会在前端使用 Markdown 渲染库。后台的“站点设置”区域可以修改站点标题、描述、baseURL、链接、评论开关和默认主题，保存后会写回 `config.yaml` 并重新渲染静态页面。
 
 ## 反代建议
 
@@ -147,10 +141,6 @@ Front Matter 只给程序读取，不会出现在渲染后的正文中。
 必须备份：
 
 - `data/content/posts`
-
-建议备份：
-
-- `data/content/translations/en`
 
 可选备份：
 

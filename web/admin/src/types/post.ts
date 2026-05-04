@@ -6,10 +6,7 @@ export interface PostSummary {
   draft: boolean;
   url: string;
   publicUrl: string;
-  englishPublicUrl: string;
   comments: boolean;
-  translation: boolean;
-  translationStatus: string;
 }
 
 export interface PostDetail {
@@ -21,7 +18,6 @@ export interface PostDetail {
   url: string;
   aliases: string[];
   comments: boolean;
-  translation: boolean;
   body: string;
 }
 
@@ -34,7 +30,6 @@ export interface SavePostRequest {
   url: string;
   aliases: string[];
   comments: boolean;
-  translation: boolean;
   body: string;
 }
 
@@ -46,7 +41,6 @@ export interface SiteSettings {
   githubUrl: string;
   telegramUrl: string;
   commentEnabled: boolean;
-  translationEnabled: boolean;
   themeDefault: "auto" | "light" | "dark";
 }
 

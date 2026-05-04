@@ -3,21 +3,21 @@
     e = ["auto", "light", "dark"],
     n = { auto: "主题：自动", light: "主题：亮色", dark: "主题：暗色" };
   function o() {
-    r(i());
-    const a = document.querySelectorAll("[data-theme-toggle]");
-    a.forEach((c) => {
-      c.addEventListener("click", () => {
-        const d = s(i());
-        (l(d), r(d), u(d));
-      });
-    });
+    (r(i()),
+      u(i()),
+      document.querySelectorAll("[data-theme-toggle]").forEach((a) => {
+        a.addEventListener("click", () => {
+          const c = s(i());
+          (l(c), r(c), u(c));
+        });
+      }));
   }
   function r(a) {
     document.documentElement.setAttribute("data-theme", a);
   }
   function u(a) {
-    document.querySelectorAll("[data-theme-toggle]").forEach((d) => {
-      d.textContent = n[a];
+    document.querySelectorAll("[data-theme-toggle]").forEach((c) => {
+      (c.setAttribute("aria-label", n[a]), c.setAttribute("title", n[a]));
     });
   }
   function s(a) {
@@ -44,6 +44,5 @@
     const a = document.documentElement.dataset.theme;
     return a === "light" || a === "dark" || a === "auto" ? a : "auto";
   }
-  r(i());
-  document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", o) : o();
+  (r(i()), document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", o) : o());
 })();

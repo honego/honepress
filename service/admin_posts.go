@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/honeok/blog/common/filesystem"
@@ -12,16 +11,16 @@ import (
 	"github.com/honeok/blog/renderer"
 )
 
-// ListPosts 返回后台文章列表，包含草稿和翻译状态。
+// ListPosts 返回后台文章列表，包含草稿状态。
 func (blogService *BlogService) ListPosts() ([]model.PostSummary, error) {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()
 
-	chinesePosts, err := blogService.scanChinesePosts()
+	posts, err := blogService.scanPosts()
 	if err != nil {
 		return nil, err
 	}
-	return postsToSummaries(chinesePosts, "", map[string]string{}), nil
+	return postsToSummaries(posts), nil
 }
 
 // GetPost 读取单篇 Markdown 源文件，返回后台编辑器需要的字段。
@@ -58,7 +57,6 @@ func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail
 		URL:         normalizedPermalink,
 		Aliases:     frontMatter.Aliases,
 		Comments:    frontMatter.Comments,
-		Translation: frontMatter.Translation,
 		Body:        bodyMarkdownContent,
 	}, nil
 }
@@ -158,56 +156,6 @@ func (blogService *BlogService) DeletePost(sourceFileName string) error {
 	return nil
 }
 
-// RegenerateEnglishPost 手动刷新英文缓存，manual: true 的缓存不会被覆盖。
-func (blogService *BlogService) RegenerateEnglishPost(sourceFileName string) error {
-	blogService.renderMutex.Lock()
-	defer blogService.renderMutex.Unlock()
-
-	if !blogService.options.Translation.Enabled {
-		return fmt.Errorf("英文翻译未开启")
-	}
-	if err := validation.ValidateMarkdownFileName(sourceFileName); err != nil {
-		return err
-	}
-
-	chinesePosts, err := blogService.scanChinesePosts()
-	if err != nil {
-		return err
-	}
-	for _, chinesePost := range chinesePosts {
-		if chinesePost.SourceFileName != sourceFileName {
-			continue
-		}
-		if chinesePost.Draft {
-			return fmt.Errorf("草稿文章不生成英文")
-		}
-		if !chinesePost.Translation {
-			return fmt.Errorf("当前文章已关闭英文生成")
-		}
-
-		cacheFilePath := filepath.Join(blogService.options.TranslationCacheDir, sourceFileName)
-		cacheFileContent, readErr := os.ReadFile(cacheFilePath)
-		if readErr == nil {
-			cacheFrontMatter, _, err := renderer.ParseTranslationDocument(sourceFileName, cacheFileContent)
-			if err != nil {
-				return err
-			}
-			if cacheFrontMatter.Manual {
-				return fmt.Errorf("英文缓存 manual: true，不能自动覆盖")
-			}
-		} else if readErr != nil && !os.IsNotExist(readErr) {
-			return fmt.Errorf("读取英文缓存失败：%w", readErr)
-		}
-
-		if _, err := blogService.generateAndWriteEnglishCache(cacheFilePath, chinesePost); err != nil {
-			return err
-		}
-		return blogService.renderAllWithoutLock()
-	}
-
-	return fmt.Errorf("文章不存在：%s", sourceFileName)
-}
-
 func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.PostFrontMatter, string, error) {
 	if err := validation.ValidateRequiredPostFields(savePostRequest.Title, savePostRequest.Date); err != nil {
 		return model.PostFrontMatter{}, "", err
@@ -244,7 +192,6 @@ func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.Post
 		Draft:       savePostRequest.Draft,
 		URL:         normalizedPermalink,
 		Comments:    savePostRequest.Comments,
-		Translation: savePostRequest.Translation,
 		Aliases:     normalizedAliases,
 	}
 

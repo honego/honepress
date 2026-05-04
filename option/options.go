@@ -17,13 +17,12 @@ import (
 
 // Config 是 config.yaml 的完整结构，站点运行配置统一从这里读取。
 type Config struct {
-	Server      ServerConfig      `yaml:"server"`
-	Data        DataConfig        `yaml:"data"`
-	Admin       AdminConfig       `yaml:"admin"`
-	Site        SiteConfig        `yaml:"site"`
-	Comment     CommentConfig     `yaml:"comment"`
-	Translation TranslationConfig `yaml:"translation"`
-	Theme       ThemeConfig       `yaml:"theme"`
+	Server  ServerConfig  `yaml:"server"`
+	Data    DataConfig    `yaml:"data"`
+	Admin   AdminConfig   `yaml:"admin"`
+	Site    SiteConfig    `yaml:"site"`
+	Comment CommentConfig `yaml:"comment"`
+	Theme   ThemeConfig   `yaml:"theme"`
 }
 
 // ServerConfig 保存监听地址，修改后需要重启程序才会生效。
@@ -74,17 +73,6 @@ type GiscusConfig struct {
 	Lang             string `yaml:"lang"`
 }
 
-// TranslationConfig 保存 OpenAI-compatible 翻译配置。
-type TranslationConfig struct {
-	Enabled        bool   `yaml:"enabled"`
-	Provider       string `yaml:"provider"`
-	APIURL         string `yaml:"apiURL"`
-	APIKey         string `yaml:"apiKey"`
-	Model          string `yaml:"model"`
-	TargetLanguage string `yaml:"targetLanguage"`
-	CacheDirectory string `yaml:"cacheDirectory"`
-}
-
 // ThemeConfig 保存前台默认主题。
 type ThemeConfig struct {
 	Default string `yaml:"default"`
@@ -92,25 +80,23 @@ type ThemeConfig struct {
 
 // Options 保存服务启动后使用的派生配置。
 type Options struct {
-	ConfigPath          string
-	Config              Config
-	Address             string
-	BaseURL             string
-	Title               string
-	Description         string
-	Language            string
-	GitHubURL           string
-	TelegramURL         string
-	ThemeDefault        string
-	DataDir             string
-	ContentDir          string
-	PostsDir            string
-	PublicDir           string
-	TranslationCacheDir string
-	AdminUsername       string
-	AdminPassword       string
-	Comment             CommentOptions
-	Translation         TranslationOptions
+	ConfigPath    string
+	Config        Config
+	Address       string
+	BaseURL       string
+	Title         string
+	Description   string
+	Language      string
+	GitHubURL     string
+	TelegramURL   string
+	ThemeDefault  string
+	DataDir       string
+	ContentDir    string
+	PostsDir      string
+	PublicDir     string
+	AdminUsername string
+	AdminPassword string
+	Comment       CommentOptions
 }
 
 // CommentOptions 保存 giscus 输出所需的派生配置，后端只负责渲染脚本，不保存评论数据。
@@ -128,17 +114,6 @@ type CommentOptions struct {
 	InputPosition    string
 	Theme            string
 	Language         string
-}
-
-// TranslationOptions 保存 OpenAI-compatible 翻译接口派生配置。
-type TranslationOptions struct {
-	Enabled        bool
-	Provider       string
-	APIURL         string
-	APIKey         string
-	Model          string
-	TargetLanguage string
-	CacheDir       string
 }
 
 // ResolveConfigPath 根据命令行参数、BLOG_CONFIG 和默认路径确定配置文件。
@@ -239,15 +214,6 @@ func DefaultConfig() Config {
 				Lang:             "zh-CN",
 			},
 		},
-		Translation: TranslationConfig{
-			Enabled:        false,
-			Provider:       "openai-compatible",
-			APIURL:         "",
-			APIKey:         "",
-			Model:          "",
-			TargetLanguage: "en-US",
-			CacheDirectory: "data/content/translations/en",
-		},
 		Theme: ThemeConfig{
 			Default: "auto",
 		},
@@ -271,35 +237,30 @@ func WriteConfig(configPath string, config Config) error {
 	return nil
 }
 
-// OptionsFromConfig 把 YAML 配置转换为运行时路径和评论、翻译等派生选项。
+// OptionsFromConfig 把 YAML 配置转换为运行时路径和评论等派生选项。
 func OptionsFromConfig(configPath string, config Config) Options {
 	NormalizeConfig(&config)
 
 	dataDirectory := config.Data.Directory
 	contentDirectory := filepath.Join(dataDirectory, "content")
-	translationCacheDirectory := config.Translation.CacheDirectory
-	if translationCacheDirectory == "" {
-		translationCacheDirectory = filepath.Join(contentDirectory, "translations", "en")
-	}
 
 	return Options{
-		ConfigPath:          configPath,
-		Config:              config,
-		Address:             config.Server.Listen,
-		BaseURL:             strings.TrimRight(config.Site.BaseURL, "/"),
-		Title:               config.Site.Title,
-		Description:         config.Site.Description,
-		Language:            config.Site.Language,
-		GitHubURL:           config.Site.GitHubURL,
-		TelegramURL:         config.Site.TelegramURL,
-		ThemeDefault:        config.Theme.Default,
-		DataDir:             dataDirectory,
-		ContentDir:          contentDirectory,
-		PostsDir:            filepath.Join(contentDirectory, "posts"),
-		PublicDir:           filepath.Join(dataDirectory, "public"),
-		TranslationCacheDir: translationCacheDirectory,
-		AdminUsername:       config.Admin.Username,
-		AdminPassword:       config.Admin.Password,
+		ConfigPath:    configPath,
+		Config:        config,
+		Address:       config.Server.Listen,
+		BaseURL:       strings.TrimRight(config.Site.BaseURL, "/"),
+		Title:         config.Site.Title,
+		Description:   config.Site.Description,
+		Language:      config.Site.Language,
+		GitHubURL:     config.Site.GitHubURL,
+		TelegramURL:   config.Site.TelegramURL,
+		ThemeDefault:  config.Theme.Default,
+		DataDir:       dataDirectory,
+		ContentDir:    contentDirectory,
+		PostsDir:      filepath.Join(contentDirectory, "posts"),
+		PublicDir:     filepath.Join(dataDirectory, "public"),
+		AdminUsername: config.Admin.Username,
+		AdminPassword: config.Admin.Password,
 		Comment: CommentOptions{
 			Enabled:          config.Comment.Enabled,
 			Provider:         config.Comment.Provider,
@@ -314,15 +275,6 @@ func OptionsFromConfig(configPath string, config Config) Options {
 			InputPosition:    config.Comment.Giscus.InputPosition,
 			Theme:            config.Comment.Giscus.Theme,
 			Language:         config.Comment.Giscus.Lang,
-		},
-		Translation: TranslationOptions{
-			Enabled:        config.Translation.Enabled,
-			Provider:       config.Translation.Provider,
-			APIURL:         config.Translation.APIURL,
-			APIKey:         config.Translation.APIKey,
-			Model:          config.Translation.Model,
-			TargetLanguage: config.Translation.TargetLanguage,
-			CacheDir:       translationCacheDirectory,
 		},
 	}
 }
@@ -351,15 +303,6 @@ func NormalizeConfig(config *Config) {
 		config.Comment.Provider = defaultConfig.Comment.Provider
 	}
 	normalizeGiscusConfig(&config.Comment.Giscus, defaultConfig.Comment.Giscus)
-	if strings.TrimSpace(config.Translation.Provider) == "" {
-		config.Translation.Provider = defaultConfig.Translation.Provider
-	}
-	if strings.TrimSpace(config.Translation.TargetLanguage) == "" {
-		config.Translation.TargetLanguage = defaultConfig.Translation.TargetLanguage
-	}
-	if strings.TrimSpace(config.Translation.CacheDirectory) == "" {
-		config.Translation.CacheDirectory = filepath.Join(config.Data.Directory, "content", "translations", "en")
-	}
 	config.Theme.Default = normalizeThemeDefault(config.Theme.Default)
 }
 
@@ -372,7 +315,6 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 	config.Site.GitHubURL = strings.TrimSpace(siteSettings.GitHubURL)
 	config.Site.TelegramURL = strings.TrimSpace(siteSettings.TelegramURL)
 	config.Comment.Enabled = siteSettings.CommentEnabled
-	config.Translation.Enabled = siteSettings.TranslationEnabled
 	config.Theme.Default = normalizeThemeDefault(siteSettings.ThemeDefault)
 	NormalizeConfig(&config)
 	return config
@@ -381,15 +323,14 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 // SiteSettingsFromOptions 返回后台站点设置区域需要编辑的字段。
 func SiteSettingsFromOptions(options Options) model.SiteSettings {
 	return model.SiteSettings{
-		Title:              options.Title,
-		Description:        options.Description,
-		BaseURL:            options.BaseURL,
-		Language:           options.Language,
-		GitHubURL:          options.GitHubURL,
-		TelegramURL:        options.TelegramURL,
-		CommentEnabled:     options.Comment.Enabled,
-		TranslationEnabled: options.Translation.Enabled,
-		ThemeDefault:       options.ThemeDefault,
+		Title:          options.Title,
+		Description:    options.Description,
+		BaseURL:        options.BaseURL,
+		Language:       options.Language,
+		GitHubURL:      options.GitHubURL,
+		TelegramURL:    options.TelegramURL,
+		CommentEnabled: options.Comment.Enabled,
+		ThemeDefault:   options.ThemeDefault,
 	}
 }
 

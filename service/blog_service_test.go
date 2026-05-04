@@ -13,15 +13,14 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
 	testOptions := option.Options{
-		Address:             ":0",
-		BaseURL:             "https://example.com",
-		Title:               "blog",
-		Description:         "测试博客",
-		DataDir:             dataDirectoryPath,
-		ContentDir:          filepath.Join(dataDirectoryPath, "content"),
-		PostsDir:            filepath.Join(dataDirectoryPath, "content", "posts"),
-		PublicDir:           filepath.Join(dataDirectoryPath, "public"),
-		TranslationCacheDir: filepath.Join(dataDirectoryPath, "content", "translations", "en"),
+		Address:     ":0",
+		BaseURL:     "https://example.com",
+		Title:       "blog",
+		Description: "测试博客",
+		DataDir:     dataDirectoryPath,
+		ContentDir:  filepath.Join(dataDirectoryPath, "content"),
+		PostsDir:    filepath.Join(dataDirectoryPath, "content", "posts"),
+		PublicDir:   filepath.Join(dataDirectoryPath, "public"),
 	}
 
 	blogService := NewBlogService(testOptions)

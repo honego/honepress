@@ -9,7 +9,6 @@ import {
   fetchPosts,
   previewMarkdown,
   renderSite,
-  translatePost,
   updatePost,
   updateSettings,
 } from "./api/post";
@@ -188,23 +187,6 @@ async function saveSettings(): Promise<void> {
   }
 }
 
-async function regenerateEnglish(): Promise<void> {
-  if (!canEditExistingPost.value) {
-    return;
-  }
-  isSaving.value = true;
-  errorMessage.value = "";
-  try {
-    const messageResponse = await translatePost(editorForm.value.id);
-    statusMessage.value = messageResponse.message;
-    await loadPosts();
-  } catch (error) {
-    errorMessage.value = readError(error);
-  } finally {
-    isSaving.value = false;
-  }
-}
-
 function schedulePreview(): void {
   if (previewTimerID !== undefined) {
     window.clearTimeout(previewTimerID);
@@ -291,7 +273,6 @@ function buildSavePostRequest(): SavePostRequest {
       .map((aliasText) => aliasText.trim())
       .filter((aliasText) => aliasText !== ""),
     comments: editorForm.value.comments,
-    translation: editorForm.value.translation,
     body: editorForm.value.body,
   };
 }
@@ -306,7 +287,6 @@ function createEmptyPost(): PostDetail {
     url: "new-post.html",
     aliases: [],
     comments: true,
-    translation: true,
     body: "这里写 Markdown 正文。",
   };
 }
@@ -320,7 +300,6 @@ function createEmptySiteSettings(): SiteSettings {
     githubUrl: "",
     telegramUrl: "",
     commentEnabled: false,
-    translationEnabled: false,
     themeDefault: "auto",
   };
 }
@@ -381,7 +360,7 @@ function escapeHTML(rawText: string): string {
         >
           <span>{{ post.title }}</span>
           <small>{{ post.date }}</small>
-          <em>{{ post.draft ? "草稿" : post.translationStatus }}</em>
+          <em>{{ post.draft ? "草稿" : "已发布" }}</em>
         </button>
       </div>
     </aside>
@@ -393,11 +372,7 @@ function escapeHTML(rawText: string): string {
           <h2>{{ editorForm.title }}</h2>
         </div>
         <div class="actions">
-          <a v-if="canEditExistingPost && !editorForm.draft" :href="`/${editorForm.url}`" target="_blank">中文页面</a>
-          <a v-if="canEditExistingPost && !editorForm.draft" :href="`/en/${editorForm.url}`" target="_blank"
-            >英文页面</a
-          >
-          <button type="button" :disabled="isSaving" @click="regenerateEnglish">生成英文</button>
+          <a v-if="canEditExistingPost && !editorForm.draft" :href="`/${editorForm.url}`" target="_blank">查看页面</a>
           <button type="button" :disabled="isSaving" @click="saveCurrentPost">保存</button>
           <button type="button" :disabled="!canEditExistingPost || isSaving" class="danger" @click="deleteCurrentPost">
             删除
@@ -451,7 +426,6 @@ function escapeHTML(rawText: string): string {
           </label>
           <div class="switches">
             <label><input v-model="siteSettings.commentEnabled" type="checkbox" /> 评论</label>
-            <label><input v-model="siteSettings.translationEnabled" type="checkbox" /> 英文</label>
           </div>
         </div>
       </section>
@@ -480,7 +454,6 @@ function escapeHTML(rawText: string): string {
         <div class="switches">
           <label><input v-model="editorForm.draft" type="checkbox" /> 草稿</label>
           <label><input v-model="editorForm.comments" type="checkbox" /> 评论</label>
-          <label><input v-model="editorForm.translation" type="checkbox" /> 英文</label>
         </div>
       </section>
 

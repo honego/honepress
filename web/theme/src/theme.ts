@@ -37,7 +37,8 @@ function applyTheme(themeMode: ThemeMode): void {
 function updateToggleButtons(themeMode: ThemeMode): void {
   const toggleButtons = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
   toggleButtons.forEach((toggleButton) => {
-    toggleButton.textContent = themeLabels[themeMode];
+    toggleButton.setAttribute("aria-label", themeLabels[themeMode]);
+    toggleButton.setAttribute("title", themeLabels[themeMode]);
   });
 }
 

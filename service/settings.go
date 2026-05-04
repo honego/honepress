@@ -31,7 +31,6 @@ func (blogService *BlogService) UpdateSiteSettings(siteSettings model.SiteSettin
 	}
 
 	blogService.options = option.OptionsFromConfig(blogService.options.ConfigPath, updatedConfig)
-	blogService.translationClient = NewTranslationClient(blogService.options.Translation)
 
 	if err := blogService.renderAllWithoutLock(); err != nil {
 		return err

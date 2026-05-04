@@ -3,7 +3,7 @@ package renderer
 import "testing"
 
 func TestParsePostDocumentStripsFrontMatter(t *testing.T) {
-	markdownContent := []byte("---\ntitle: \"标题\"\ndate: \"2026-05-04 12:00:00\"\ndescription: \"摘要\"\ndraft: false\nurl: \"1.html\"\ncomments: true\ntranslation: true\naliases: []\n---\n\n正文内容")
+	markdownContent := []byte("---\ntitle: \"标题\"\ndate: \"2026-05-04 12:00:00\"\ndescription: \"摘要\"\ndraft: false\nurl: \"1.html\"\ncomments: true\naliases: []\n---\n\n正文内容")
 
 	frontMatter, bodyMarkdownContent, err := ParsePostDocument("1.md", markdownContent)
 	if err != nil {

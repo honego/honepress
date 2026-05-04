@@ -16,7 +16,7 @@ var (
 
 // NormalizePermalink 把后台输入的固定链接归一成最终输出文件名。
 //
-// 固定链接只接受单层英文文件名，是为了避免标题变化、路径穿越和多语言目录互相影响。
+// 固定链接只接受单层 ASCII 文件名，是为了避免标题变化和路径穿越影响公开链接。
 func NormalizePermalink(rawPermalink string) (string, error) {
 	trimmedPermalink := strings.TrimSpace(rawPermalink)
 	if trimmedPermalink == "" {
@@ -37,7 +37,7 @@ func NormalizePermalink(rawPermalink string) (string, error) {
 		trimmedPermalink += ".html"
 	}
 	if !publicHTMLFileNamePattern.MatchString(trimmedPermalink) {
-		return "", fmt.Errorf("固定链接只能使用英文、数字、短横线和下划线：%s", rawPermalink)
+		return "", fmt.Errorf("固定链接只能使用 ASCII 字母、数字、短横线和下划线：%s", rawPermalink)
 	}
 	if _, isReservedFileName := constant.ReservedPublicFileNames[trimmedPermalink]; isReservedFileName {
 		return "", fmt.Errorf("固定链接不能使用保留文件名：%s", trimmedPermalink)
@@ -66,7 +66,7 @@ func ValidateMarkdownFileName(markdownFileName string) error {
 		return fmt.Errorf("文章文件名不能包含路径：%s", markdownFileName)
 	}
 	if !markdownFileNamePattern.MatchString(markdownFileName) {
-		return fmt.Errorf("文章文件名只能使用英文、数字、短横线和下划线：%s", markdownFileName)
+		return fmt.Errorf("文章文件名只能使用 ASCII 字母、数字、短横线和下划线：%s", markdownFileName)
 	}
 	return nil
 }

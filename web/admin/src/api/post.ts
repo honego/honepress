@@ -74,14 +74,6 @@ export async function renderSite(): Promise<MessageResponse> {
   );
 }
 
-export async function translatePost(postID: string): Promise<MessageResponse> {
-  return readJSONResponse<MessageResponse>(
-    await fetch(`/api/posts/${encodeURIComponent(postID)}/translate`, {
-      method: "POST",
-    }),
-  );
-}
-
 export async function fetchSettings(): Promise<SiteSettings> {
   const settingsResponse = await readJSONResponse<SettingsResponse>(await fetch("/api/settings"));
   return settingsResponse.settings;

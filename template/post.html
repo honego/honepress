@@ -6,9 +6,6 @@
     <title>{{.Post.Title}} - {{.SiteTitle}}</title>
     <meta name="description" content="{{.Post.Description}}" />
     <link rel="canonical" href="{{.BaseURL}}{{.CanonicalPath}}" />
-    {{if .AlternatePath}}
-    <link rel="alternate" href="{{.BaseURL}}{{.AlternatePath}}" />
-    {{end}}
     <link rel="stylesheet" href="/style.css" />
     <script src="/theme.js" defer></script>
   </head>
@@ -18,12 +15,23 @@
         <a class="brand" href="{{.HomePath}}">{{.SiteTitle}}</a>
         <div class="nav-links">
           <a href="{{.BlogPath}}">{{.Labels.Blog}}</a>
+          <a class="icon-link" href="{{.RSSPath}}" aria-label="RSS" title="RSS"
+            ><span class="rss-icon"><span></span></span
+          ></a>
           {{if .GitHubURL}}<a href="{{.GitHubURL}}" rel="me">GitHub</a>{{end}} {{if .TelegramURL}}<a
             href="{{.TelegramURL}}"
             rel="me"
             >Telegram</a
-          >{{end}} {{if .AlternatePath}}<a href="{{.AlternatePath}}">{{.Labels.LanguageSwitch}}</a>{{end}}
-          <button type="button" class="theme-toggle" data-theme-toggle>{{.Labels.ThemeButtonLabel}}</button>
+          >{{end}}
+          <button
+            type="button"
+            class="theme-toggle icon-button"
+            data-theme-toggle
+            aria-label="{{.Labels.ThemeButtonLabel}}"
+            title="{{.Labels.ThemeButtonLabel}}"
+          >
+            <span class="theme-icon"></span>
+          </button>
         </div>
       </nav>
     </header>

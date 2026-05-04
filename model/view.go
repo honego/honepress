@@ -12,7 +12,6 @@ type TemplateLabels struct {
 	ReadMore         string
 	PublishedAt      string
 	NoPosts          string
-	LanguageSwitch   string
 	BackToList       string
 	Footer           string
 	ThemeButtonLabel string
@@ -31,7 +30,6 @@ type SiteViewData struct {
 	HomePath        string
 	BlogPath        string
 	RSSPath         string
-	AlternatePath   string
 	Labels          TemplateLabels
 	Posts           []PostSummary
 }
@@ -49,7 +47,6 @@ type PostViewData struct {
 	HomePath        string
 	BlogPath        string
 	RSSPath         string
-	AlternatePath   string
 	Labels          TemplateLabels
 	Post            Post
 	CommentHTML     template.HTML

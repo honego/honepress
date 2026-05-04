@@ -223,20 +223,6 @@ func (server *Server) handleUpdateSettings(responseWriter http.ResponseWriter, r
 }
 
 func (server *Server) handlePostByID(responseWriter http.ResponseWriter, request *http.Request, rawPostPath string) {
-	if strings.HasSuffix(rawPostPath, "/translate") {
-		sourceFileName := strings.TrimSuffix(rawPostPath, "/translate")
-		if request.Method != http.MethodPost {
-			server.writeError(responseWriter, http.StatusMethodNotAllowed, "请求方法不允许")
-			return
-		}
-		if err := server.blogService.RegenerateEnglishPost(sourceFileName); err != nil {
-			server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-			return
-		}
-		server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "英文页面已重新生成。"})
-		return
-	}
-
 	sourceFileName := rawPostPath
 	switch request.Method {
 	case http.MethodGet:

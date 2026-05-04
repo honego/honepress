@@ -1,13 +1,13 @@
 :root {
   color-scheme: light dark;
-  --background: #f7f5ef;
+  --background: #f7f7f7;
   --surface: #ffffff;
-  --text: #222326;
-  --muted: #6d7178;
-  --line: #d9d5cb;
-  --accent: #1d6f62;
-  --accent-strong: #14524a;
-  --code: #eef4f2;
+  --text: #111111;
+  --muted: #6f7378;
+  --line: #e4e4e4;
+  --accent: #1f2328;
+  --accent-strong: #000000;
+  --code: #eeeeee;
 }
 
 :root[data-theme="dark"] {
@@ -81,18 +81,92 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
-.theme-toggle {
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+.icon-link,
+.icon-button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: 50%;
   color: var(--text);
-  background: var(--surface);
+  background: transparent;
   cursor: pointer;
+}
+
+.icon-link:hover,
+.icon-button:hover {
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  text-decoration: none;
+}
+
+.rss-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  display: block;
+  overflow: hidden;
+}
+
+.rss-icon::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  bottom: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.rss-icon::after,
+.rss-icon span {
+  position: absolute;
+  left: 1px;
+  bottom: 1px;
+  display: block;
+  border: 2px solid currentColor;
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  content: "";
+}
+
+.rss-icon::after {
+  width: 11px;
+  height: 11px;
+}
+
+.rss-icon span {
+  width: 18px;
+  height: 18px;
+}
+
+.theme-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  display: block;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.theme-icon::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--background);
 }
 
 .page {

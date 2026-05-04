@@ -1,8 +1,6 @@
 package service
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	htmlTemplate "html/template"
 	"log"
@@ -22,18 +20,16 @@ import (
 
 // BlogService 串联文章扫描、Markdown 渲染、静态文件生成和后台写入操作。
 type BlogService struct {
-	options           option.Options
-	markdownRenderer  *renderer.MarkdownRenderer
-	translationClient *TranslationClient
-	renderMutex       sync.Mutex
+	options          option.Options
+	markdownRenderer *renderer.MarkdownRenderer
+	renderMutex      sync.Mutex
 }
 
-// NewBlogService 创建博客服务，翻译客户端即使配置不完整也允许启动。
+// NewBlogService 创建博客服务。
 func NewBlogService(options option.Options) *BlogService {
 	return &BlogService{
-		options:           options,
-		markdownRenderer:  renderer.NewMarkdownRenderer(),
-		translationClient: NewTranslationClient(options.Translation),
+		options:          options,
+		markdownRenderer: renderer.NewMarkdownRenderer(),
 	}
 }
 
@@ -68,7 +64,6 @@ func (blogService *BlogService) PreviewMarkdown(markdownContent string) (string,
 func (blogService *BlogService) ensureDataDirectories() error {
 	requiredDirectoryPaths := []string{
 		blogService.options.PostsDir,
-		blogService.options.TranslationCacheDir,
 		blogService.options.PublicDir,
 	}
 	for _, requiredDirectoryPath := range requiredDirectoryPaths {
@@ -119,22 +114,16 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 		return err
 	}
 
-	chinesePosts, err := blogService.scanChinesePosts()
+	posts, err := blogService.scanPosts()
 	if err != nil {
 		return err
 	}
-	if err := validatePermalinkConflicts(chinesePosts); err != nil {
+	if err := validatePermalinkConflicts(posts); err != nil {
 		return err
 	}
 
-	publishedChinesePosts := filterPublishedPosts(chinesePosts)
-	sortPostsByDateDescending(publishedChinesePosts)
-
-	englishPosts := blogService.prepareEnglishPosts(publishedChinesePosts)
-	if err := validatePermalinkConflicts(englishPosts); err != nil {
-		return err
-	}
-	sortPostsByDateDescending(englishPosts)
+	publishedPosts := filterPublishedPosts(posts)
+	sortPostsByDateDescending(publishedPosts)
 
 	if err := blogService.resetPublicDirectory(); err != nil {
 		return err
@@ -150,26 +139,21 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 	}
 	blogService.copyThemeScript()
 
-	if err := blogService.renderChineseSite(templateRenderer, publishedChinesePosts, englishPosts); err != nil {
+	if err := blogService.renderSite(templateRenderer, publishedPosts); err != nil {
 		return err
-	}
-	if blogService.options.Translation.Enabled {
-		if err := blogService.renderEnglishSite(templateRenderer, englishPosts); err != nil {
-			return err
-		}
 	}
 
 	log.Println("静态文件已重新生成。")
 	return nil
 }
 
-func (blogService *BlogService) scanChinesePosts() ([]model.Post, error) {
+func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 	directoryEntries, err := os.ReadDir(blogService.options.PostsDir)
 	if err != nil {
 		return nil, fmt.Errorf("读取文章目录失败：%w", err)
 	}
 
-	chinesePosts := make([]model.Post, 0, len(directoryEntries))
+	posts := make([]model.Post, 0, len(directoryEntries))
 	for _, directoryEntry := range directoryEntries {
 		if directoryEntry.IsDir() || !strings.EqualFold(filepath.Ext(directoryEntry.Name()), ".md") {
 			continue
@@ -216,41 +200,32 @@ func (blogService *BlogService) scanChinesePosts() ([]model.Post, error) {
 			return nil, fmt.Errorf("文章 %s 渲染失败：%w", sourceFilePath, err)
 		}
 
-		sourceContentHash := sha256.Sum256(sourceMarkdownContent)
-		chinesePost := model.Post{
-			SourceFileName:    directoryEntry.Name(),
-			SourceFilePath:    sourceFilePath,
-			Title:             parsedFrontMatter.Title,
-			DateText:          parsedFrontMatter.Date,
-			PublishedAt:       publishedAt,
-			Description:       parsedFrontMatter.Description,
-			Draft:             parsedFrontMatter.Draft,
-			URL:               normalizedPermalink,
-			Aliases:           normalizedAliases,
-			Comments:          parsedFrontMatter.Comments,
-			Translation:       parsedFrontMatter.Translation,
-			BodyMarkdown:      bodyMarkdownContent,
-			BodyHTML:          renderedPostHTML,
-			Language:          "zh-CN",
-			SourceHash:        hex.EncodeToString(sourceContentHash[:]),
-			TranslationStatus: blogService.detectTranslationStatus(directoryEntry.Name(), parsedFrontMatter, parsedFrontMatter.Draft, hex.EncodeToString(sourceContentHash[:])),
+		post := model.Post{
+			SourceFileName: directoryEntry.Name(),
+			SourceFilePath: sourceFilePath,
+			Title:          parsedFrontMatter.Title,
+			DateText:       parsedFrontMatter.Date,
+			PublishedAt:    publishedAt,
+			Description:    parsedFrontMatter.Description,
+			Draft:          parsedFrontMatter.Draft,
+			URL:            normalizedPermalink,
+			Aliases:        normalizedAliases,
+			Comments:       parsedFrontMatter.Comments,
+			BodyMarkdown:   bodyMarkdownContent,
+			BodyHTML:       renderedPostHTML,
+			Language:       blogService.options.Language,
 		}
-		chinesePosts = append(chinesePosts, chinesePost)
+		posts = append(posts, post)
 	}
 
-	sortPostsByDateDescending(chinesePosts)
-	return chinesePosts, nil
+	sortPostsByDateDescending(posts)
+	return posts, nil
 }
 
-func (blogService *BlogService) renderChineseSite(templateRenderer *renderer.TemplateRenderer, chinesePosts []model.Post, englishPosts []model.Post) error {
-	englishURLBySourceFileName := make(map[string]string, len(englishPosts))
-	for _, englishPost := range englishPosts {
-		englishURLBySourceFileName[englishPost.SourceFileName] = "/en/" + englishPost.URL
-	}
-
-	chineseSummaries := postsToSummaries(chinesePosts, "", englishURLBySourceFileName)
-	chineseLabels := chineseTemplateLabels(blogService.options.ThemeDefault)
-	chineseSiteViewData := model.SiteViewData{
+func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRenderer, posts []model.Post) error {
+	postSummaries := postsToSummaries(posts)
+	labels := templateLabels(blogService.options.ThemeDefault)
+	siteViewData := model.SiteViewData{
 		SiteTitle:       blogService.options.Title,
 		SiteDescription: blogService.options.Description,
 		BaseURL:         blogService.options.BaseURL,
@@ -262,20 +237,19 @@ func (blogService *BlogService) renderChineseSite(templateRenderer *renderer.Tem
 		HomePath:        "/",
 		BlogPath:        "/blog.html",
 		RSSPath:         "/rss.xml",
-		AlternatePath:   "/en/",
-		Labels:          chineseLabels,
-		Posts:           chineseSummaries,
+		Labels:          labels,
+		Posts:           postSummaries,
 	}
 
-	if err := templateRenderer.RenderIndex(filepath.Join(blogService.options.PublicDir, "index.html"), chineseSiteViewData); err != nil {
+	if err := templateRenderer.RenderIndex(filepath.Join(blogService.options.PublicDir, "index.html"), siteViewData); err != nil {
 		return err
 	}
-	chineseSiteViewData.CanonicalPath = "/blog.html"
-	if err := templateRenderer.RenderBlog(filepath.Join(blogService.options.PublicDir, "blog.html"), chineseSiteViewData); err != nil {
+	siteViewData.CanonicalPath = "/blog.html"
+	if err := templateRenderer.RenderBlog(filepath.Join(blogService.options.PublicDir, "blog.html"), siteViewData); err != nil {
 		return err
 	}
 
-	for _, currentPost := range chinesePosts {
+	for _, currentPost := range posts {
 		postViewData := model.PostViewData{
 			SiteTitle:       blogService.options.Title,
 			SiteDescription: blogService.options.Description,
@@ -288,8 +262,7 @@ func (blogService *BlogService) renderChineseSite(templateRenderer *renderer.Tem
 			HomePath:        "/",
 			BlogPath:        "/blog.html",
 			RSSPath:         "/rss.xml",
-			AlternatePath:   englishURLBySourceFileName[currentPost.SourceFileName],
-			Labels:          chineseLabels,
+			Labels:          labels,
 			Post:            currentPost,
 			CommentHTML:     blogService.commentHTMLForPost(currentPost),
 		}
@@ -303,81 +276,15 @@ func (blogService *BlogService) renderChineseSite(templateRenderer *renderer.Tem
 		}
 	}
 
-	if err := templateRenderer.RenderRSS(filepath.Join(blogService.options.PublicDir, "rss.xml"), blogService.options.Title, blogService.options.Description, "/", chinesePosts, ""); err != nil {
+	if err := templateRenderer.RenderRSS(filepath.Join(blogService.options.PublicDir, "rss.xml"), blogService.options.Title, blogService.options.Description, "/", posts, ""); err != nil {
 		return err
 	}
 
-	chineseSitemapPaths := []string{"/", "/blog.html"}
-	for _, currentPost := range chinesePosts {
-		chineseSitemapPaths = append(chineseSitemapPaths, "/"+currentPost.URL)
+	sitemapPaths := []string{"/", "/blog.html"}
+	for _, currentPost := range posts {
+		sitemapPaths = append(sitemapPaths, "/"+currentPost.URL)
 	}
-	return templateRenderer.RenderSitemap(filepath.Join(blogService.options.PublicDir, "sitemap.xml"), chineseSitemapPaths)
-}
-
-func (blogService *BlogService) renderEnglishSite(templateRenderer *renderer.TemplateRenderer, englishPosts []model.Post) error {
-	englishDirectoryPath := filepath.Join(blogService.options.PublicDir, "en")
-	if err := filesystem.EnsureDirectory(englishDirectoryPath); err != nil {
-		return err
-	}
-
-	englishSummaries := postsToSummaries(englishPosts, "/en", map[string]string{})
-	englishLabels := englishTemplateLabels(blogService.options.ThemeDefault)
-	englishSiteViewData := model.SiteViewData{
-		SiteTitle:       blogService.options.Title,
-		SiteDescription: blogService.options.Description,
-		BaseURL:         blogService.options.BaseURL,
-		GitHubURL:       blogService.options.GitHubURL,
-		TelegramURL:     blogService.options.TelegramURL,
-		ThemeDefault:    blogService.options.ThemeDefault,
-		Language:        "en-US",
-		CanonicalPath:   "/en/",
-		HomePath:        "/en/",
-		BlogPath:        "/en/blog.html",
-		RSSPath:         "/en/rss.xml",
-		AlternatePath:   "/",
-		Labels:          englishLabels,
-		Posts:           englishSummaries,
-	}
-
-	if err := templateRenderer.RenderIndex(filepath.Join(englishDirectoryPath, "index.html"), englishSiteViewData); err != nil {
-		return err
-	}
-	englishSiteViewData.CanonicalPath = "/en/blog.html"
-	if err := templateRenderer.RenderBlog(filepath.Join(englishDirectoryPath, "blog.html"), englishSiteViewData); err != nil {
-		return err
-	}
-
-	for _, currentPost := range englishPosts {
-		postViewData := model.PostViewData{
-			SiteTitle:       blogService.options.Title,
-			SiteDescription: blogService.options.Description,
-			BaseURL:         blogService.options.BaseURL,
-			GitHubURL:       blogService.options.GitHubURL,
-			TelegramURL:     blogService.options.TelegramURL,
-			ThemeDefault:    blogService.options.ThemeDefault,
-			Language:        "en-US",
-			CanonicalPath:   "/en/" + currentPost.URL,
-			HomePath:        "/en/",
-			BlogPath:        "/en/blog.html",
-			RSSPath:         "/en/rss.xml",
-			AlternatePath:   "/" + currentPost.URL,
-			Labels:          englishLabels,
-			Post:            currentPost,
-		}
-		if err := templateRenderer.RenderPost(filepath.Join(englishDirectoryPath, currentPost.URL), postViewData); err != nil {
-			return err
-		}
-	}
-
-	if err := templateRenderer.RenderRSS(filepath.Join(englishDirectoryPath, "rss.xml"), blogService.options.Title+" - English", blogService.options.Description, "/en/", englishPosts, "/en"); err != nil {
-		return err
-	}
-
-	englishSitemapPaths := []string{"/en/", "/en/blog.html"}
-	for _, currentPost := range englishPosts {
-		englishSitemapPaths = append(englishSitemapPaths, "/en/"+currentPost.URL)
-	}
-	return templateRenderer.RenderSitemap(filepath.Join(englishDirectoryPath, "sitemap.xml"), englishSitemapPaths)
+	return templateRenderer.RenderSitemap(filepath.Join(blogService.options.PublicDir, "sitemap.xml"), sitemapPaths)
 }
 
 func (blogService *BlogService) resetPublicDirectory() error {
@@ -460,31 +367,25 @@ func sortPostsByDateDescending(posts []model.Post) {
 	})
 }
 
-func postsToSummaries(posts []model.Post, pathPrefix string, englishURLBySourceFileName map[string]string) []model.PostSummary {
+func postsToSummaries(posts []model.Post) []model.PostSummary {
 	postSummaries := make([]model.PostSummary, 0, len(posts))
 	for _, currentPost := range posts {
 		publicURL := "/" + currentPost.URL
-		if pathPrefix != "" {
-			publicURL = pathPrefix + "/" + currentPost.URL
-		}
 		postSummaries = append(postSummaries, model.PostSummary{
-			ID:                currentPost.SourceFileName,
-			Title:             currentPost.Title,
-			Date:              currentPost.DateText,
-			Description:       currentPost.Description,
-			Draft:             currentPost.Draft,
-			URL:               currentPost.URL,
-			PublicURL:         publicURL,
-			EnglishPublicURL:  englishURLBySourceFileName[currentPost.SourceFileName],
-			Comments:          currentPost.Comments,
-			Translation:       currentPost.Translation,
-			TranslationStatus: currentPost.TranslationStatus,
+			ID:          currentPost.SourceFileName,
+			Title:       currentPost.Title,
+			Date:        currentPost.DateText,
+			Description: currentPost.Description,
+			Draft:       currentPost.Draft,
+			URL:         currentPost.URL,
+			PublicURL:   publicURL,
+			Comments:    currentPost.Comments,
 		})
 	}
 	return postSummaries
 }
 
-func chineseTemplateLabels(themeDefault string) model.TemplateLabels {
+func templateLabels(themeDefault string) model.TemplateLabels {
 	return model.TemplateLabels{
 		Home:             "首页",
 		Blog:             "文章",
@@ -494,31 +395,13 @@ func chineseTemplateLabels(themeDefault string) model.TemplateLabels {
 		ReadMore:         "阅读",
 		PublishedAt:      "发布于",
 		NoPosts:          "还没有文章。",
-		LanguageSwitch:   "English",
 		BackToList:       "返回文章列表",
 		Footer:           "由 Go 静态渲染生成",
-		ThemeButtonLabel: chineseThemeButtonLabel(themeDefault),
+		ThemeButtonLabel: themeButtonLabel(themeDefault),
 	}
 }
 
-func englishTemplateLabels(themeDefault string) model.TemplateLabels {
-	return model.TemplateLabels{
-		Home:             "Home",
-		Blog:             "Blog",
-		RSS:              "RSS",
-		LatestPosts:      "Latest Posts",
-		AllPosts:         "All Posts",
-		ReadMore:         "Read",
-		PublishedAt:      "Published",
-		NoPosts:          "No posts yet.",
-		LanguageSwitch:   "中文",
-		BackToList:       "Back to posts",
-		Footer:           "Generated by Go static rendering",
-		ThemeButtonLabel: englishThemeButtonLabel(themeDefault),
-	}
-}
-
-func chineseThemeButtonLabel(themeDefault string) string {
+func themeButtonLabel(themeDefault string) string {
 	switch themeDefault {
 	case "light":
 		return "主题：亮色"
@@ -529,17 +412,6 @@ func chineseThemeButtonLabel(themeDefault string) string {
 	}
 }
 
-func englishThemeButtonLabel(themeDefault string) string {
-	switch themeDefault {
-	case "light":
-		return "Theme: Light"
-	case "dark":
-		return "Theme: Dark"
-	default:
-		return "Theme: Auto"
-	}
-}
-
 const examplePostOne = `---
 title: "Docker 搭建第一篇博客"
 date: "2026-05-04 12:00:00"
@@ -547,7 +419,6 @@ description: "这是一篇 Docker 部署笔记。"
 draft: false
 url: "1.html"
 comments: true
-translation: true
 aliases:
   - "docker-old.html"
 ---
@@ -566,7 +437,6 @@ description: "这是一篇用于验证排序和固定链接的示例。"
 draft: false
 url: "2.html"
 comments: true
-translation: true
 aliases: []
 ---
 
