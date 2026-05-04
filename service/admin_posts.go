@@ -88,7 +88,7 @@ func (blogService *BlogService) CreatePost(savePostRequest model.SavePostRequest
 	}
 	if _, err := os.Stat(sourceFilePath); err == nil {
 		return model.PostDetail{}, fmt.Errorf("文章已存在：%s", sourceFileName)
-	} else if err != nil && !os.IsNotExist(err) {
+	} else if !os.IsNotExist(err) {
 		return model.PostDetail{}, fmt.Errorf("检查文章是否存在失败：%w", err)
 	}
 
