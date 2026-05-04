@@ -87,86 +87,39 @@ a:hover {
 
 .icon-link,
 .icon-button {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 28px;
+  flex: 0 0 26px;
   border: 0;
-  border-radius: 50%;
   color: var(--text);
   background: transparent;
   cursor: pointer;
+  padding: 0;
 }
 
 .icon-link:hover,
 .icon-button:hover {
   color: var(--accent-strong);
-  background: color-mix(in srgb, var(--text) 7%, transparent);
   text-decoration: none;
 }
 
-.rss-icon {
-  position: relative;
+.nav-icon {
   width: 16px;
   height: 16px;
   display: block;
-  overflow: hidden;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.rss-icon::before {
-  content: "";
-  position: absolute;
-  left: 1px;
-  bottom: 1px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.rss-icon::after,
-.rss-icon span {
-  position: absolute;
-  left: 1px;
-  bottom: 1px;
-  display: block;
-  border: 2px solid currentColor;
-  border-left-color: transparent;
-  border-bottom-color: transparent;
-  border-radius: 50%;
-  content: "";
-}
-
-.rss-icon::after {
-  width: 11px;
-  height: 11px;
-}
-
-.rss-icon span {
-  width: 18px;
-  height: 18px;
-}
-
-.theme-icon {
-  position: relative;
-  width: 16px;
-  height: 16px;
-  display: block;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-}
-
-.theme-icon::after {
-  content: "";
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--background);
+.nav-icon-rss circle {
+  fill: currentColor;
+  stroke: none;
 }
 
 .page {
