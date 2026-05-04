@@ -58,6 +58,9 @@ comment:
     # giscus 界面语言。
     lang: "zh-CN"
 
-# 前台默认主题：auto、light 或 dark。
+# 前台显示设置。
 theme:
+  # 默认主题：auto、light 或 dark。
   default: "auto"
+  # 字体：default 使用系统默认字体；douyin-sans 使用 bytedance/fonts 的抖音美好体。
+  font: "default"

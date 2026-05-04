@@ -23,4 +23,5 @@ type SiteSettings struct {
 	GiscusTheme            string `json:"giscusTheme"`
 	GiscusLang             string `json:"giscusLang"`
 	ThemeDefault           string `json:"themeDefault"`
+	Font                   string `json:"font"`
 }

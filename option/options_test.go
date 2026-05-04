@@ -43,6 +43,9 @@ func TestLoadGeneratesDefaultConfig(t *testing.T) {
 	if loadedOptions.Title != "" {
 		t.Fatalf("站点标题不一致：%s", loadedOptions.Title)
 	}
+	if loadedOptions.Font != "default" {
+		t.Fatalf("默认字体不一致：got %s want default", loadedOptions.Font)
+	}
 	if _, err := os.Stat(configPath); err != nil {
 		t.Fatalf("配置文件没有生成：%v", err)
 	}

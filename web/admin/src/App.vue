@@ -379,6 +379,7 @@ function createEmptySiteSettings(): SiteSettings {
     giscusTheme: "preferred_color_scheme",
     giscusLang: "zh-CN",
     themeDefault: "auto",
+    font: "default",
   };
 }
 
@@ -560,14 +561,6 @@ function escapeHTML(rawText: string): string {
                 <input v-model="siteSettings.description" type="text" />
               </label>
               <label>
-                <span>语言</span>
-                <input v-model="siteSettings.language" type="text" />
-              </label>
-              <label>
-                <span>公开地址</span>
-                <input v-model="siteSettings.baseUrl" type="url" />
-              </label>
-              <label>
                 <span>默认主题</span>
                 <select v-model="siteSettings.themeDefault">
                   <option value="auto">自动</option>
@@ -576,14 +569,13 @@ function escapeHTML(rawText: string): string {
                 </select>
               </label>
               <label>
-                <span>GitHub 链接</span>
-                <input v-model="siteSettings.githubUrl" type="url" />
+                <span>字体</span>
+                <select v-model="siteSettings.font">
+                  <option value="default">默认字体</option>
+                  <option value="douyin-sans">抖音美好体</option>
+                </select>
               </label>
-              <label>
-                <span>Telegram 链接</span>
-                <input v-model="siteSettings.telegramUrl" type="url" />
-              </label>
-              <label class="wide">
+              <label class="site-icon-field">
                 <span>网站 icon</span>
                 <div class="site-icon-row">
                   <span class="site-icon-preview">
@@ -600,70 +592,72 @@ function escapeHTML(rawText: string): string {
                 <h3>评论设置</h3>
               </section>
               <div class="switches wide">
-                <label><input v-model="siteSettings.commentEnabled" type="checkbox" /> 开启评论</label>
+                <label><input v-model="siteSettings.commentEnabled" type="checkbox" /> 开启 giscus 评论</label>
               </div>
-              <label>
-                <span>评论服务</span>
-                <select v-model="siteSettings.commentProvider">
-                  <option value="giscus">giscus</option>
-                </select>
-              </label>
-              <label>
-                <span>仓库</span>
-                <input v-model="siteSettings.giscusRepo" type="text" />
-              </label>
-              <label>
-                <span>仓库 ID</span>
-                <input v-model="siteSettings.giscusRepoId" type="text" />
-              </label>
-              <label>
-                <span>分类</span>
-                <input v-model="siteSettings.giscusCategory" type="text" />
-              </label>
-              <label>
-                <span>分类 ID</span>
-                <input v-model="siteSettings.giscusCategoryId" type="text" />
-              </label>
-              <label>
-                <span>映射方式</span>
-                <input v-model="siteSettings.giscusMapping" type="text" />
-              </label>
-              <label>
-                <span>严格匹配</span>
-                <select v-model="siteSettings.giscusStrict">
-                  <option value="0">关闭</option>
-                  <option value="1">开启</option>
-                </select>
-              </label>
-              <label>
-                <span>评论反应</span>
-                <select v-model="siteSettings.giscusReactionsEnabled">
-                  <option value="1">开启</option>
-                  <option value="0">关闭</option>
-                </select>
-              </label>
-              <label>
-                <span>Metadata</span>
-                <select v-model="siteSettings.giscusEmitMetadata">
-                  <option value="0">关闭</option>
-                  <option value="1">开启</option>
-                </select>
-              </label>
-              <label>
-                <span>输入框位置</span>
-                <select v-model="siteSettings.giscusInputPosition">
-                  <option value="bottom">底部</option>
-                  <option value="top">顶部</option>
-                </select>
-              </label>
-              <label>
-                <span>giscus 主题</span>
-                <input v-model="siteSettings.giscusTheme" type="text" />
-              </label>
-              <label>
-                <span>giscus 语言</span>
-                <input v-model="siteSettings.giscusLang" type="text" />
-              </label>
+              <template v-if="siteSettings.commentEnabled">
+                <label>
+                  <span>GitHub 仓库</span>
+                  <input v-model="siteSettings.giscusRepo" type="text" placeholder="owner/repo" />
+                </label>
+                <label>
+                  <span>仓库 ID</span>
+                  <input v-model="siteSettings.giscusRepoId" type="text" />
+                </label>
+                <label>
+                  <span>讨论分类</span>
+                  <input v-model="siteSettings.giscusCategory" type="text" />
+                </label>
+                <label>
+                  <span>分类 ID</span>
+                  <input v-model="siteSettings.giscusCategoryId" type="text" />
+                </label>
+
+                <details class="advanced-settings wide">
+                  <summary>高级设置</summary>
+                  <div class="form-grid nested-grid">
+                    <label>
+                      <span>页面映射</span>
+                      <input v-model="siteSettings.giscusMapping" type="text" />
+                    </label>
+                    <label>
+                      <span>严格匹配</span>
+                      <select v-model="siteSettings.giscusStrict">
+                        <option value="0">关闭</option>
+                        <option value="1">开启</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>评论反应</span>
+                      <select v-model="siteSettings.giscusReactionsEnabled">
+                        <option value="1">开启</option>
+                        <option value="0">关闭</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Metadata</span>
+                      <select v-model="siteSettings.giscusEmitMetadata">
+                        <option value="0">关闭</option>
+                        <option value="1">开启</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>输入框位置</span>
+                      <select v-model="siteSettings.giscusInputPosition">
+                        <option value="bottom">底部</option>
+                        <option value="top">顶部</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>评论主题</span>
+                      <input v-model="siteSettings.giscusTheme" type="text" />
+                    </label>
+                    <label>
+                      <span>评论语言</span>
+                      <input v-model="siteSettings.giscusLang" type="text" />
+                    </label>
+                  </div>
+                </details>
+              </template>
             </div>
           </section>
         </section>

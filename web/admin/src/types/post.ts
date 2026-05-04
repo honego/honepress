@@ -58,6 +58,7 @@ export interface SiteSettings {
   giscusTheme: string;
   giscusLang: string;
   themeDefault: "auto" | "light" | "dark";
+  font: "default" | "douyin-sans";
 }
 
 export interface PostsResponse {

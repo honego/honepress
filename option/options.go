@@ -77,6 +77,7 @@ type GiscusConfig struct {
 // 前台默认主题
 type ThemeConfig struct {
 	Default string `yaml:"default"`
+	Font    string `yaml:"font"`
 }
 
 // 运行配置
@@ -92,6 +93,7 @@ type Options struct {
 	GitHubURL     string
 	TelegramURL   string
 	ThemeDefault  string
+	Font          string
 	DataDir       string
 	ContentDir    string
 	PostsDir      string
@@ -173,7 +175,7 @@ func Load(configPath string) (Options, error) {
 		log.Println("警告：未设置后台密码，后台接口将不安全。")
 	}
 	if loadedOptions.Comment.Enabled && !loadedOptions.Comment.HasRequiredGiscusConfig() {
-		log.Println("警告：giscus 配置不完整，文章页不会输出评论脚本。")
+		log.Println("警告：giscus 配置不完整，文章页不会输出评论容器。")
 	}
 
 	return loadedOptions, nil
@@ -220,6 +222,7 @@ func DefaultConfig() Config {
 		},
 		Theme: ThemeConfig{
 			Default: "auto",
+			Font:    "default",
 		},
 	}
 }
@@ -260,6 +263,7 @@ func OptionsFromConfig(configPath string, config Config) Options {
 		GitHubURL:     config.Site.GitHubURL,
 		TelegramURL:   config.Site.TelegramURL,
 		ThemeDefault:  config.Theme.Default,
+		Font:          config.Theme.Font,
 		DataDir:       dataDirectory,
 		ContentDir:    contentDirectory,
 		PostsDir:      filepath.Join(contentDirectory, "posts"),
@@ -311,6 +315,7 @@ func NormalizeConfig(config *Config) {
 	}
 	normalizeGiscusConfig(&config.Comment.Giscus, defaultConfig.Comment.Giscus)
 	config.Theme.Default = normalizeThemeDefault(config.Theme.Default)
+	config.Theme.Font = normalizeThemeFont(config.Theme.Font)
 }
 
 // 应用后台站点设置
@@ -336,6 +341,7 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 	config.Comment.Giscus.Theme = strings.TrimSpace(siteSettings.GiscusTheme)
 	config.Comment.Giscus.Lang = strings.TrimSpace(siteSettings.GiscusLang)
 	config.Theme.Default = normalizeThemeDefault(siteSettings.ThemeDefault)
+	config.Theme.Font = normalizeThemeFont(siteSettings.Font)
 	NormalizeConfig(&config)
 	return config
 }
@@ -364,6 +370,7 @@ func SiteSettingsFromOptions(options Options) model.SiteSettings {
 		GiscusTheme:            options.Comment.Theme,
 		GiscusLang:             options.Comment.Language,
 		ThemeDefault:           options.ThemeDefault,
+		Font:                   options.Font,
 	}
 }
 
@@ -442,5 +449,14 @@ func normalizeThemeDefault(themeDefault string) string {
 		return "dark"
 	default:
 		return "auto"
+	}
+}
+
+func normalizeThemeFont(themeFont string) string {
+	switch strings.ToLower(strings.TrimSpace(themeFont)) {
+	case "douyin-sans":
+		return "douyin-sans"
+	default:
+		return "default"
 	}
 }

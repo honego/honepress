@@ -26,6 +26,7 @@ type SiteViewData struct {
 	GitHubURL       string
 	TelegramURL     string
 	ThemeDefault    string
+	Font            string
 	Language        string
 	CanonicalPath   string
 	HomePath        string
@@ -44,6 +45,7 @@ type PostViewData struct {
 	GitHubURL       string
 	TelegramURL     string
 	ThemeDefault    string
+	Font            string
 	Language        string
 	CanonicalPath   string
 	HomePath        string

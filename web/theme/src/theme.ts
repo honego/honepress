@@ -1,4 +1,5 @@
 type ThemeMode = "auto" | "light" | "dark";
+
 type LucideWindow = Window & {
   lucide?: {
     createIcons: (options?: { nameAttr?: string }) => void;
@@ -16,14 +17,16 @@ const themeLabels: Record<ThemeMode, string> = {
 applyTheme(readStoredTheme());
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initializeThemeToggle);
+  document.addEventListener("DOMContentLoaded", initializePage);
 } else {
-  initializeThemeToggle();
+  initializePage();
 }
 
-function initializeThemeToggle(): void {
+function initializePage(): void {
   initializeIcons();
+  initializeGiscusComments();
   updateToggleButtons(readStoredTheme());
+
   const toggleButtons = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
   toggleButtons.forEach((toggleButton) => {
     toggleButton.addEventListener("click", () => {
@@ -31,6 +34,7 @@ function initializeThemeToggle(): void {
       saveTheme(nextTheme);
       applyTheme(nextTheme);
       updateToggleButtons(nextTheme);
+      syncGiscusTheme(nextTheme);
     });
   });
 }
@@ -40,7 +44,89 @@ function initializeIcons(): void {
   lucide?.createIcons({ nameAttr: "data-lucide" });
 }
 
-// 只写 data-theme，让 CSS 同时处理 auto、light、dark 三种状态。
+function initializeGiscusComments(): void {
+  const commentContainers = document.querySelectorAll<HTMLElement>("[data-giscus-comments]");
+  commentContainers.forEach((commentContainer) => {
+    if (!hasRequiredGiscusConfig(commentContainer) || hasMountedGiscus(commentContainer)) {
+      return;
+    }
+
+    const giscusScript = document.createElement("script");
+    giscusScript.src = "https://giscus.app/client.js";
+    giscusScript.async = true;
+    giscusScript.crossOrigin = "anonymous";
+    giscusScript.setAttribute("data-giscus-script", "true");
+    setGiscusAttributes(giscusScript, commentContainer);
+    commentContainer.appendChild(giscusScript);
+  });
+}
+
+function hasRequiredGiscusConfig(commentContainer: HTMLElement): boolean {
+  return ["repo", "repoId", "category", "categoryId"].every((datasetKey) => {
+    const datasetValue = commentContainer.dataset[datasetKey];
+    return typeof datasetValue === "string" && datasetValue.trim() !== "";
+  });
+}
+
+function hasMountedGiscus(commentContainer: HTMLElement): boolean {
+  return Boolean(
+    commentContainer.querySelector("iframe.giscus-frame") ||
+    commentContainer.querySelector("script[data-giscus-script]"),
+  );
+}
+
+function setGiscusAttributes(giscusScript: HTMLScriptElement, commentContainer: HTMLElement): void {
+  const giscusAttributes: Array<[string, string]> = [
+    ["data-repo", commentContainer.dataset.repo ?? ""],
+    ["data-repo-id", commentContainer.dataset.repoId ?? ""],
+    ["data-category", commentContainer.dataset.category ?? ""],
+    ["data-category-id", commentContainer.dataset.categoryId ?? ""],
+    ["data-mapping", commentContainer.dataset.mapping ?? "pathname"],
+    ["data-strict", commentContainer.dataset.strict ?? "0"],
+    ["data-reactions-enabled", commentContainer.dataset.reactionsEnabled ?? "1"],
+    ["data-emit-metadata", commentContainer.dataset.emitMetadata ?? "0"],
+    ["data-input-position", commentContainer.dataset.inputPosition ?? "bottom"],
+    ["data-theme", giscusThemeFor(readStoredTheme(), commentContainer.dataset.theme)],
+    ["data-lang", commentContainer.dataset.lang ?? document.documentElement.lang ?? "zh-CN"],
+  ];
+
+  giscusAttributes.forEach(([attributeName, attributeValue]) => {
+    giscusScript.setAttribute(attributeName, attributeValue);
+  });
+}
+
+function syncGiscusTheme(themeMode: ThemeMode): void {
+  const commentContainers = document.querySelectorAll<HTMLElement>("[data-giscus-comments]");
+  commentContainers.forEach((commentContainer) => {
+    const giscusFrame = commentContainer.querySelector<HTMLIFrameElement>("iframe.giscus-frame");
+    if (!giscusFrame?.contentWindow) {
+      return;
+    }
+
+    giscusFrame.contentWindow.postMessage(
+      {
+        giscus: {
+          setConfig: {
+            theme: giscusThemeFor(themeMode, commentContainer.dataset.theme),
+          },
+        },
+      },
+      "https://giscus.app",
+    );
+  });
+}
+
+function giscusThemeFor(themeMode: ThemeMode, configuredTheme?: string): string {
+  const normalizedTheme = configuredTheme?.trim();
+  if (normalizedTheme && normalizedTheme !== "preferred_color_scheme") {
+    return normalizedTheme;
+  }
+  if (themeMode === "light" || themeMode === "dark") {
+    return themeMode;
+  }
+  return "preferred_color_scheme";
+}
+
 function applyTheme(themeMode: ThemeMode): void {
   document.documentElement.setAttribute("data-theme", themeMode);
 }

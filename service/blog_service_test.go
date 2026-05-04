@@ -36,6 +36,9 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 	if strings.Contains(string(postHTMLContent), "title:") {
 		t.Fatalf("文章 HTML 不应包含 Front Matter")
 	}
+	if !strings.Contains(string(postHTMLContent), `data-font="default"`) {
+		t.Fatalf("文章 HTML 缺少默认字体标记")
+	}
 	if !strings.Contains(string(postHTMLContent), "第一篇示例文章") {
 		t.Fatalf("文章 HTML 缺少正文内容")
 	}
@@ -144,5 +147,93 @@ aliases: []
 		if strings.Contains(generatedContent, "草稿文章") || strings.Contains(generatedContent, "冲突草稿") || strings.Contains(generatedContent, "draft.html") {
 			t.Fatalf("生成文件 %s 不应包含草稿内容", generatedFile)
 		}
+	}
+}
+
+func TestRenderAllWritesGiscusPlaceholder(t *testing.T) {
+	dataDirectoryPath := t.TempDir()
+
+	testOptions := option.Options{
+		Address:     ":0",
+		BaseURL:     "https://example.com",
+		Title:       "blog",
+		Description: "test blog",
+		DataDir:     dataDirectoryPath,
+		ContentDir:  filepath.Join(dataDirectoryPath, "content"),
+		PostsDir:    filepath.Join(dataDirectoryPath, "content", "posts"),
+		PublicDir:   filepath.Join(dataDirectoryPath, "public"),
+		Comment: option.CommentOptions{
+			Enabled:          true,
+			Provider:         "giscus",
+			GiscusRepo:       "owner/repo",
+			GiscusRepoID:     "repo-id",
+			GiscusCategory:   "Comments",
+			GiscusCategoryID: "category-id",
+			GiscusMapping:    "pathname",
+			GiscusStrict:     "0",
+			ReactionsEnabled: "0",
+			EmitMetadata:     "1",
+			InputPosition:    "top",
+			Theme:            "noborder_light",
+			Language:         "en",
+		},
+	}
+
+	if err := os.MkdirAll(testOptions.PostsDir, 0755); err != nil {
+		t.Fatalf("create posts directory failed: %v", err)
+	}
+	postContent := `---
+title: "Giscus Post"
+date: "2026-05-04 12:00:00"
+description: "comment test"
+draft: false
+url: "giscus.html"
+comments: true
+aliases: []
+---
+
+Comment body.`
+	if err := os.WriteFile(filepath.Join(testOptions.PostsDir, "giscus.md"), []byte(postContent), 0644); err != nil {
+		t.Fatalf("write post failed: %v", err)
+	}
+
+	blogService := NewBlogService(testOptions)
+	if err := blogService.RenderAll(); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+
+	postHTMLContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "giscus.html"))
+	if err != nil {
+		t.Fatalf("read post html failed: %v", err)
+	}
+	postHTML := string(postHTMLContent)
+	requiredFragments := []string{
+		`<section id="comments" class="comments" data-giscus-comments`,
+		`data-repo="owner/repo"`,
+		`data-repo-id="repo-id"`,
+		`data-category="Comments"`,
+		`data-category-id="category-id"`,
+		`data-mapping="pathname"`,
+		`data-reactions-enabled="0"`,
+		`data-emit-metadata="1"`,
+		`data-input-position="top"`,
+		`data-theme="noborder_light"`,
+		`data-lang="en"`,
+	}
+	for _, requiredFragment := range requiredFragments {
+		if !strings.Contains(postHTML, requiredFragment) {
+			t.Fatalf("post html missing giscus fragment %q", requiredFragment)
+		}
+	}
+	if strings.Contains(postHTML, "https://giscus.app/client.js") {
+		t.Fatalf("post html should not render the giscus script directly")
+	}
+
+	themeScriptContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "theme.js"))
+	if err != nil {
+		t.Fatalf("read theme script failed: %v", err)
+	}
+	if !strings.Contains(string(themeScriptContent), "https://giscus.app/client.js") {
+		t.Fatalf("theme script should load the giscus client")
 	}
 }

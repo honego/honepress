@@ -8,6 +8,19 @@
   --accent: #1f2328;
   --accent-strong: #000000;
   --code: #eeeeee;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@font-face {
+  font-family: "Douyin Sans";
+  src: url("https://fastly.jsdelivr.net/gh/bytedance/fonts@main/DouyinSans/DouyinSansBold.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+:root[data-font="douyin-sans"] {
+  --font-family: "Douyin Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 :root[data-theme="dark"] {
@@ -42,7 +55,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-family);
   line-height: 1.7;
 }
 

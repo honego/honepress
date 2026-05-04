@@ -102,19 +102,15 @@ func (blogService *BlogService) UploadSiteIcon(fileHeader *multipart.FileHeader)
 }
 
 func validateSiteSettings(siteSettings model.SiteSettings) error {
-	if strings.TrimSpace(siteSettings.Title) == "" {
-		return fmt.Errorf("站点标题不能为空")
-	}
-	if strings.TrimSpace(siteSettings.Description) == "" {
-		return fmt.Errorf("站点描述不能为空")
-	}
-	if strings.TrimSpace(siteSettings.Language) == "" {
-		return fmt.Errorf("站点语言不能为空")
-	}
 	switch strings.ToLower(strings.TrimSpace(siteSettings.ThemeDefault)) {
 	case "", "auto", "light", "dark":
 	default:
 		return fmt.Errorf("默认主题只能是 auto、light 或 dark")
+	}
+	switch strings.ToLower(strings.TrimSpace(siteSettings.Font)) {
+	case "", "default", "douyin-sans":
+	default:
+		return fmt.Errorf("站点字体只能是 default 或 douyin-sans")
 	}
 	if strings.TrimSpace(siteSettings.IconURL) != "" && !isSupportedIconURL(siteSettings.IconURL) {
 		return fmt.Errorf("网站 icon 只支持 http(s) 链接或 / 开头的站内路径")

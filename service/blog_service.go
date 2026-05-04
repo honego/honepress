@@ -50,6 +50,18 @@ func normalizeRuntimeOptions(options option.Options) option.Options {
 	if strings.TrimSpace(options.AssetsDir) == "" {
 		options.AssetsDir = filepath.Join(options.DataDir, "assets")
 	}
+	if strings.TrimSpace(options.Language) == "" {
+		options.Language = "zh-CN"
+	}
+	if strings.TrimSpace(options.ThemeDefault) == "" {
+		options.ThemeDefault = "auto"
+	}
+	switch strings.ToLower(strings.TrimSpace(options.Font)) {
+	case "douyin-sans":
+		options.Font = "douyin-sans"
+	default:
+		options.Font = "default"
+	}
 	return options
 }
 
@@ -260,6 +272,7 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		GitHubURL:       blogService.options.GitHubURL,
 		TelegramURL:     blogService.options.TelegramURL,
 		ThemeDefault:    blogService.options.ThemeDefault,
+		Font:            blogService.options.Font,
 		Language:        blogService.options.Language,
 		CanonicalPath:   "/",
 		HomePath:        "/",
@@ -286,6 +299,7 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 			GitHubURL:       blogService.options.GitHubURL,
 			TelegramURL:     blogService.options.TelegramURL,
 			ThemeDefault:    blogService.options.ThemeDefault,
+			Font:            blogService.options.Font,
 			Language:        blogService.options.Language,
 			CanonicalPath:   "/" + currentPost.URL,
 			HomePath:        "/",
@@ -383,24 +397,49 @@ func (blogService *BlogService) commentHTMLForPost(post model.Post) htmlTemplate
 		return ""
 	}
 	if !blogService.options.Comment.HasRequiredGiscusConfig() {
-		log.Println("警告：giscus 配置不完整，已跳过评论脚本。")
+		log.Println("警告：giscus 配置不完整，已跳过评论容器。")
 		return ""
 	}
 
-	escapedRepo := htmlTemplate.HTMLEscapeString(blogService.options.Comment.GiscusRepo)
-	escapedRepoID := htmlTemplate.HTMLEscapeString(blogService.options.Comment.GiscusRepoID)
-	escapedCategory := htmlTemplate.HTMLEscapeString(blogService.options.Comment.GiscusCategory)
-	escapedCategoryID := htmlTemplate.HTMLEscapeString(blogService.options.Comment.GiscusCategoryID)
-	escapedMapping := htmlTemplate.HTMLEscapeString(blogService.options.Comment.GiscusMapping)
-	escapedStrict := htmlTemplate.HTMLEscapeString(blogService.options.Comment.GiscusStrict)
-	escapedReactions := htmlTemplate.HTMLEscapeString(blogService.options.Comment.ReactionsEnabled)
-	escapedEmitMetadata := htmlTemplate.HTMLEscapeString(blogService.options.Comment.EmitMetadata)
-	escapedInputPosition := htmlTemplate.HTMLEscapeString(blogService.options.Comment.InputPosition)
-	escapedTheme := htmlTemplate.HTMLEscapeString(blogService.options.Comment.Theme)
-	escapedLanguage := htmlTemplate.HTMLEscapeString(blogService.options.Comment.Language)
+	commentAttributes := map[string]string{
+		"data-repo":              blogService.options.Comment.GiscusRepo,
+		"data-repo-id":           blogService.options.Comment.GiscusRepoID,
+		"data-category":          blogService.options.Comment.GiscusCategory,
+		"data-category-id":       blogService.options.Comment.GiscusCategoryID,
+		"data-mapping":           blogService.options.Comment.GiscusMapping,
+		"data-strict":            blogService.options.Comment.GiscusStrict,
+		"data-reactions-enabled": blogService.options.Comment.ReactionsEnabled,
+		"data-emit-metadata":     blogService.options.Comment.EmitMetadata,
+		"data-input-position":    blogService.options.Comment.InputPosition,
+		"data-theme":             blogService.options.Comment.Theme,
+		"data-lang":              blogService.options.Comment.Language,
+	}
+	attributeNames := []string{
+		"data-repo",
+		"data-repo-id",
+		"data-category",
+		"data-category-id",
+		"data-mapping",
+		"data-strict",
+		"data-reactions-enabled",
+		"data-emit-metadata",
+		"data-input-position",
+		"data-theme",
+		"data-lang",
+	}
 
-	commentScriptHTML := `<section class="comments"><script src="https://giscus.app/client.js" data-repo="` + escapedRepo + `" data-repo-id="` + escapedRepoID + `" data-category="` + escapedCategory + `" data-category-id="` + escapedCategoryID + `" data-mapping="` + escapedMapping + `" data-strict="` + escapedStrict + `" data-reactions-enabled="` + escapedReactions + `" data-emit-metadata="` + escapedEmitMetadata + `" data-input-position="` + escapedInputPosition + `" data-theme="` + escapedTheme + `" data-lang="` + escapedLanguage + `" crossorigin="anonymous" async></script></section>`
-	return htmlTemplate.HTML(commentScriptHTML)
+	var htmlBuilder strings.Builder
+	htmlBuilder.WriteString(`<section id="comments" class="comments" data-giscus-comments`)
+	for _, attributeName := range attributeNames {
+		htmlBuilder.WriteString(` `)
+		htmlBuilder.WriteString(attributeName)
+		htmlBuilder.WriteString(`="`)
+		htmlBuilder.WriteString(htmlTemplate.HTMLEscapeString(commentAttributes[attributeName]))
+		htmlBuilder.WriteString(`"`)
+	}
+	htmlBuilder.WriteString(`></section>`)
+
+	return htmlTemplate.HTML(htmlBuilder.String())
 }
 
 func filterPublishedPosts(posts []model.Post) []model.Post {
