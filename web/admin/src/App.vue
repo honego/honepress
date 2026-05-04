@@ -8,7 +8,6 @@ import {
   fetchPosts,
   fetchSettings,
   previewMarkdown,
-  renderSite,
   updatePost,
   updateSettings,
 } from "./api/post";
@@ -166,20 +165,6 @@ async function deleteCurrentPost(): Promise<void> {
     const messageResponse = await deletePost(editorForm.value.id);
     statusMessage.value = messageResponse.message;
     createNewPost();
-    await loadPosts();
-  } catch (error) {
-    errorMessage.value = readError(error);
-  } finally {
-    isSaving.value = false;
-  }
-}
-
-async function renderAll(): Promise<void> {
-  isSaving.value = true;
-  errorMessage.value = "";
-  try {
-    const messageResponse = await renderSite();
-    statusMessage.value = messageResponse.message;
     await loadPosts();
   } catch (error) {
     errorMessage.value = readError(error);
@@ -360,7 +345,6 @@ function escapeHTML(rawText: string): string {
         <span>blog</span>
       </a>
       <div class="topbar-actions">
-        <button type="button" :disabled="isSaving" @click="renderAll">重新生成</button>
         <button type="button" @click="cycleAdminTheme">主题：{{ adminThemeLabel }}</button>
       </div>
     </header>

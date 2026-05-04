@@ -9,7 +9,7 @@ blog 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责 Mark
 - Markdown 文件外置存储，启动和保存后自动生成静态页面。
 - 固定链接由 Front Matter 的 `url` 字段决定，标题变更不会影响链接。
 - 自动生成 `/rss.xml`、`/sitemap.xml`。
-- 后台提供文章列表、新建、编辑、删除、保存、预览和重新生成。
+- 后台提供文章列表、新建、编辑、删除、保存和预览；发布后自动生成公开页面，草稿不生成公开页面。
 - 支持 Basic Auth、giscus 评论开关、auto/light/dark 主题。
 
 ## 目录结构
@@ -114,7 +114,7 @@ Front Matter 只给程序读取，不会出现在渲染后的正文中。
 
 ## RSS 说明
 
-RSS 自动生成到 `/rss.xml`。草稿不会进入 RSS。
+RSS 自动生成到 `/rss.xml`。草稿不会进入 RSS，也不会生成公开文章页。
 
 ## sitemap 说明
 

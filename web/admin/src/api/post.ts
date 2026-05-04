@@ -66,14 +66,6 @@ export async function previewMarkdown(markdown: string): Promise<string> {
   return previewResponse.text();
 }
 
-export async function renderSite(): Promise<MessageResponse> {
-  return readJSONResponse<MessageResponse>(
-    await fetch("/api/render", {
-      method: "POST",
-    }),
-  );
-}
-
 export async function fetchSettings(): Promise<SiteSettings> {
   const settingsResponse = await readJSONResponse<SettingsResponse>(await fetch("/api/settings"));
   return settingsResponse.settings;

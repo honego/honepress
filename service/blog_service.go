@@ -44,7 +44,7 @@ func (blogService *BlogService) InitializeAndRender() error {
 	return blogService.RenderAll()
 }
 
-// 重新生成静态站点
+// 渲染静态站点
 func (blogService *BlogService) RenderAll() error {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()
@@ -118,12 +118,11 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 	if err != nil {
 		return err
 	}
-	if err := validatePermalinkConflicts(posts); err != nil {
-		return err
-	}
-
 	publishedPosts := filterPublishedPosts(posts)
 	sortPostsByDateDescending(publishedPosts)
+	if err := validatePermalinkConflicts(publishedPosts); err != nil {
+		return err
+	}
 
 	if err := blogService.resetPublicDirectory(); err != nil {
 		return err
@@ -143,7 +142,7 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 		return err
 	}
 
-	log.Println("静态文件已重新生成。")
+	log.Println("静态站点已更新。")
 	return nil
 }
 
@@ -195,9 +194,12 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			return nil, fmt.Errorf("文章 %s 的发布时间无效：%w", sourceFilePath, err)
 		}
 
-		renderedPostHTML, err := blogService.markdownRenderer.Render(bodyMarkdownContent)
-		if err != nil {
-			return nil, fmt.Errorf("文章 %s 渲染失败：%w", sourceFilePath, err)
+		var renderedPostHTML htmlTemplate.HTML
+		if !parsedFrontMatter.Draft {
+			renderedPostHTML, err = blogService.markdownRenderer.Render(bodyMarkdownContent)
+			if err != nil {
+				return nil, fmt.Errorf("文章 %s 渲染失败：%w", sourceFilePath, err)
+			}
 		}
 
 		post := model.Post{

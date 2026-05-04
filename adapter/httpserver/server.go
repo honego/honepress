@@ -140,8 +140,6 @@ func (server *Server) handleAPI(responseWriter http.ResponseWriter, request *htt
 		server.handleCreatePost(responseWriter, request)
 	case cleanAPIPath == "/preview" && request.Method == http.MethodPost:
 		server.handlePreview(responseWriter, request)
-	case cleanAPIPath == "/render" && request.Method == http.MethodPost:
-		server.handleRender(responseWriter)
 	case cleanAPIPath == "/settings" && request.Method == http.MethodGet:
 		server.handleGetSettings(responseWriter)
 	case cleanAPIPath == "/settings" && request.Method == http.MethodPut:
@@ -174,7 +172,7 @@ func (server *Server) handleCreatePost(responseWriter http.ResponseWriter, reque
 		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
 		return
 	}
-	server.writeJSON(responseWriter, http.StatusCreated, postDetailResponse{Post: createdPost, Message: "文章已创建并重新生成。"})
+	server.writeJSON(responseWriter, http.StatusCreated, postDetailResponse{Post: createdPost, Message: postSaveMessage(createdPost, true)})
 }
 
 func (server *Server) handlePreview(responseWriter http.ResponseWriter, request *http.Request) {
@@ -194,14 +192,6 @@ func (server *Server) handlePreview(responseWriter http.ResponseWriter, request 
 	_, _ = responseWriter.Write([]byte(renderedHTML))
 }
 
-func (server *Server) handleRender(responseWriter http.ResponseWriter) {
-	if err := server.blogService.RenderAll(); err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
-	}
-	server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "静态文件已重新生成。"})
-}
-
 func (server *Server) handleGetSettings(responseWriter http.ResponseWriter) {
 	server.writeJSON(responseWriter, http.StatusOK, settingsResponse{Settings: server.blogService.GetSiteSettings()})
 }
@@ -218,7 +208,7 @@ func (server *Server) handleUpdateSettings(responseWriter http.ResponseWriter, r
 	}
 	server.writeJSON(responseWriter, http.StatusOK, settingsResponse{
 		Settings: server.blogService.GetSiteSettings(),
-		Message:  "站点设置已保存并重新生成。",
+		Message:  "站点设置已保存，站点已自动更新。",
 	})
 }
 
@@ -243,13 +233,13 @@ func (server *Server) handlePostByID(responseWriter http.ResponseWriter, request
 			server.writeError(responseWriter, http.StatusBadRequest, err.Error())
 			return
 		}
-		server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: updatedPost, Message: "文章已保存并重新生成。"})
+		server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: updatedPost, Message: postSaveMessage(updatedPost, false)})
 	case http.MethodDelete:
 		if err := server.blogService.DeletePost(sourceFileName); err != nil {
 			server.writeError(responseWriter, http.StatusBadRequest, err.Error())
 			return
 		}
-		server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "文章已删除并重新生成。"})
+		server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "文章已删除，站点已自动更新。"})
 	default:
 		server.writeError(responseWriter, http.StatusMethodNotAllowed, "请求方法不允许")
 	}
@@ -288,6 +278,19 @@ type postsResponse struct {
 type postDetailResponse struct {
 	Post    model.PostDetail `json:"post"`
 	Message string           `json:"message,omitempty"`
+}
+
+func postSaveMessage(postDetail model.PostDetail, created bool) string {
+	if postDetail.Draft {
+		if created {
+			return "草稿已创建，未生成公开页面。"
+		}
+		return "草稿已保存，未生成公开页面。"
+	}
+	if created {
+		return "文章已发布，站点已自动更新。"
+	}
+	return "文章已保存，站点已自动更新。"
 }
 
 type settingsResponse struct {
