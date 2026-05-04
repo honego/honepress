@@ -27,15 +27,15 @@ COPY . ./
 COPY --from=build-admin /src/web/admin/dist ./web/admin/dist
 COPY --from=build-theme /src/web/theme/dist ./web/theme/dist
 RUN go build -v -trimpath -ldflags="-s -w" \
-    -o /go/bin/app ./cmd/blog
+    -o /go/bin/honepress ./cmd/blog
 
 FROM alpine:3.23.4
 LABEL org.opencontainers.image.authors="honeok <i@honeok.com>"
 WORKDIR /app
-COPY --from=build-backend /go/bin/app /app/app
+COPY --from=build-backend /go/bin/honepress /app/honepress
 RUN set -ex \
     && apk add --no-cache --update curl ca-certificates tzdata
 VOLUME /app/data
 EXPOSE 8080
 ENV TZ=Asia/Shanghai
-ENTRYPOINT ["/app/app", "-c", "/app/config.yaml"]
+ENTRYPOINT ["/app/honepress", "-c", "/app/config.yaml"]
