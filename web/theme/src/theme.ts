@@ -1,4 +1,9 @@
 type ThemeMode = "auto" | "light" | "dark";
+type LucideWindow = Window & {
+  lucide?: {
+    createIcons: (options?: { nameAttr?: string }) => void;
+  };
+};
 
 const storageKey = "blog-theme";
 const themeModes: ThemeMode[] = ["auto", "light", "dark"];
@@ -17,6 +22,7 @@ if (document.readyState === "loading") {
 }
 
 function initializeThemeToggle(): void {
+  initializeIcons();
   updateToggleButtons(readStoredTheme());
   const toggleButtons = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
   toggleButtons.forEach((toggleButton) => {
@@ -27,6 +33,11 @@ function initializeThemeToggle(): void {
       updateToggleButtons(nextTheme);
     });
   });
+}
+
+function initializeIcons(): void {
+  const lucide = (window as LucideWindow).lucide;
+  lucide?.createIcons({ nameAttr: "data-lucide" });
 }
 
 // 只写 data-theme，让 CSS 同时处理 auto、light、dark 三种状态。

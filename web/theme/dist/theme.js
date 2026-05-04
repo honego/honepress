@@ -3,7 +3,8 @@
     e = ["auto", "light", "dark"],
     n = { auto: "主题：自动", light: "主题：亮色", dark: "主题：暗色" };
   function o() {
-    (r(i()),
+    (d(),
+      r(i()),
       u(i()),
       document.querySelectorAll("[data-theme-toggle]").forEach((a) => {
         a.addEventListener("click", () => {
@@ -11,6 +12,9 @@
           (l(c), r(c), u(c));
         });
       }));
+  }
+  function d() {
+    window.lucide?.createIcons({ nameAttr: "data-lucide" });
   }
   function r(a) {
     document.documentElement.setAttribute("data-theme", a);

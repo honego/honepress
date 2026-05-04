@@ -117,11 +117,6 @@ a:hover {
   stroke-linejoin: round;
 }
 
-.nav-icon-rss circle {
-  fill: currentColor;
-  stroke: none;
-}
-
 .page {
   width: min(860px, calc(100% - 32px));
   margin: 0 auto;
