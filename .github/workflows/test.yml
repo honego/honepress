@@ -1,5 +1,5 @@
 ---
-name: "Run code test"
+name: "Run test"
 
 on:
   push: {}
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   test:
-    name: "Run code test"
+    name: "Run test"
     strategy:
       fail-fast: false
       matrix:
@@ -34,5 +34,5 @@ jobs:
           check-latest: true
           cache: true
 
-      - name: "Run code test"
+      - name: "Run test"
         run: go test -timeout 1h -v ./...
