@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/honeok/blog/model"
 	"github.com/honeok/blog/option"
 	"github.com/honeok/blog/service"
@@ -38,13 +39,33 @@ func (server *Server) ListenAndServe() error {
 }
 
 func (server *Server) routes() http.Handler {
-	httpServeMux := http.NewServeMux()
-	httpServeMux.Handle("/api/", server.basicAuth(http.HandlerFunc(server.handleAPI)))
-	httpServeMux.Handle("/api", server.basicAuth(http.HandlerFunc(server.handleAPI)))
-	httpServeMux.Handle("/admin/", server.basicAuth(http.HandlerFunc(server.serveAdmin)))
-	httpServeMux.Handle("/admin", server.basicAuth(http.HandlerFunc(server.redirectAdmin)))
-	httpServeMux.Handle("/", http.HandlerFunc(server.servePublic))
-	return securityHeaders(httpServeMux)
+	router := chi.NewRouter()
+	router.Use(securityHeaders)
+
+	router.Route("/api", func(apiRouter chi.Router) {
+		apiRouter.Use(server.basicAuth)
+		apiRouter.NotFound(func(responseWriter http.ResponseWriter, _ *http.Request) {
+			server.writeError(responseWriter, http.StatusNotFound, "接口不存在")
+		})
+		apiRouter.Get("/health", server.handleHealth)
+		apiRouter.Get("/posts", server.handleListPosts)
+		apiRouter.Post("/posts", server.handleCreatePost)
+		apiRouter.Post("/preview", server.handlePreview)
+		apiRouter.Get("/settings", server.handleGetSettings)
+		apiRouter.Put("/settings", server.handleUpdateSettings)
+		apiRouter.Post("/settings/icon", server.handleUploadSiteIcon)
+		apiRouter.Get("/posts/{postID}", server.handleGetPost)
+		apiRouter.Put("/posts/{postID}", server.handleUpdatePost)
+		apiRouter.Delete("/posts/{postID}", server.handleDeletePost)
+	})
+	router.Group(func(adminRouter chi.Router) {
+		adminRouter.Use(server.basicAuth)
+		adminRouter.Get("/admin", server.redirectAdmin)
+		adminRouter.Get("/admin/*", server.serveAdmin)
+	})
+	router.HandleFunc("/*", server.servePublic)
+
+	return router
 }
 
 func (server *Server) basicAuth(nextHandler http.Handler) http.Handler {
@@ -125,33 +146,11 @@ func (server *Server) servePublic(responseWriter http.ResponseWriter, request *h
 	publicFileServer.ServeHTTP(responseWriter, request)
 }
 
-func (server *Server) handleAPI(responseWriter http.ResponseWriter, request *http.Request) {
-	cleanAPIPath := path.Clean(strings.TrimPrefix(request.URL.Path, "/api"))
-	if cleanAPIPath == "." {
-		cleanAPIPath = "/"
-	}
-
-	switch {
-	case cleanAPIPath == "/health" && request.Method == http.MethodGet:
-		server.writeJSON(responseWriter, http.StatusOK, healthResponse{Status: "ok"})
-	case cleanAPIPath == "/posts" && request.Method == http.MethodGet:
-		server.handleListPosts(responseWriter)
-	case cleanAPIPath == "/posts" && request.Method == http.MethodPost:
-		server.handleCreatePost(responseWriter, request)
-	case cleanAPIPath == "/preview" && request.Method == http.MethodPost:
-		server.handlePreview(responseWriter, request)
-	case cleanAPIPath == "/settings" && request.Method == http.MethodGet:
-		server.handleGetSettings(responseWriter)
-	case cleanAPIPath == "/settings" && request.Method == http.MethodPut:
-		server.handleUpdateSettings(responseWriter, request)
-	case strings.HasPrefix(cleanAPIPath, "/posts/"):
-		server.handlePostByID(responseWriter, request, strings.TrimPrefix(cleanAPIPath, "/posts/"))
-	default:
-		server.writeError(responseWriter, http.StatusNotFound, "接口不存在")
-	}
+func (server *Server) handleHealth(responseWriter http.ResponseWriter, _ *http.Request) {
+	server.writeJSON(responseWriter, http.StatusOK, healthResponse{Status: "ok"})
 }
 
-func (server *Server) handleListPosts(responseWriter http.ResponseWriter) {
+func (server *Server) handleListPosts(responseWriter http.ResponseWriter, _ *http.Request) {
 	postSummaries, err := server.blogService.ListPosts()
 	if err != nil {
 		server.writeError(responseWriter, http.StatusInternalServerError, err.Error())
@@ -192,7 +191,7 @@ func (server *Server) handlePreview(responseWriter http.ResponseWriter, request 
 	_, _ = responseWriter.Write([]byte(renderedHTML))
 }
 
-func (server *Server) handleGetSettings(responseWriter http.ResponseWriter) {
+func (server *Server) handleGetSettings(responseWriter http.ResponseWriter, _ *http.Request) {
 	server.writeJSON(responseWriter, http.StatusOK, settingsResponse{Settings: server.blogService.GetSiteSettings()})
 }
 
@@ -212,37 +211,57 @@ func (server *Server) handleUpdateSettings(responseWriter http.ResponseWriter, r
 	})
 }
 
-func (server *Server) handlePostByID(responseWriter http.ResponseWriter, request *http.Request, rawPostPath string) {
-	sourceFileName := rawPostPath
-	switch request.Method {
-	case http.MethodGet:
-		postDetail, err := server.blogService.GetPost(sourceFileName)
-		if err != nil {
-			server.writeError(responseWriter, http.StatusNotFound, err.Error())
-			return
-		}
-		server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: postDetail})
-	case http.MethodPut:
-		var savePostRequest model.SavePostRequest
-		if err := server.decodeJSON(request, &savePostRequest); err != nil {
-			server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-			return
-		}
-		updatedPost, err := server.blogService.UpdatePost(sourceFileName, savePostRequest)
-		if err != nil {
-			server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-			return
-		}
-		server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: updatedPost, Message: postSaveMessage(updatedPost, false)})
-	case http.MethodDelete:
-		if err := server.blogService.DeletePost(sourceFileName); err != nil {
-			server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-			return
-		}
-		server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "文章已删除，站点已自动更新。"})
-	default:
-		server.writeError(responseWriter, http.StatusMethodNotAllowed, "请求方法不允许")
+func (server *Server) handleUploadSiteIcon(responseWriter http.ResponseWriter, request *http.Request) {
+	if err := request.ParseMultipartForm(2 * 1024 * 1024); err != nil {
+		server.writeError(responseWriter, http.StatusBadRequest, fmt.Sprintf("解析上传文件失败：%v", err))
+		return
 	}
+	uploadedFile, fileHeader, err := request.FormFile("icon")
+	if err != nil {
+		server.writeError(responseWriter, http.StatusBadRequest, "请选择要上传的图标文件")
+		return
+	}
+	_ = uploadedFile.Close()
+	siteSettings, err := server.blogService.UploadSiteIcon(fileHeader)
+	if err != nil {
+		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
+		return
+	}
+	server.writeJSON(responseWriter, http.StatusOK, settingsResponse{
+		Settings: siteSettings,
+		Message:  "网站 icon 已上传，站点已自动更新。",
+	})
+}
+
+func (server *Server) handleGetPost(responseWriter http.ResponseWriter, request *http.Request) {
+	postDetail, err := server.blogService.GetPost(chi.URLParam(request, "postID"))
+	if err != nil {
+		server.writeError(responseWriter, http.StatusNotFound, err.Error())
+		return
+	}
+	server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: postDetail})
+}
+
+func (server *Server) handleUpdatePost(responseWriter http.ResponseWriter, request *http.Request) {
+	var savePostRequest model.SavePostRequest
+	if err := server.decodeJSON(request, &savePostRequest); err != nil {
+		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
+		return
+	}
+	updatedPost, err := server.blogService.UpdatePost(chi.URLParam(request, "postID"), savePostRequest)
+	if err != nil {
+		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
+		return
+	}
+	server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: updatedPost, Message: postSaveMessage(updatedPost, false)})
+}
+
+func (server *Server) handleDeletePost(responseWriter http.ResponseWriter, request *http.Request) {
+	if err := server.blogService.DeletePost(chi.URLParam(request, "postID")); err != nil {
+		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
+		return
+	}
+	server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "文章已删除，站点已自动更新。"})
 }
 
 func (server *Server) decodeJSON(request *http.Request, targetValue interface{}) error {

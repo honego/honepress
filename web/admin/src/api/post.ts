@@ -81,6 +81,17 @@ export async function updateSettings(siteSettings: SiteSettings): Promise<Settin
   );
 }
 
+export async function uploadSiteIcon(iconFile: File): Promise<SettingsResponse> {
+  const formData = new FormData();
+  formData.append("icon", iconFile);
+  return readJSONResponse<SettingsResponse>(
+    await fetch("/api/settings/icon", {
+      method: "POST",
+      body: formData,
+    }),
+  );
+}
+
 async function readJSONResponse<ResponseType>(response: Response): Promise<ResponseType> {
   const responseText = await response.text();
   if (!response.ok) {

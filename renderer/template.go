@@ -5,10 +5,11 @@ import (
 	"encoding/xml"
 	"fmt"
 	htmlTemplate "html/template"
-	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/gorilla/feeds"
 	"github.com/honeok/blog/common/filesystem"
 	"github.com/honeok/blog/model"
 	"github.com/honeok/blog/option"
@@ -58,37 +59,32 @@ func (templateRenderer *TemplateRenderer) RenderRedirect(targetFilePath string, 
 
 // 生成 RSS
 func (templateRenderer *TemplateRenderer) RenderRSS(targetFilePath string, channelTitle string, channelDescription string, channelPath string, posts []model.Post, pathPrefix string) error {
-	rssItems := make([]rssItem, 0, len(posts))
+	rssFeed := &feeds.RssFeed{
+		Title:       channelTitle,
+		Link:        templateRenderer.options.AbsoluteURL(channelPath),
+		Description: channelDescription,
+	}
 	for _, currentPost := range posts {
 		publicPath := pathPrefix + "/" + currentPost.URL
 		if pathPrefix == "" {
 			publicPath = "/" + currentPost.URL
 		}
 		absolutePostURL := templateRenderer.options.AbsoluteURL(publicPath)
-		rssItems = append(rssItems, rssItem{
+		rssFeed.Items = append(rssFeed.Items, &feeds.RssItem{
 			Title:       currentPost.Title,
 			Link:        absolutePostURL,
-			GUID:        rssGUID{Value: absolutePostURL, IsPermaLink: "true"},
+			Guid:        &feeds.RssGuid{Id: absolutePostURL, IsPermaLink: "true"},
 			PubDate:     currentPost.PublishedAt.Format(time.RFC1123Z),
 			Description: currentPost.Description,
+			Category:    strings.Join(currentPost.Tags, ","),
 		})
 	}
 
-	rssDocument := rssDocument{
-		Version: "2.0",
-		Channel: rssChannel{
-			Title:       channelTitle,
-			Link:        templateRenderer.options.AbsoluteURL(channelPath),
-			Description: channelDescription,
-			Items:       rssItems,
-		},
-	}
-
-	xmlContent, err := xml.MarshalIndent(rssDocument, "", "  ")
+	xmlContent, err := feeds.ToXML(rssFeed)
 	if err != nil {
 		return fmt.Errorf("生成 RSS 失败：%w", err)
 	}
-	return filesystem.WriteFileCreatingDirectory(targetFilePath, append([]byte(xml.Header), xmlContent...), 0644)
+	return filesystem.WriteFileCreatingDirectory(targetFilePath, []byte(xmlContent), 0644)
 }
 
 // 生成 sitemap
@@ -128,39 +124,6 @@ func (templateRenderer *TemplateRenderer) executeHTMLTemplate(templateName strin
 		return fmt.Errorf("执行模板失败：%s：%w", templateName, err)
 	}
 	return filesystem.WriteFileCreatingDirectory(targetFilePath, renderedHTMLBuffer.Bytes(), 0644)
-}
-
-func removeFileIfExists(filePath string) error {
-	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("删除文件失败：%s：%w", filePath, err)
-	}
-	return nil
-}
-
-type rssDocument struct {
-	XMLName xml.Name   `xml:"rss"`
-	Version string     `xml:"version,attr"`
-	Channel rssChannel `xml:"channel"`
-}
-
-type rssChannel struct {
-	Title       string    `xml:"title"`
-	Link        string    `xml:"link"`
-	Description string    `xml:"description"`
-	Items       []rssItem `xml:"item"`
-}
-
-type rssItem struct {
-	Title       string  `xml:"title"`
-	Link        string  `xml:"link"`
-	GUID        rssGUID `xml:"guid"`
-	PubDate     string  `xml:"pubDate"`
-	Description string  `xml:"description"`
-}
-
-type rssGUID struct {
-	Value       string `xml:",chardata"`
-	IsPermaLink string `xml:"isPermaLink,attr"`
 }
 
 type sitemapURLSet struct {

@@ -9,7 +9,7 @@ blog 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责 Mark
 - Markdown 文件外置存储，启动和保存后自动生成静态页面。
 - 固定链接由 Front Matter 的 `url` 字段决定，标题变更不会影响链接。
 - 自动生成 `/rss.xml`、`/sitemap.xml`。
-- 后台提供文章列表、新建、编辑、删除、保存和预览；发布后自动生成公开页面，草稿不生成公开页面。
+- 后台提供文章列表、新建、编辑、删除、保存、预览、站点 icon 上传、评论配置和站点设置；发布后自动生成公开页面，草稿不生成公开页面。
 - 支持 Basic Auth、giscus 评论开关、auto/light/dark 主题。
 
 ## 目录结构
@@ -101,12 +101,15 @@ url: "1.html"
 comments: true
 aliases:
   - "docker-old.html"
+tags:
+  - Docker
+  - 部署
 ---
 
 这里是正文内容。
 ```
 
-Front Matter 只给程序读取，不会出现在渲染后的正文中。
+Front Matter 只给程序读取，不会出现在渲染后的正文中。`tags` 会显示在文章列表、文章页，并写入 RSS category。
 
 ## 固定链接说明
 
@@ -130,7 +133,7 @@ sitemap 自动生成到 `/sitemap.xml`。后台路径和 API 路径不会进入 
 
 ## 后台说明
 
-后台路径是 `/admin/`，API 路径是 `/api/`，两者都受 Basic Auth 保护。Markdown 预览调用 Go 后端 `/api/preview`，不会在前端使用 Markdown 渲染库。后台的“站点设置”区域可以修改站点标题、描述、baseURL、链接、评论开关和默认主题，保存后会写回 `config.yaml` 并重新渲染静态页面。
+后台路径是 `/admin/`，API 路径是 `/api/`，两者都受 Basic Auth 保护。Markdown 预览调用 Go 后端 `/api/preview`，不会在前端使用 Markdown 渲染库。后台的“站点设置”区域可以修改站点标题、描述、baseURL、网站 icon、社交链接、giscus 评论配置和默认主题，保存后会写回配置并自动更新静态页面。
 
 ## 反代建议
 

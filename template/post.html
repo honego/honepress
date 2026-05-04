@@ -6,6 +6,9 @@
     <title>{{.Post.Title}} - {{.SiteTitle}}</title>
     <meta name="description" content="{{.Post.Description}}" />
     <link rel="canonical" href="{{.BaseURL}}{{.CanonicalPath}}" />
+    {{if .SiteIconURL}}
+    <link rel="icon" href="{{.SiteIconURL}}" />
+    {{end}}
     <link rel="stylesheet" href="/style.css" />
     <script src="https://fastly.jsdelivr.net/npm/lucide@1.14.0/dist/umd/lucide.min.js" defer></script>
     <script src="/theme.js" defer></script>
@@ -13,7 +16,10 @@
   <body>
     <header class="site-header">
       <nav class="nav">
-        <a class="brand" href="{{.HomePath}}">{{.SiteTitle}}</a>
+        <a class="brand" href="{{.HomePath}}">
+          {{if .SiteIconURL}}<img class="brand-icon" src="{{.SiteIconURL}}" alt="" />{{end}}
+          <span>{{.SiteTitle}}</span>
+        </a>
         <div class="nav-links">
           <a class="icon-link" href="{{.HomePath}}" aria-label="{{.Labels.Home}}" title="{{.Labels.Home}}">
             <i class="nav-icon" data-lucide="house" aria-hidden="true"></i>
@@ -47,6 +53,9 @@
           <time datetime="{{.Post.DateText}}">{{.Labels.PublishedAt}} {{.Post.DateText}}</time>
           <h1>{{.Post.Title}}</h1>
           <p>{{.Post.Description}}</p>
+          {{if .Post.Tags}}
+          <div class="post-tags">{{range .Post.Tags}}<span>{{.}}</span>{{end}}</div>
+          {{end}}
         </header>
         <div class="content">{{.Post.BodyHTML}}</div>
       </article>

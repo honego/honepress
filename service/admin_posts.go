@@ -56,6 +56,7 @@ func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail
 		Draft:       frontMatter.Draft,
 		URL:         normalizedPermalink,
 		Aliases:     frontMatter.Aliases,
+		Tags:        frontMatter.Tags,
 		Comments:    frontMatter.Comments,
 		Body:        bodyMarkdownContent,
 	}, nil
@@ -193,9 +194,27 @@ func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.Post
 		URL:         normalizedPermalink,
 		Comments:    savePostRequest.Comments,
 		Aliases:     normalizedAliases,
+		Tags:        normalizeTags(savePostRequest.Tags),
 	}
 
 	return frontMatter, savePostRequest.Body, nil
+}
+
+func normalizeTags(rawTags []string) []string {
+	normalizedTags := make([]string, 0, len(rawTags))
+	seenTags := make(map[string]struct{})
+	for _, rawTag := range rawTags {
+		trimmedTag := strings.TrimSpace(rawTag)
+		if trimmedTag == "" {
+			continue
+		}
+		if _, exists := seenTags[trimmedTag]; exists {
+			continue
+		}
+		seenTags[trimmedTag] = struct{}{}
+		normalizedTags = append(normalizedTags, trimmedTag)
+	}
+	return normalizedTags
 }
 
 func (blogService *BlogService) writePostAndRenderWithRollback(sourceFilePath string, previousFileContent []byte, targetExisted bool, frontMatter model.PostFrontMatter, bodyMarkdownContent string) error {

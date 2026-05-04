@@ -17,6 +17,7 @@ type postFrontMatterYAML struct {
 	URL         string   `yaml:"url"`
 	Comments    *bool    `yaml:"comments"`
 	Aliases     []string `yaml:"aliases"`
+	Tags        []string `yaml:"tags"`
 }
 
 // 解析 Markdown 文件并剥离 Front Matter
@@ -40,7 +41,8 @@ func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.Pos
 		Draft:       decodedFrontMatter.Draft,
 		URL:         strings.TrimSpace(decodedFrontMatter.URL),
 		Comments:    true,
-		Aliases:     normalizeAliases(decodedFrontMatter.Aliases),
+		Aliases:     normalizeStringList(decodedFrontMatter.Aliases),
+		Tags:        normalizeStringList(decodedFrontMatter.Tags),
 	}
 	if decodedFrontMatter.Comments != nil {
 		parsedFrontMatter.Comments = *decodedFrontMatter.Comments
@@ -59,6 +61,7 @@ func BuildPostDocument(frontMatter model.PostFrontMatter, bodyMarkdownContent st
 		URL:         frontMatter.URL,
 		Comments:    boolPointer(frontMatter.Comments),
 		Aliases:     frontMatter.Aliases,
+		Tags:        frontMatter.Tags,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("生成 Front Matter 失败：%w", err)
@@ -88,13 +91,18 @@ func boolPointer(booleanValue bool) *bool {
 	return &booleanValue
 }
 
-func normalizeAliases(rawAliases []string) []string {
-	normalizedAliases := make([]string, 0, len(rawAliases))
-	for _, rawAlias := range rawAliases {
-		trimmedAlias := strings.TrimSpace(rawAlias)
-		if trimmedAlias != "" {
-			normalizedAliases = append(normalizedAliases, trimmedAlias)
+func normalizeStringList(rawValues []string) []string {
+	normalizedValues := make([]string, 0, len(rawValues))
+	seenValues := make(map[string]struct{})
+	for _, rawValue := range rawValues {
+		trimmedValue := strings.TrimSpace(rawValue)
+		if trimmedValue == "" {
+			continue
+		}
+		if _, exists := seenValues[trimmedValue]; !exists {
+			normalizedValues = append(normalizedValues, trimmedValue)
+			seenValues[trimmedValue] = struct{}{}
 		}
 	}
-	return normalizedAliases
+	return normalizedValues
 }

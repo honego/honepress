@@ -47,6 +47,7 @@ type SiteConfig struct {
 	Description string `yaml:"description"`
 	BaseURL     string `yaml:"baseURL"`
 	Language    string `yaml:"language"`
+	IconURL     string `yaml:"iconURL"`
 	GitHubURL   string `yaml:"githubURL"`
 	TelegramURL string `yaml:"telegramURL"`
 }
@@ -87,6 +88,7 @@ type Options struct {
 	Title         string
 	Description   string
 	Language      string
+	SiteIconURL   string
 	GitHubURL     string
 	TelegramURL   string
 	ThemeDefault  string
@@ -94,6 +96,7 @@ type Options struct {
 	ContentDir    string
 	PostsDir      string
 	PublicDir     string
+	AssetsDir     string
 	AdminUsername string
 	AdminPassword string
 	Comment       CommentOptions
@@ -194,6 +197,7 @@ func DefaultConfig() Config {
 			Description: "",
 			BaseURL:     "",
 			Language:    "zh-CN",
+			IconURL:     "",
 			GitHubURL:   "",
 			TelegramURL: "",
 		},
@@ -252,6 +256,7 @@ func OptionsFromConfig(configPath string, config Config) Options {
 		Title:         config.Site.Title,
 		Description:   config.Site.Description,
 		Language:      config.Site.Language,
+		SiteIconURL:   config.Site.IconURL,
 		GitHubURL:     config.Site.GitHubURL,
 		TelegramURL:   config.Site.TelegramURL,
 		ThemeDefault:  config.Theme.Default,
@@ -259,6 +264,7 @@ func OptionsFromConfig(configPath string, config Config) Options {
 		ContentDir:    contentDirectory,
 		PostsDir:      filepath.Join(contentDirectory, "posts"),
 		PublicDir:     filepath.Join(dataDirectory, "public"),
+		AssetsDir:     filepath.Join(dataDirectory, "assets"),
 		AdminUsername: config.Admin.Username,
 		AdminPassword: config.Admin.Password,
 		Comment: CommentOptions{
@@ -297,6 +303,7 @@ func NormalizeConfig(config *Config) {
 		config.Site.Language = defaultConfig.Site.Language
 	}
 	config.Site.BaseURL = strings.TrimRight(strings.TrimSpace(config.Site.BaseURL), "/")
+	config.Site.IconURL = strings.TrimSpace(config.Site.IconURL)
 	config.Site.GitHubURL = strings.TrimSpace(config.Site.GitHubURL)
 	config.Site.TelegramURL = strings.TrimSpace(config.Site.TelegramURL)
 	if strings.TrimSpace(config.Comment.Provider) == "" {
@@ -312,9 +319,22 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 	config.Site.Description = strings.TrimSpace(siteSettings.Description)
 	config.Site.BaseURL = strings.TrimRight(strings.TrimSpace(siteSettings.BaseURL), "/")
 	config.Site.Language = strings.TrimSpace(siteSettings.Language)
+	config.Site.IconURL = strings.TrimSpace(siteSettings.IconURL)
 	config.Site.GitHubURL = strings.TrimSpace(siteSettings.GitHubURL)
 	config.Site.TelegramURL = strings.TrimSpace(siteSettings.TelegramURL)
 	config.Comment.Enabled = siteSettings.CommentEnabled
+	config.Comment.Provider = strings.TrimSpace(siteSettings.CommentProvider)
+	config.Comment.Giscus.Repo = strings.TrimSpace(siteSettings.GiscusRepo)
+	config.Comment.Giscus.RepoID = strings.TrimSpace(siteSettings.GiscusRepoID)
+	config.Comment.Giscus.Category = strings.TrimSpace(siteSettings.GiscusCategory)
+	config.Comment.Giscus.CategoryID = strings.TrimSpace(siteSettings.GiscusCategoryID)
+	config.Comment.Giscus.Mapping = strings.TrimSpace(siteSettings.GiscusMapping)
+	config.Comment.Giscus.Strict = strings.TrimSpace(siteSettings.GiscusStrict)
+	config.Comment.Giscus.ReactionsEnabled = strings.TrimSpace(siteSettings.GiscusReactionsEnabled)
+	config.Comment.Giscus.EmitMetadata = strings.TrimSpace(siteSettings.GiscusEmitMetadata)
+	config.Comment.Giscus.InputPosition = strings.TrimSpace(siteSettings.GiscusInputPosition)
+	config.Comment.Giscus.Theme = strings.TrimSpace(siteSettings.GiscusTheme)
+	config.Comment.Giscus.Lang = strings.TrimSpace(siteSettings.GiscusLang)
 	config.Theme.Default = normalizeThemeDefault(siteSettings.ThemeDefault)
 	NormalizeConfig(&config)
 	return config
@@ -323,14 +343,27 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 // 生成后台站点设置
 func SiteSettingsFromOptions(options Options) model.SiteSettings {
 	return model.SiteSettings{
-		Title:          options.Title,
-		Description:    options.Description,
-		BaseURL:        options.BaseURL,
-		Language:       options.Language,
-		GitHubURL:      options.GitHubURL,
-		TelegramURL:    options.TelegramURL,
-		CommentEnabled: options.Comment.Enabled,
-		ThemeDefault:   options.ThemeDefault,
+		Title:                  options.Title,
+		Description:            options.Description,
+		BaseURL:                options.BaseURL,
+		Language:               options.Language,
+		IconURL:                options.SiteIconURL,
+		GitHubURL:              options.GitHubURL,
+		TelegramURL:            options.TelegramURL,
+		CommentEnabled:         options.Comment.Enabled,
+		CommentProvider:        options.Comment.Provider,
+		GiscusRepo:             options.Comment.GiscusRepo,
+		GiscusRepoID:           options.Comment.GiscusRepoID,
+		GiscusCategory:         options.Comment.GiscusCategory,
+		GiscusCategoryID:       options.Comment.GiscusCategoryID,
+		GiscusMapping:          options.Comment.GiscusMapping,
+		GiscusStrict:           options.Comment.GiscusStrict,
+		GiscusReactionsEnabled: options.Comment.ReactionsEnabled,
+		GiscusEmitMetadata:     options.Comment.EmitMetadata,
+		GiscusInputPosition:    options.Comment.InputPosition,
+		GiscusTheme:            options.Comment.Theme,
+		GiscusLang:             options.Comment.Language,
+		ThemeDefault:           options.ThemeDefault,
 	}
 }
 
@@ -360,26 +393,44 @@ func (options Options) AbsoluteURL(publicPath string) string {
 }
 
 func normalizeGiscusConfig(giscusConfig *GiscusConfig, defaultGiscusConfig GiscusConfig) {
+	giscusConfig.Repo = strings.TrimSpace(giscusConfig.Repo)
+	giscusConfig.RepoID = strings.TrimSpace(giscusConfig.RepoID)
+	giscusConfig.Category = strings.TrimSpace(giscusConfig.Category)
+	giscusConfig.CategoryID = strings.TrimSpace(giscusConfig.CategoryID)
 	if strings.TrimSpace(giscusConfig.Mapping) == "" {
 		giscusConfig.Mapping = defaultGiscusConfig.Mapping
+	} else {
+		giscusConfig.Mapping = strings.TrimSpace(giscusConfig.Mapping)
 	}
 	if strings.TrimSpace(giscusConfig.Strict) == "" {
 		giscusConfig.Strict = defaultGiscusConfig.Strict
+	} else {
+		giscusConfig.Strict = strings.TrimSpace(giscusConfig.Strict)
 	}
 	if strings.TrimSpace(giscusConfig.ReactionsEnabled) == "" {
 		giscusConfig.ReactionsEnabled = defaultGiscusConfig.ReactionsEnabled
+	} else {
+		giscusConfig.ReactionsEnabled = strings.TrimSpace(giscusConfig.ReactionsEnabled)
 	}
 	if strings.TrimSpace(giscusConfig.EmitMetadata) == "" {
 		giscusConfig.EmitMetadata = defaultGiscusConfig.EmitMetadata
+	} else {
+		giscusConfig.EmitMetadata = strings.TrimSpace(giscusConfig.EmitMetadata)
 	}
 	if strings.TrimSpace(giscusConfig.InputPosition) == "" {
 		giscusConfig.InputPosition = defaultGiscusConfig.InputPosition
+	} else {
+		giscusConfig.InputPosition = strings.TrimSpace(giscusConfig.InputPosition)
 	}
 	if strings.TrimSpace(giscusConfig.Theme) == "" {
 		giscusConfig.Theme = defaultGiscusConfig.Theme
+	} else {
+		giscusConfig.Theme = strings.TrimSpace(giscusConfig.Theme)
 	}
 	if strings.TrimSpace(giscusConfig.Lang) == "" {
 		giscusConfig.Lang = defaultGiscusConfig.Lang
+	} else {
+		giscusConfig.Lang = strings.TrimSpace(giscusConfig.Lang)
 	}
 }
 

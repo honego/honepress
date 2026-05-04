@@ -27,10 +27,30 @@ type BlogService struct {
 
 // 创建博客服务
 func NewBlogService(options option.Options) *BlogService {
+	options = normalizeRuntimeOptions(options)
 	return &BlogService{
 		options:          options,
 		markdownRenderer: renderer.NewMarkdownRenderer(),
 	}
+}
+
+func normalizeRuntimeOptions(options option.Options) option.Options {
+	if strings.TrimSpace(options.DataDir) == "" {
+		options.DataDir = "data"
+	}
+	if strings.TrimSpace(options.ContentDir) == "" {
+		options.ContentDir = filepath.Join(options.DataDir, "content")
+	}
+	if strings.TrimSpace(options.PostsDir) == "" {
+		options.PostsDir = filepath.Join(options.ContentDir, "posts")
+	}
+	if strings.TrimSpace(options.PublicDir) == "" {
+		options.PublicDir = filepath.Join(options.DataDir, "public")
+	}
+	if strings.TrimSpace(options.AssetsDir) == "" {
+		options.AssetsDir = filepath.Join(options.DataDir, "assets")
+	}
+	return options
 }
 
 // 初始化并渲染站点
@@ -65,6 +85,7 @@ func (blogService *BlogService) ensureDataDirectories() error {
 	requiredDirectoryPaths := []string{
 		blogService.options.PostsDir,
 		blogService.options.PublicDir,
+		blogService.options.AssetsDir,
 	}
 	for _, requiredDirectoryPath := range requiredDirectoryPaths {
 		if err := filesystem.EnsureDirectory(requiredDirectoryPath); err != nil {
@@ -134,6 +155,9 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 	}
 
 	if err := templateRenderer.CopyStyle(); err != nil {
+		return err
+	}
+	if err := blogService.copyAssets(); err != nil {
 		return err
 	}
 	blogService.copyThemeScript()
@@ -212,6 +236,7 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			Draft:          parsedFrontMatter.Draft,
 			URL:            normalizedPermalink,
 			Aliases:        normalizedAliases,
+			Tags:           parsedFrontMatter.Tags,
 			Comments:       parsedFrontMatter.Comments,
 			BodyMarkdown:   bodyMarkdownContent,
 			BodyHTML:       renderedPostHTML,
@@ -231,6 +256,7 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		SiteTitle:       blogService.options.Title,
 		SiteDescription: blogService.options.Description,
 		BaseURL:         blogService.options.BaseURL,
+		SiteIconURL:     blogService.options.SiteIconURL,
 		GitHubURL:       blogService.options.GitHubURL,
 		TelegramURL:     blogService.options.TelegramURL,
 		ThemeDefault:    blogService.options.ThemeDefault,
@@ -256,6 +282,7 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 			SiteTitle:       blogService.options.Title,
 			SiteDescription: blogService.options.Description,
 			BaseURL:         blogService.options.BaseURL,
+			SiteIconURL:     blogService.options.SiteIconURL,
 			GitHubURL:       blogService.options.GitHubURL,
 			TelegramURL:     blogService.options.TelegramURL,
 			ThemeDefault:    blogService.options.ThemeDefault,
@@ -324,6 +351,29 @@ func (blogService *BlogService) copyThemeScript() {
 	}
 }
 
+func (blogService *BlogService) copyAssets() error {
+	if _, err := os.Stat(blogService.options.AssetsDir); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("读取资源目录失败：%w", err)
+	}
+
+	return filepath.WalkDir(blogService.options.AssetsDir, func(sourcePath string, directoryEntry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if directoryEntry.IsDir() {
+			return nil
+		}
+		relativePath, err := filepath.Rel(blogService.options.AssetsDir, sourcePath)
+		if err != nil {
+			return fmt.Errorf("解析资源路径失败：%w", err)
+		}
+		targetPath := filepath.Join(blogService.options.PublicDir, "assets", relativePath)
+		return filesystem.CopyFile(sourcePath, targetPath)
+	})
+}
+
 func (blogService *BlogService) commentHTMLForPost(post model.Post) htmlTemplate.HTML {
 	if !blogService.options.Comment.Enabled || !post.Comments {
 		return ""
@@ -382,6 +432,7 @@ func postsToSummaries(posts []model.Post) []model.PostSummary {
 			URL:         currentPost.URL,
 			PublicURL:   publicURL,
 			Comments:    currentPost.Comments,
+			Tags:        currentPost.Tags,
 		})
 	}
 	return postSummaries
@@ -423,6 +474,9 @@ url: "1.html"
 comments: true
 aliases:
   - "docker-old.html"
+tags:
+  - Docker
+  - 部署
 ---
 
 这里是第一篇示例文章的正文。
@@ -440,6 +494,8 @@ draft: false
 url: "2.html"
 comments: true
 aliases: []
+tags:
+  - 生活
 ---
 
 这篇文章的标题和日期可以修改，但 ` + "`url`" + ` 字段决定的固定链接不会跟着标题变化。

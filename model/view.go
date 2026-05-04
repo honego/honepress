@@ -22,6 +22,7 @@ type SiteViewData struct {
 	SiteTitle       string
 	SiteDescription string
 	BaseURL         string
+	SiteIconURL     string
 	GitHubURL       string
 	TelegramURL     string
 	ThemeDefault    string
@@ -39,6 +40,7 @@ type PostViewData struct {
 	SiteTitle       string
 	SiteDescription string
 	BaseURL         string
+	SiteIconURL     string
 	GitHubURL       string
 	TelegramURL     string
 	ThemeDefault    string

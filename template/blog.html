@@ -6,6 +6,9 @@
     <title>{{.Labels.AllPosts}} - {{.SiteTitle}}</title>
     <meta name="description" content="{{.SiteDescription}}" />
     <link rel="canonical" href="{{.BaseURL}}{{.CanonicalPath}}" />
+    {{if .SiteIconURL}}
+    <link rel="icon" href="{{.SiteIconURL}}" />
+    {{end}}
     <link rel="alternate" type="application/rss+xml" title="{{.SiteTitle}}" href="{{.RSSPath}}" />
     <link rel="stylesheet" href="/style.css" />
     <script src="https://fastly.jsdelivr.net/npm/lucide@1.14.0/dist/umd/lucide.min.js" defer></script>
@@ -14,7 +17,10 @@
   <body>
     <header class="site-header">
       <nav class="nav">
-        <a class="brand" href="{{.HomePath}}">{{.SiteTitle}}</a>
+        <a class="brand" href="{{.HomePath}}">
+          {{if .SiteIconURL}}<img class="brand-icon" src="{{.SiteIconURL}}" alt="" />{{end}}
+          <span>{{.SiteTitle}}</span>
+        </a>
         <div class="nav-links">
           <a class="icon-link" href="{{.HomePath}}" aria-label="{{.Labels.Home}}" title="{{.Labels.Home}}">
             <i class="nav-icon" data-lucide="house" aria-hidden="true"></i>
@@ -49,6 +55,9 @@
           <time datetime="{{.Date}}">{{.Date}}</time>
           <h2><a href="{{.PublicURL}}">{{.Title}}</a></h2>
           <p>{{.Description}}</p>
+          {{if .Tags}}
+          <div class="post-tags">{{range .Tags}}<span>{{.}}</span>{{end}}</div>
+          {{end}}
         </article>
         {{else}}
         <p class="empty">{{.Labels.NoPosts}}</p>

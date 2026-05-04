@@ -10,6 +10,7 @@ import {
   previewMarkdown,
   updatePost,
   updateSettings,
+  uploadSiteIcon,
 } from "./api/post";
 import type { PostDetail, PostSummary, SavePostRequest, SiteSettings } from "./types/post";
 
@@ -21,8 +22,10 @@ const adminThemeModes: AdminThemeMode[] = ["auto", "light", "dark"];
 const activeSection = ref<AdminSection>("posts");
 const posts = ref<PostSummary[]>([]);
 const editorMode = ref<EditorMode>("create");
+const isEditorOpen = ref(false);
 const editorForm = ref<PostDetail>(createEmptyPost());
 const aliasesText = ref("");
+const tagsText = ref("");
 const previewHTML = ref("");
 const statusMessage = ref("");
 const errorMessage = ref("");
@@ -31,11 +34,12 @@ const isSaving = ref(false);
 const isPreviewLoading = ref(false);
 const adminTheme = ref<AdminThemeMode>(readStoredAdminTheme());
 const siteSettings = ref<SiteSettings>(createEmptySiteSettings());
+const siteIconFileInput = ref<HTMLInputElement | null>(null);
 
 let previewTimerID: number | undefined;
 
-const selectedPostID = computed(() => editorForm.value.id);
-const canEditExistingPost = computed(() => editorMode.value === "edit" && selectedPostID.value !== "");
+const selectedPostID = computed(() => (isEditorOpen.value && editorMode.value === "edit" ? editorForm.value.id : ""));
+const canEditExistingPost = computed(() => isEditorOpen.value && editorMode.value === "edit" && selectedPostID.value !== "");
 const adminThemeLabel = computed(() => {
   if (adminTheme.value === "light") {
     return "明亮";
@@ -52,7 +56,6 @@ onMounted(() => {
   window.addEventListener("keydown", handleGlobalKeydown);
   void loadPosts();
   void loadSettings();
-  schedulePreview();
 });
 
 onBeforeUnmount(() => {
@@ -65,7 +68,9 @@ onBeforeUnmount(() => {
 watch(
   () => editorForm.value.body,
   () => {
-    schedulePreview();
+    if (isEditorOpen.value) {
+      schedulePreview();
+    }
   },
 );
 
@@ -96,7 +101,7 @@ function switchSection(nextSection: AdminSection): void {
   statusMessage.value = "";
   if (nextSection === "settings") {
     void loadSettings();
-  } else {
+  } else if (isEditorOpen.value) {
     schedulePreview();
   }
 }
@@ -108,8 +113,10 @@ async function selectPost(postID: string): Promise<void> {
   try {
     const loadedPost = await fetchPost(postID);
     editorMode.value = "edit";
+    isEditorOpen.value = true;
     editorForm.value = loadedPost;
     aliasesText.value = loadedPost.aliases.join("\n");
+    tagsText.value = loadedPost.tags.join("\n");
     statusMessage.value = `已打开：${loadedPost.title}`;
     schedulePreview();
   } catch (error) {
@@ -122,14 +129,19 @@ async function selectPost(postID: string): Promise<void> {
 function createNewPost(): void {
   activeSection.value = "posts";
   editorMode.value = "create";
+  isEditorOpen.value = true;
   editorForm.value = createEmptyPost();
   aliasesText.value = "";
+  tagsText.value = "";
   statusMessage.value = "正在新建文章。";
   errorMessage.value = "";
   schedulePreview();
 }
 
 async function saveCurrentPost(): Promise<void> {
+  if (!isEditorOpen.value) {
+    return;
+  }
   isSaving.value = true;
   errorMessage.value = "";
   try {
@@ -139,8 +151,10 @@ async function saveCurrentPost(): Promise<void> {
         ? await updatePost(editorForm.value.id, savePostRequest)
         : await createPost(savePostRequest);
     editorMode.value = "edit";
+    isEditorOpen.value = true;
     editorForm.value = postDetailResponse.post;
     aliasesText.value = postDetailResponse.post.aliases.join("\n");
+    tagsText.value = postDetailResponse.post.tags.join("\n");
     statusMessage.value = postDetailResponse.message ?? "文章已保存。";
     await loadPosts();
   } catch (error) {
@@ -164,7 +178,7 @@ async function deleteCurrentPost(): Promise<void> {
   try {
     const messageResponse = await deletePost(editorForm.value.id);
     statusMessage.value = messageResponse.message;
-    createNewPost();
+    closeEditor();
     await loadPosts();
   } catch (error) {
     errorMessage.value = readError(error);
@@ -188,6 +202,31 @@ async function saveSettings(): Promise<void> {
   }
 }
 
+function chooseSiteIcon(): void {
+  siteIconFileInput.value?.click();
+}
+
+async function handleSiteIconUpload(event: Event): Promise<void> {
+  const inputElement = event.currentTarget as HTMLInputElement;
+  const iconFile = inputElement.files?.[0];
+  if (iconFile === undefined) {
+    return;
+  }
+
+  isSaving.value = true;
+  errorMessage.value = "";
+  try {
+    const settingsResponse = await uploadSiteIcon(iconFile);
+    siteSettings.value = settingsResponse.settings;
+    statusMessage.value = settingsResponse.message ?? "网站 icon 已上传。";
+  } catch (error) {
+    errorMessage.value = readError(error);
+  } finally {
+    inputElement.value = "";
+    isSaving.value = false;
+  }
+}
+
 function schedulePreview(): void {
   if (previewTimerID !== undefined) {
     window.clearTimeout(previewTimerID);
@@ -198,6 +237,9 @@ function schedulePreview(): void {
 }
 
 async function refreshPreview(): Promise<void> {
+  if (!isEditorOpen.value) {
+    return;
+  }
   isPreviewLoading.value = true;
   try {
     previewHTML.value = await previewMarkdown(editorForm.value.body);
@@ -232,6 +274,9 @@ function handleGlobalKeydown(event: KeyboardEvent): void {
   event.preventDefault();
   if (activeSection.value === "settings") {
     void saveSettings();
+    return;
+  }
+  if (!isEditorOpen.value) {
     return;
   }
   void saveCurrentPost();
@@ -277,9 +322,23 @@ function buildSavePostRequest(): SavePostRequest {
       .split("\n")
       .map((aliasText) => aliasText.trim())
       .filter((aliasText) => aliasText !== ""),
+    tags: parseTextList(tagsText.value),
     comments: editorForm.value.comments,
     body: editorForm.value.body,
   };
+}
+
+function closeEditor(): void {
+  isEditorOpen.value = false;
+  editorMode.value = "create";
+  editorForm.value = createEmptyPost();
+  aliasesText.value = "";
+  tagsText.value = "";
+  previewHTML.value = "";
+  if (previewTimerID !== undefined) {
+    window.clearTimeout(previewTimerID);
+    previewTimerID = undefined;
+  }
 }
 
 function createEmptyPost(): PostDetail {
@@ -291,6 +350,7 @@ function createEmptyPost(): PostDetail {
     draft: false,
     url: "new-post.html",
     aliases: [],
+    tags: [],
     comments: true,
     body: "这里写 Markdown 正文。",
   };
@@ -302,11 +362,31 @@ function createEmptySiteSettings(): SiteSettings {
     description: "",
     baseUrl: "",
     language: "zh-CN",
+    iconUrl: "",
     githubUrl: "",
     telegramUrl: "",
     commentEnabled: false,
+    commentProvider: "giscus",
+    giscusRepo: "",
+    giscusRepoId: "",
+    giscusCategory: "",
+    giscusCategoryId: "",
+    giscusMapping: "pathname",
+    giscusStrict: "0",
+    giscusReactionsEnabled: "1",
+    giscusEmitMetadata: "0",
+    giscusInputPosition: "bottom",
+    giscusTheme: "preferred_color_scheme",
+    giscusLang: "zh-CN",
     themeDefault: "auto",
   };
+}
+
+function parseTextList(textValue: string): string[] {
+  return textValue
+    .split(/[\n,，]/)
+    .map((itemText) => itemText.trim())
+    .filter((itemText, itemIndex, itemTexts) => itemText !== "" && itemTexts.indexOf(itemText) === itemIndex);
 }
 
 function formatCurrentDate(): string {
@@ -394,7 +474,7 @@ function escapeHTML(rawText: string): string {
             </div>
           </aside>
 
-          <section class="editor-panel">
+          <section v-if="isEditorOpen" class="editor-panel">
             <header class="editor-header">
               <div>
                 <p class="eyebrow">{{ editorMode === "create" ? "新建文章" : editorForm.id }}</p>
@@ -431,6 +511,10 @@ function escapeHTML(rawText: string): string {
                 <span>别名</span>
                 <textarea v-model="aliasesText" rows="3"></textarea>
               </label>
+              <label class="wide">
+                <span>标签</span>
+                <textarea v-model="tagsText" rows="2"></textarea>
+              </label>
               <div class="switches">
                 <label><input v-model="editorForm.draft" type="checkbox" /> 草稿</label>
                 <label><input v-model="editorForm.comments" type="checkbox" /> 评论</label>
@@ -451,19 +535,22 @@ function escapeHTML(rawText: string): string {
               </div>
             </section>
           </section>
+          <section v-else class="editor-blank" aria-hidden="true"></section>
         </section>
 
         <section v-else class="settings-view">
           <section class="settings-card">
             <header class="card-header">
               <div>
-                <p class="eyebrow">config.yaml</p>
                 <h2>站点设置</h2>
               </div>
               <button type="button" :disabled="isSaving" @click="saveSettings">保存设置</button>
             </header>
 
             <div class="form-grid settings-grid">
+              <section class="settings-section wide">
+                <h3>基础信息</h3>
+              </section>
               <label>
                 <span>站点标题</span>
                 <input v-model="siteSettings.title" type="text" />
@@ -477,6 +564,10 @@ function escapeHTML(rawText: string): string {
                 <input v-model="siteSettings.language" type="text" />
               </label>
               <label>
+                <span>公开地址</span>
+                <input v-model="siteSettings.baseUrl" type="url" />
+              </label>
+              <label>
                 <span>默认主题</span>
                 <select v-model="siteSettings.themeDefault">
                   <option value="auto">自动</option>
@@ -484,9 +575,95 @@ function escapeHTML(rawText: string): string {
                   <option value="dark">暗色</option>
                 </select>
               </label>
+              <label>
+                <span>GitHub 链接</span>
+                <input v-model="siteSettings.githubUrl" type="url" />
+              </label>
+              <label>
+                <span>Telegram 链接</span>
+                <input v-model="siteSettings.telegramUrl" type="url" />
+              </label>
+              <label class="wide">
+                <span>网站 icon</span>
+                <div class="site-icon-row">
+                  <span class="site-icon-preview">
+                    <img v-if="siteSettings.iconUrl" :src="siteSettings.iconUrl" alt="" />
+                    <span v-else>b</span>
+                  </span>
+                  <input v-model="siteSettings.iconUrl" type="text" />
+                  <button type="button" :disabled="isSaving" @click="chooseSiteIcon">上传</button>
+                  <input ref="siteIconFileInput" class="visually-hidden" type="file"
+                    accept=".ico,.png,.jpg,.jpeg,.webp,.svg,image/*" @change="handleSiteIconUpload" />
+                </div>
+              </label>
+              <section class="settings-section wide">
+                <h3>评论设置</h3>
+              </section>
               <div class="switches wide">
                 <label><input v-model="siteSettings.commentEnabled" type="checkbox" /> 开启评论</label>
               </div>
+              <label>
+                <span>评论服务</span>
+                <select v-model="siteSettings.commentProvider">
+                  <option value="giscus">giscus</option>
+                </select>
+              </label>
+              <label>
+                <span>仓库</span>
+                <input v-model="siteSettings.giscusRepo" type="text" />
+              </label>
+              <label>
+                <span>仓库 ID</span>
+                <input v-model="siteSettings.giscusRepoId" type="text" />
+              </label>
+              <label>
+                <span>分类</span>
+                <input v-model="siteSettings.giscusCategory" type="text" />
+              </label>
+              <label>
+                <span>分类 ID</span>
+                <input v-model="siteSettings.giscusCategoryId" type="text" />
+              </label>
+              <label>
+                <span>映射方式</span>
+                <input v-model="siteSettings.giscusMapping" type="text" />
+              </label>
+              <label>
+                <span>严格匹配</span>
+                <select v-model="siteSettings.giscusStrict">
+                  <option value="0">关闭</option>
+                  <option value="1">开启</option>
+                </select>
+              </label>
+              <label>
+                <span>评论反应</span>
+                <select v-model="siteSettings.giscusReactionsEnabled">
+                  <option value="1">开启</option>
+                  <option value="0">关闭</option>
+                </select>
+              </label>
+              <label>
+                <span>Metadata</span>
+                <select v-model="siteSettings.giscusEmitMetadata">
+                  <option value="0">关闭</option>
+                  <option value="1">开启</option>
+                </select>
+              </label>
+              <label>
+                <span>输入框位置</span>
+                <select v-model="siteSettings.giscusInputPosition">
+                  <option value="bottom">底部</option>
+                  <option value="top">顶部</option>
+                </select>
+              </label>
+              <label>
+                <span>giscus 主题</span>
+                <input v-model="siteSettings.giscusTheme" type="text" />
+              </label>
+              <label>
+                <span>giscus 语言</span>
+                <input v-model="siteSettings.giscusLang" type="text" />
+              </label>
             </div>
           </section>
         </section>

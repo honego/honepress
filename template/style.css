@@ -72,9 +72,24 @@ a:hover {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text);
   font-weight: 700;
   font-size: 20px;
+}
+
+.brand:hover {
+  text-decoration: none;
+}
+
+.brand-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .nav-links {
@@ -98,12 +113,22 @@ a:hover {
   background: transparent;
   cursor: pointer;
   padding: 0;
+  transform: translateY(0);
+  transition:
+    color 160ms ease,
+    transform 180ms ease;
 }
 
 .icon-link:hover,
 .icon-button:hover {
   color: var(--accent-strong);
   text-decoration: none;
+  transform: translateY(-2px);
+}
+
+.icon-link:hover .nav-icon,
+.icon-button:hover .nav-icon {
+  transform: rotate(-8deg) scale(1.08);
 }
 
 .nav-icon {
@@ -115,6 +140,7 @@ a:hover {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+  transition: transform 180ms ease;
 }
 
 .page {
@@ -185,6 +211,22 @@ h1 {
 .post-item p {
   margin: 0 0 10px;
   color: var(--muted);
+}
+
+.post-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.post-tags span {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .read-link,

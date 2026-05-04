@@ -14,6 +14,7 @@ type PostFrontMatter struct {
 	URL         string   `yaml:"url"`
 	Comments    bool     `yaml:"comments"`
 	Aliases     []string `yaml:"aliases"`
+	Tags        []string `yaml:"tags"`
 }
 
 // 完整文章模型
@@ -27,6 +28,7 @@ type Post struct {
 	Draft          bool
 	URL            string
 	Aliases        []string
+	Tags           []string
 	Comments       bool
 	BodyMarkdown   string
 	BodyHTML       template.HTML
@@ -35,14 +37,15 @@ type Post struct {
 
 // 文章摘要
 type PostSummary struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Date        string `json:"date"`
-	Description string `json:"description"`
-	Draft       bool   `json:"draft"`
-	URL         string `json:"url"`
-	PublicURL   string `json:"publicUrl"`
-	Comments    bool   `json:"comments"`
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Date        string   `json:"date"`
+	Description string   `json:"description"`
+	Draft       bool     `json:"draft"`
+	URL         string   `json:"url"`
+	PublicURL   string   `json:"publicUrl"`
+	Comments    bool     `json:"comments"`
+	Tags        []string `json:"tags"`
 }
 
 // 文章详情
@@ -54,6 +57,7 @@ type PostDetail struct {
 	Draft       bool     `json:"draft"`
 	URL         string   `json:"url"`
 	Aliases     []string `json:"aliases"`
+	Tags        []string `json:"tags"`
 	Comments    bool     `json:"comments"`
 	Body        string   `json:"body"`
 }
@@ -67,6 +71,7 @@ type SavePostRequest struct {
 	Draft       bool     `json:"draft"`
 	URL         string   `json:"url"`
 	Aliases     []string `json:"aliases"`
+	Tags        []string `json:"tags"`
 	Comments    bool     `json:"comments"`
 	Body        string   `json:"body"`
 }
