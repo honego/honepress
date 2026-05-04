@@ -1,6 +1,6 @@
-# honepress
+# HonePress
 
-honepress 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责 Markdown 渲染、静态 HTML、RSS、sitemap、API 和静态文件服务；TypeScript 负责后台 Vue 页面和前台主题切换脚本。
+HonePress 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责 Markdown 渲染、静态 HTML、RSS、sitemap、API 和静态文件服务；TypeScript 负责后台 Vue 页面和前台主题切换脚本。
 
 运行期采用单二进制部署：前台模板、后台构建产物和主题脚本都会嵌入到 `app` 中，外部只需要挂载 `config.yaml` 和 `data`。
 

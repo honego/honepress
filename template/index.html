@@ -26,9 +26,6 @@
             <i class="nav-icon" data-lucide="house" aria-hidden="true"></i>
           </a>
           <a href="{{.BlogPath}}">{{.Labels.Blog}}</a>
-          <a class="icon-link" href="{{.RSSPath}}" aria-label="RSS" title="RSS">
-            <i class="nav-icon" data-lucide="rss" aria-hidden="true"></i>
-          </a>
           <button
             type="button"
             class="theme-toggle icon-button"
@@ -72,7 +69,12 @@
     </main>
 
     <footer class="site-footer">
-      <p>{{.Labels.Footer}}</p>
+      <div class="footer-inner">
+        <p>{{.Labels.Footer}}</p>
+        <a class="footer-rss icon-link" href="{{.RSSPath}}" aria-label="{{.Labels.RSS}}" title="{{.Labels.RSS}}">
+          <i class="nav-icon" data-lucide="rss" aria-hidden="true"></i>
+        </a>
+      </div>
     </footer>
   </body>
 </html>

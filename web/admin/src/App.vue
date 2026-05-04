@@ -408,7 +408,7 @@ function escapeHTML(rawText: string): string {
     <header class="topbar">
       <a class="topbar-brand" href="/" target="_blank">
         <span class="brand-mark">b</span>
-        <span>honepress</span>
+        <span>HonePress</span>
       </a>
       <div class="topbar-actions">
         <button type="button" @click="cycleAdminTheme">主题：{{ adminThemeLabel }}</button>
@@ -434,7 +434,7 @@ function escapeHTML(rawText: string): string {
       <main class="main">
         <header class="page-header">
           <div>
-            <p class="eyebrow">honepress</p>
+            <p class="eyebrow">HonePress</p>
             <h1>{{ pageTitle }}</h1>
           </div>
           <button v-if="activeSection === 'posts'" type="button" @click="createNewPost">新建文章</button>
