@@ -2,7 +2,7 @@ package model
 
 import "html/template"
 
-// TemplateLabels 保存不同语言页面上的固定文案，避免模板里写条件分支。
+// 模板固定文案
 type TemplateLabels struct {
 	Home             string
 	Blog             string
@@ -17,7 +17,7 @@ type TemplateLabels struct {
 	ThemeButtonLabel string
 }
 
-// SiteViewData 是首页和列表页共享的模板数据。
+// 站点模板数据
 type SiteViewData struct {
 	SiteTitle       string
 	SiteDescription string
@@ -34,7 +34,7 @@ type SiteViewData struct {
 	Posts           []PostSummary
 }
 
-// PostViewData 是文章详情页模板数据。
+// 文章模板数据
 type PostViewData struct {
 	SiteTitle       string
 	SiteDescription string

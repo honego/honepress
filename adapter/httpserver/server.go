@@ -17,13 +17,13 @@ import (
 	"github.com/honeok/blog/web"
 )
 
-// Server 封装 net/http 路由，公开页面、后台和 API 都从这里进入。
+// HTTP 服务
 type Server struct {
 	options     option.Options
 	blogService *service.BlogService
 }
 
-// New 创建 HTTP 服务实例。
+// 创建 HTTP 服务实例
 func New(options option.Options, blogService *service.BlogService) *Server {
 	return &Server{
 		options:     options,
@@ -31,7 +31,7 @@ func New(options option.Options, blogService *service.BlogService) *Server {
 	}
 }
 
-// ListenAndServe 启动 HTTP 服务。
+// 启动 HTTP 服务
 func (server *Server) ListenAndServe() error {
 	log.Printf("博客服务正在监听：%s", server.options.Address)
 	return http.ListenAndServe(server.options.Address, server.routes())

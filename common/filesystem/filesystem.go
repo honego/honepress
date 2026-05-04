@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// EnsureDirectory 创建目录时统一包装中文错误，便于启动阶段直接定位缺失权限。
+// 创建目录
 func EnsureDirectory(directoryPath string) error {
 	if err := os.MkdirAll(directoryPath, 0755); err != nil {
 		return fmt.Errorf("创建目录失败：%s：%w", directoryPath, err)
@@ -15,7 +15,7 @@ func EnsureDirectory(directoryPath string) error {
 	return nil
 }
 
-// SafeJoin 只允许把用户输入拼接到指定根目录内部，避免后台 API 被路径穿越利用。
+// 安全拼接文件路径
 func SafeJoin(baseDirectoryPath string, userFileName string) (string, error) {
 	if strings.TrimSpace(userFileName) == "" {
 		return "", fmt.Errorf("文件名不能为空")
@@ -47,7 +47,7 @@ func SafeJoin(baseDirectoryPath string, userFileName string) (string, error) {
 	return absoluteTargetFilePath, nil
 }
 
-// WriteFileCreatingDirectory 在写入生成文件前确保父目录存在，避免渲染链条依赖调用方记忆目录状态。
+// 写入文件并创建父目录
 func WriteFileCreatingDirectory(filePath string, fileContent []byte, fileMode os.FileMode) error {
 	parentDirectoryPath := filepath.Dir(filePath)
 	if err := EnsureDirectory(parentDirectoryPath); err != nil {
@@ -59,7 +59,7 @@ func WriteFileCreatingDirectory(filePath string, fileContent []byte, fileMode os
 	return nil
 }
 
-// CopyFile 复制构建产物时保留简单语义，调用方只需要关心源文件是否存在。
+// 复制文件
 func CopyFile(sourceFilePath string, targetFilePath string) error {
 	sourceFileContent, err := os.ReadFile(sourceFilePath)
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 	"github.com/honeok/blog/option"
 )
 
-// GetSiteSettings 返回后台站点设置页允许编辑的配置。
+// 后台站点设置
 func (blogService *BlogService) GetSiteSettings() model.SiteSettings {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()
@@ -16,7 +16,7 @@ func (blogService *BlogService) GetSiteSettings() model.SiteSettings {
 	return option.SiteSettingsFromOptions(blogService.options)
 }
 
-// UpdateSiteSettings 写入 config.yaml，并用新配置重新渲染静态页面。
+// 更新后台站点设置
 func (blogService *BlogService) UpdateSiteSettings(siteSettings model.SiteSettings) error {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()

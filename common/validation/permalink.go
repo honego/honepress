@@ -14,9 +14,7 @@ var (
 	markdownFileNamePattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*\.md$`)
 )
 
-// NormalizePermalink 把后台输入的固定链接归一成最终输出文件名。
-//
-// 固定链接只接受单层 ASCII 文件名，是为了避免标题变化和路径穿越影响公开链接。
+// 把后台输入的固定链接归一成最终输出文件名
 func NormalizePermalink(rawPermalink string) (string, error) {
 	trimmedPermalink := strings.TrimSpace(rawPermalink)
 	if trimmedPermalink == "" {
@@ -46,7 +44,7 @@ func NormalizePermalink(rawPermalink string) (string, error) {
 	return trimmedPermalink, nil
 }
 
-// NormalizePermalinkWithFallback 在 Front Matter 没有 url 字段时使用 Markdown 文件名兜底。
+// 使用文件名兜底归一固定链接
 func NormalizePermalinkWithFallback(rawPermalink string, sourceFileName string) (string, error) {
 	if strings.TrimSpace(rawPermalink) != "" {
 		return NormalizePermalink(rawPermalink)
@@ -57,7 +55,7 @@ func NormalizePermalinkWithFallback(rawPermalink string, sourceFileName string) 
 	return NormalizePermalink(fallbackPermalink)
 }
 
-// ValidateMarkdownFileName 校验后台文章 ID，文章 ID 始终等同于 Markdown 文件名。
+// 校验 Markdown 文件名
 func ValidateMarkdownFileName(markdownFileName string) error {
 	if strings.TrimSpace(markdownFileName) == "" {
 		return fmt.Errorf("文章文件名不能为空")
@@ -71,7 +69,7 @@ func ValidateMarkdownFileName(markdownFileName string) error {
 	return nil
 }
 
-// MarkdownFileNameFromPermalink 默认用固定链接派生 Markdown 文件名，保证后台新建文章时链接稳定。
+// 根据固定链接生成 Markdown 文件名
 func MarkdownFileNameFromPermalink(normalizedPermalink string) (string, error) {
 	if _, err := NormalizePermalink(normalizedPermalink); err != nil {
 		return "", err

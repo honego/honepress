@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// PostFrontMatter 表示中文 Markdown 文件开头的 Front Matter。
+// Markdown Front Matter
 type PostFrontMatter struct {
 	Title       string   `yaml:"title"`
 	Date        string   `yaml:"date"`
@@ -16,7 +16,7 @@ type PostFrontMatter struct {
 	Aliases     []string `yaml:"aliases"`
 }
 
-// Post 是渲染阶段使用的完整文章模型。
+// 完整文章模型
 type Post struct {
 	SourceFileName string
 	SourceFilePath string
@@ -33,7 +33,7 @@ type Post struct {
 	Language       string
 }
 
-// PostSummary 是模板和后台列表共同使用的轻量文章摘要。
+// 文章摘要
 type PostSummary struct {
 	ID          string `json:"id"`
 	Title       string `json:"title"`
@@ -45,7 +45,7 @@ type PostSummary struct {
 	Comments    bool   `json:"comments"`
 }
 
-// PostDetail 是后台编辑页读取单篇文章时返回的完整数据。
+// 文章详情
 type PostDetail struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
@@ -58,7 +58,7 @@ type PostDetail struct {
 	Body        string   `json:"body"`
 }
 
-// SavePostRequest 是新建和更新文章时后台提交的数据结构。
+// 文章保存请求
 type SavePostRequest struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
@@ -71,17 +71,17 @@ type SavePostRequest struct {
 	Body        string   `json:"body"`
 }
 
-// PreviewRequest 是 Markdown 预览接口的请求体。
+// Markdown 预览请求
 type PreviewRequest struct {
 	Markdown string `json:"markdown"`
 }
 
-// APIMessageResponse 是只需要返回中文状态信息的通用响应体。
+// 通用消息响应
 type APIMessageResponse struct {
 	Message string `json:"message"`
 }
 
-// APIErrorResponse 是所有 JSON API 的错误响应体。
+// 通用错误响应
 type APIErrorResponse struct {
 	Error string `json:"error"`
 }

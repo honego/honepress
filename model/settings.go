@@ -1,6 +1,6 @@
 package model
 
-// SiteSettings 是后台配置页允许修改的站点配置字段。
+// 后台站点设置
 type SiteSettings struct {
 	Title          string `json:"title"`
 	Description    string `json:"description"`

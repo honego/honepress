@@ -15,7 +15,7 @@ import (
 	"github.com/honeok/blog/model"
 )
 
-// Config 是 config.yaml 的完整结构，站点运行配置统一从这里读取。
+// config.yaml 结构
 type Config struct {
 	Server  ServerConfig  `yaml:"server"`
 	Data    DataConfig    `yaml:"data"`
@@ -25,23 +25,23 @@ type Config struct {
 	Theme   ThemeConfig   `yaml:"theme"`
 }
 
-// ServerConfig 保存监听地址，修改后需要重启程序才会生效。
+// 监听地址
 type ServerConfig struct {
 	Listen string `yaml:"listen"`
 }
 
-// DataConfig 保存外置数据目录，文章和生成文件都位于这个目录下。
+// 数据目录
 type DataConfig struct {
 	Directory string `yaml:"directory"`
 }
 
-// AdminConfig 保存后台认证配置，后台设置页不会修改这些敏感字段。
+// 后台认证配置
 type AdminConfig struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 }
 
-// SiteConfig 保存站点展示配置，后台设置页会修改这些字段。
+// 站点展示配置
 type SiteConfig struct {
 	Title       string `yaml:"title"`
 	Description string `yaml:"description"`
@@ -51,14 +51,14 @@ type SiteConfig struct {
 	TelegramURL string `yaml:"telegramURL"`
 }
 
-// CommentConfig 保存评论开关和 giscus 配置。
+// 评论配置
 type CommentConfig struct {
 	Enabled  bool         `yaml:"enabled"`
 	Provider string       `yaml:"provider"`
 	Giscus   GiscusConfig `yaml:"giscus"`
 }
 
-// GiscusConfig 保存 giscus 输出脚本所需字段。
+// giscus 配置
 type GiscusConfig struct {
 	Repo             string `yaml:"repo"`
 	RepoID           string `yaml:"repoID"`
@@ -73,12 +73,12 @@ type GiscusConfig struct {
 	Lang             string `yaml:"lang"`
 }
 
-// ThemeConfig 保存前台默认主题。
+// 前台默认主题
 type ThemeConfig struct {
 	Default string `yaml:"default"`
 }
 
-// Options 保存服务启动后使用的派生配置。
+// 运行配置
 type Options struct {
 	ConfigPath    string
 	Config        Config
@@ -99,7 +99,7 @@ type Options struct {
 	Comment       CommentOptions
 }
 
-// CommentOptions 保存 giscus 输出所需的派生配置，后端只负责渲染脚本，不保存评论数据。
+// 评论运行配置
 type CommentOptions struct {
 	Enabled          bool
 	Provider         string
@@ -116,7 +116,7 @@ type CommentOptions struct {
 	Language         string
 }
 
-// ResolveConfigPath 根据命令行参数、BLOG_CONFIG 和默认路径确定配置文件。
+// 解析配置文件路径
 func ResolveConfigPath(arguments []string) (string, error) {
 	flagSet := flag.NewFlagSet(constant.ProjectName, flag.ContinueOnError)
 	flagSet.SetOutput(os.Stderr)
@@ -137,7 +137,7 @@ func ResolveConfigPath(arguments []string) (string, error) {
 	return "./config.yaml", nil
 }
 
-// Load 从 config.yaml 读取配置；文件不存在时会先生成默认配置再继续启动。
+// 读取配置
 func Load(configPath string) (Options, error) {
 	absoluteConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
@@ -176,7 +176,7 @@ func Load(configPath string) (Options, error) {
 	return loadedOptions, nil
 }
 
-// DefaultConfig 返回自动生成 config.yaml 时使用的安全默认值。
+// 默认配置
 func DefaultConfig() Config {
 	return Config{
 		Server: ServerConfig{
@@ -220,7 +220,7 @@ func DefaultConfig() Config {
 	}
 }
 
-// WriteConfig 把配置写回磁盘，后台保存站点设置时会复用同一套 YAML 输出。
+// 写入配置文件
 func WriteConfig(configPath string, config Config) error {
 	NormalizeConfig(&config)
 	configDirectoryPath := filepath.Dir(configPath)
@@ -237,7 +237,7 @@ func WriteConfig(configPath string, config Config) error {
 	return nil
 }
 
-// OptionsFromConfig 把 YAML 配置转换为运行时路径和评论等派生选项。
+// 转换运行配置
 func OptionsFromConfig(configPath string, config Config) Options {
 	NormalizeConfig(&config)
 
@@ -279,7 +279,7 @@ func OptionsFromConfig(configPath string, config Config) Options {
 	}
 }
 
-// NormalizeConfig 补齐缺失字段，允许用户只在 config.yaml 写自己关心的配置。
+// 补齐配置默认值
 func NormalizeConfig(config *Config) {
 	defaultConfig := DefaultConfig()
 	if strings.TrimSpace(config.Server.Listen) == "" {
@@ -306,7 +306,7 @@ func NormalizeConfig(config *Config) {
 	config.Theme.Default = normalizeThemeDefault(config.Theme.Default)
 }
 
-// ApplySiteSettings 只修改后台允许管理的字段，启动级和敏感字段保持不变。
+// 应用后台站点设置
 func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 	config.Site.Title = strings.TrimSpace(siteSettings.Title)
 	config.Site.Description = strings.TrimSpace(siteSettings.Description)
@@ -320,7 +320,7 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 	return config
 }
 
-// SiteSettingsFromOptions 返回后台站点设置区域需要编辑的字段。
+// 生成后台站点设置
 func SiteSettingsFromOptions(options Options) model.SiteSettings {
 	return model.SiteSettings{
 		Title:          options.Title,
@@ -334,7 +334,7 @@ func SiteSettingsFromOptions(options Options) model.SiteSettings {
 	}
 }
 
-// HasRequiredGiscusConfig 判断 giscus 是否具备渲染脚本所需的最小配置。
+// 判断 giscus 配置是否完整
 func (commentOptions CommentOptions) HasRequiredGiscusConfig() bool {
 	return strings.TrimSpace(commentOptions.GiscusRepo) != "" &&
 		strings.TrimSpace(commentOptions.GiscusRepoID) != "" &&
@@ -342,7 +342,7 @@ func (commentOptions CommentOptions) HasRequiredGiscusConfig() bool {
 		strings.TrimSpace(commentOptions.GiscusCategoryID) != ""
 }
 
-// AbsoluteURL 把站内路径转换成 RSS 和 sitemap 需要的链接；baseURL 为空时保留站内路径。
+// 生成公开链接
 func (options Options) AbsoluteURL(publicPath string) string {
 	if publicPath == "" {
 		publicPath = "/"

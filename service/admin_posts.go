@@ -11,7 +11,7 @@ import (
 	"github.com/honeok/blog/renderer"
 )
 
-// ListPosts 返回后台文章列表，包含草稿状态。
+// 后台文章列表
 func (blogService *BlogService) ListPosts() ([]model.PostSummary, error) {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()
@@ -23,7 +23,7 @@ func (blogService *BlogService) ListPosts() ([]model.PostSummary, error) {
 	return postsToSummaries(posts), nil
 }
 
-// GetPost 读取单篇 Markdown 源文件，返回后台编辑器需要的字段。
+// 读取单篇文章
 func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail, error) {
 	if err := validation.ValidateMarkdownFileName(sourceFileName); err != nil {
 		return model.PostDetail{}, err
@@ -61,7 +61,7 @@ func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail
 	}, nil
 }
 
-// CreatePost 新建 Markdown 源文件，随后立即重新生成静态站点。
+// 新建文章
 func (blogService *BlogService) CreatePost(savePostRequest model.SavePostRequest) (model.PostDetail, error) {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()
@@ -98,7 +98,7 @@ func (blogService *BlogService) CreatePost(savePostRequest model.SavePostRequest
 	return blogService.GetPost(sourceFileName)
 }
 
-// UpdatePost 更新已有 Markdown 源文件，失败时会恢复原文件内容。
+// 更新文章
 func (blogService *BlogService) UpdatePost(sourceFileName string, savePostRequest model.SavePostRequest) (model.PostDetail, error) {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()
@@ -126,7 +126,7 @@ func (blogService *BlogService) UpdatePost(sourceFileName string, savePostReques
 	return blogService.GetPost(sourceFileName)
 }
 
-// DeletePost 删除 Markdown 源文件，随后重新生成静态站点。
+// 删除文章
 func (blogService *BlogService) DeletePost(sourceFileName string) error {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()

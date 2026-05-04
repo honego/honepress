@@ -19,7 +19,7 @@ type postFrontMatterYAML struct {
 	Aliases     []string `yaml:"aliases"`
 }
 
-// ParsePostDocument 解析 Markdown 文件并剥离 Front Matter，避免元数据泄露到正文 HTML。
+// 解析 Markdown 文件并剥离 Front Matter
 func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.PostFrontMatter, string, error) {
 	frontMatterContent, bodyMarkdownContent, hasFrontMatter := splitFrontMatter(markdownContent)
 	if !hasFrontMatter {
@@ -49,7 +49,7 @@ func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.Pos
 	return parsedFrontMatter, bodyMarkdownContent, nil
 }
 
-// BuildPostDocument 根据后台表单重新生成 Markdown 文件，统一 Front Matter 的字段顺序。
+// 生成 Markdown 文件内容
 func BuildPostDocument(frontMatter model.PostFrontMatter, bodyMarkdownContent string) ([]byte, error) {
 	encodedFrontMatter, err := yaml.Marshal(postFrontMatterYAML{
 		Title:       frontMatter.Title,

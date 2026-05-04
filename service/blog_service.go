@@ -18,14 +18,14 @@ import (
 	"github.com/honeok/blog/web"
 )
 
-// BlogService 串联文章扫描、Markdown 渲染、静态文件生成和后台写入操作。
+// 博客业务
 type BlogService struct {
 	options          option.Options
 	markdownRenderer *renderer.MarkdownRenderer
 	renderMutex      sync.Mutex
 }
 
-// NewBlogService 创建博客服务。
+// 创建博客服务
 func NewBlogService(options option.Options) *BlogService {
 	return &BlogService{
 		options:          options,
@@ -33,7 +33,7 @@ func NewBlogService(options option.Options) *BlogService {
 	}
 }
 
-// InitializeAndRender 准备数据目录和示例文章，然后生成完整静态站点。
+// 初始化并渲染站点
 func (blogService *BlogService) InitializeAndRender() error {
 	if err := blogService.ensureDataDirectories(); err != nil {
 		return err
@@ -44,7 +44,7 @@ func (blogService *BlogService) InitializeAndRender() error {
 	return blogService.RenderAll()
 }
 
-// RenderAll 重新扫描全部文章并生成 public 目录里的静态产物。
+// 重新生成静态站点
 func (blogService *BlogService) RenderAll() error {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()
@@ -52,7 +52,7 @@ func (blogService *BlogService) RenderAll() error {
 	return blogService.renderAllWithoutLock()
 }
 
-// PreviewMarkdown 使用与正式渲染相同的 goldmark 配置，避免后台预览和前台页面不一致。
+// 渲染 Markdown 预览
 func (blogService *BlogService) PreviewMarkdown(markdownContent string) (string, error) {
 	renderedHTML, err := blogService.markdownRenderer.Render(markdownContent)
 	if err != nil {
