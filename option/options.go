@@ -215,11 +215,11 @@ func DefaultConfig() Config {
 		},
 		Admin: AdminConfig{
 			Username: "admin",
-			Password: "change-me",
+			Password: "",
 		},
 		Site: SiteConfig{
-			Title:       "HONEOK",
-			Description: "Server. Network. Blog.",
+			Title:       "",
+			Description: "",
 			BaseURL:     "",
 			Language:    "zh-CN",
 			GitHubURL:   "",
@@ -345,12 +345,8 @@ func NormalizeConfig(config *Config) {
 	if strings.TrimSpace(config.Admin.Username) == "" {
 		config.Admin.Username = defaultConfig.Admin.Username
 	}
-	if strings.TrimSpace(config.Site.Title) == "" {
-		config.Site.Title = defaultConfig.Site.Title
-	}
-	if strings.TrimSpace(config.Site.Description) == "" {
-		config.Site.Description = defaultConfig.Site.Description
-	}
+	config.Site.Title = strings.TrimSpace(config.Site.Title)
+	config.Site.Description = strings.TrimSpace(config.Site.Description)
 	if strings.TrimSpace(config.Site.Language) == "" {
 		config.Site.Language = defaultConfig.Site.Language
 	}

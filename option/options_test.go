@@ -40,7 +40,7 @@ func TestLoadGeneratesDefaultConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("加载默认配置失败：%v", err)
 	}
-	if loadedOptions.Title != "HONEOK" {
+	if loadedOptions.Title != "" {
 		t.Fatalf("站点标题不一致：%s", loadedOptions.Title)
 	}
 	if _, err := os.Stat(configPath); err != nil {

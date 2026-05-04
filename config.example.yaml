@@ -4,10 +4,10 @@ data:
   directory: "/app/data"
 admin:
   username: "admin"
-  password: "change-me"
+  password: ""
 site:
-  title: "HONEOK"
-  description: "Server. Network. Blog."
+  title: ""
+  description: ""
   baseURL: ""
   language: "zh-CN"
   githubURL: ""
