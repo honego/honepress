@@ -14,6 +14,7 @@ RUN npm run build
 
 FROM golang:1.26-alpine AS go-build
 WORKDIR /src
+ENV CGO_ENABLED=0
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . ./
