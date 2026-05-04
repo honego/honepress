@@ -6,8 +6,8 @@
     <title>{{.Post.Title}} - {{.SiteTitle}}</title>
     <meta name="description" content="{{.Post.Description}}" />
     <link rel="canonical" href="{{.CanonicalPath}}" />
-    {{if .SiteIconURL}}
-    <link rel="icon" href="{{.SiteIconURL}}" />
+    {{if .FaviconHref}}
+    <link rel="icon" href="{{.FaviconHref}}" />
     {{end}}
     <link rel="stylesheet" href="/style.css" />
     <script src="https://fastly.jsdelivr.net/npm/lucide@1.14.0/dist/umd/lucide.min.js" defer></script>
@@ -46,7 +46,7 @@
         <a class="back-link" href="{{.BlogPath}}">{{.Labels.BackToList}}</a>
         <header class="article-header">
           <time datetime="{{.Post.DateText}}">{{.Labels.PublishedAt}} {{.Post.DateText}}</time>
-          <h1>{{if .Post.Icon}}<span class="post-icon">{{.Post.Icon}}</span>{{end}}{{.Post.Title}}</h1>
+          <h1>{{.Post.Title}}</h1>
           <p>{{.Post.Description}}</p>
           {{if .Post.Tags}}
           <div class="post-tags">{{range .Post.Tags}}<span>{{.}}</span>{{end}}</div>

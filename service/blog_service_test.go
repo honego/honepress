@@ -170,6 +170,7 @@ func TestRenderAllWritesGiscusPlaceholder(t *testing.T) {
 	}
 	postContent := `---
 title: "Giscus Post"
+icon: "H"
 date: "2026-05-04 12:00:00"
 description: "comment test"
 draft: false
@@ -207,6 +208,12 @@ Comment body.`
 	}
 	if strings.Contains(postHTML, "https://giscus.app/client.js") {
 		t.Fatalf("post html should not render the giscus script directly")
+	}
+	if !strings.Contains(postHTML, `rel="icon" href="data:image/svg`) {
+		t.Fatalf("post html should render the front matter icon as a favicon")
+	}
+	if strings.Contains(postHTML, "post-icon") {
+		t.Fatalf("post icon should not be rendered in the title")
 	}
 
 	themeScriptContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "theme.js"))

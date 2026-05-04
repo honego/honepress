@@ -6,8 +6,8 @@
     <title>{{.SiteTitle}}</title>
     <meta name="description" content="{{.SiteDescription}}" />
     <link rel="canonical" href="{{.CanonicalPath}}" />
-    {{if .SiteIconURL}}
-    <link rel="icon" href="{{.SiteIconURL}}" />
+    {{if .FaviconHref}}
+    <link rel="icon" href="{{.FaviconHref}}" />
     {{end}}
     <link rel="alternate" type="application/rss+xml" title="{{.SiteTitle}}" href="{{.RSSPath}}" />
     <link rel="stylesheet" href="/style.css" />
@@ -57,7 +57,7 @@
         <article class="post-item">
           <time datetime="{{.Date}}">{{.Date}}</time>
           <h3>
-            <a href="{{.PublicURL}}">{{if .Icon}}<span class="post-icon">{{.Icon}}</span>{{end}}{{.Title}}</a>
+            <a href="{{.PublicURL}}">{{.Title}}</a>
           </h3>
           <p>{{.Description}}</p>
           {{if .Tags}}

@@ -51,7 +51,6 @@ func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail
 	return model.PostDetail{
 		ID:          sourceFileName,
 		Title:       frontMatter.Title,
-		Icon:        frontMatter.Icon,
 		Date:        frontMatter.Date,
 		Description: frontMatter.Description,
 		Draft:       frontMatter.Draft,
@@ -121,6 +120,11 @@ func (blogService *BlogService) UpdatePost(sourceFileName string, savePostReques
 	if err != nil {
 		return model.PostDetail{}, fmt.Errorf("读取原文章失败：%w", err)
 	}
+	previousFrontMatter, _, err := renderer.ParsePostDocument(sourceFileName, previousFileContent)
+	if err != nil {
+		return model.PostDetail{}, err
+	}
+	frontMatter.Icon = previousFrontMatter.Icon
 
 	if err := blogService.writePostAndRenderWithRollback(sourceFilePath, previousFileContent, true, frontMatter, bodyMarkdownContent); err != nil {
 		return model.PostDetail{}, err
@@ -189,7 +193,6 @@ func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.Post
 
 	frontMatter := model.PostFrontMatter{
 		Title:       strings.TrimSpace(savePostRequest.Title),
-		Icon:        strings.TrimSpace(savePostRequest.Icon),
 		Date:        strings.TrimSpace(savePostRequest.Date),
 		Description: strings.TrimSpace(savePostRequest.Description),
 		Draft:       savePostRequest.Draft,

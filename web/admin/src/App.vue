@@ -307,7 +307,6 @@ function buildSavePostRequest(): SavePostRequest {
   return {
     id: editorMode.value === "create" ? "" : editorForm.value.id,
     title: editorForm.value.title,
-    icon: editorForm.value.icon,
     date: editorForm.value.date,
     description: editorForm.value.description,
     draft: editorForm.value.draft,
@@ -339,7 +338,6 @@ function createEmptyPost(): PostDetail {
   return {
     id: "",
     title: "未命名文章",
-    icon: "",
     date: formatCurrentDate(),
     description: "",
     draft: false,
@@ -349,6 +347,10 @@ function createEmptyPost(): PostDetail {
     comments: true,
     body: "这里写 Markdown 正文。",
   };
+}
+
+function setPostDateToNow(): void {
+  editorForm.value.date = formatCurrentDate();
 }
 
 function createEmptySiteSettings(): SiteSettings {
@@ -450,7 +452,7 @@ function escapeHTML(rawText: string): string {
             <div class="post-list">
               <button v-for="post in posts" :key="post.id" type="button" class="post-row"
                 :class="{ active: post.id === selectedPostID }" @click="selectPost(post.id)">
-                <span><span v-if="post.icon" class="post-icon">{{ post.icon }}</span>{{ post.title }}</span>
+                <span>{{ post.title }}</span>
                 <small>{{ post.date }}</small>
                 <em>{{ post.draft ? "草稿" : "已发布" }}</em>
               </button>
@@ -461,8 +463,7 @@ function escapeHTML(rawText: string): string {
             <header class="editor-header">
               <div>
                 <p class="eyebrow">{{ editorMode === "create" ? "新建文章" : editorForm.id }}</p>
-                <h2><span v-if="editorForm.icon" class="post-icon">{{ editorForm.icon }}</span>{{ editorForm.title }}
-                </h2>
+                <h2>{{ editorForm.title }}</h2>
               </div>
               <div class="actions">
                 <a v-if="canEditExistingPost && !editorForm.draft" :href="`/${editorForm.url}`" target="_blank">查看</a>
@@ -479,17 +480,17 @@ function escapeHTML(rawText: string): string {
                 <span>标题</span>
                 <input v-model="editorForm.title" type="text" />
               </label>
-              <label>
-                <span>Emoji</span>
-                <input v-model="editorForm.icon" type="text" placeholder="✨ 或 :sparkles:" />
-              </label>
+
               <label>
                 <span>固定链接</span>
                 <input v-model="editorForm.url" type="text" />
               </label>
               <label>
                 <span>发布时间</span>
-                <input v-model="editorForm.date" type="text" />
+                <div class="inline-input-row">
+                  <input v-model="editorForm.date" type="text" />
+                  <button type="button" @click="setPostDateToNow">生成</button>
+                </div>
               </label>
               <label>
                 <span>摘要</span>

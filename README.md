@@ -7,7 +7,7 @@ honepress 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责
 ## 功能特性
 
 - Markdown 文件外置存储，启动和保存后自动生成静态页面。
-- 固定链接由 Front Matter 的 `url` 字段决定，标题变更不会影响链接。`icon` 可给文章标题加 emoji。
+- 固定链接由 Front Matter 的 `url` 字段决定，标题变更不会影响链接。`icon` 可给文章页生成 emoji favicon。
 - 自动生成 `/rss.xml`、`/sitemap.xml`。
 - 后台提供文章列表、新建、编辑、删除、保存、预览、站点 icon 上传、评论配置和站点设置；发布后自动生成公开页面，草稿不生成公开页面。
 - 支持 Basic Auth、giscus 评论开关、auto/light/dark 主题和 Markdown emoji 短码。
@@ -110,7 +110,7 @@ tags:
 这里是正文内容。
 ```
 
-Front Matter 只给程序读取，不会出现在渲染后的正文中。`icon` 会显示在文章标题前；正文支持 `:sparkles:` 这类 Markdown emoji 短码。`tags` 会显示在文章列表、文章页，并写入 RSS category。
+Front Matter 只给程序读取，不会出现在渲染后的正文中。`icon` 不显示在标题里，只用于文章页浏览器标签的 emoji favicon；正文支持 `:sparkles:` 这类 Markdown emoji 短码。`tags` 会显示在文章列表、文章页，并写入 RSS category。
 
 ## 固定链接说明
 

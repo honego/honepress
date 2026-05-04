@@ -22,6 +22,7 @@ type SiteViewData struct {
 	SiteTitle       string
 	SiteDescription string
 	SiteIconURL     string
+	FaviconHref     template.URL
 	ThemeDefault    string
 	Font            string
 	CanonicalPath   string
@@ -37,6 +38,7 @@ type PostViewData struct {
 	SiteTitle       string
 	SiteDescription string
 	SiteIconURL     string
+	FaviconHref     template.URL
 	ThemeDefault    string
 	Font            string
 	CanonicalPath   string

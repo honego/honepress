@@ -1,7 +1,6 @@
 export interface PostSummary {
   id: string;
   title: string;
-  icon: string;
   date: string;
   description: string;
   draft: boolean;
@@ -14,7 +13,6 @@ export interface PostSummary {
 export interface PostDetail {
   id: string;
   title: string;
-  icon: string;
   date: string;
   description: string;
   draft: boolean;
@@ -28,7 +26,6 @@ export interface PostDetail {
 export interface SavePostRequest {
   id: string;
   title: string;
-  icon: string;
   date: string;
   description: string;
   draft: boolean;

@@ -410,6 +410,16 @@ textarea {
 .wide {
   grid-column: 1 / -1;
 }
+.inline-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.inline-input-row button {
+  min-height: 38px;
+}
 
 .switches {
   align-items: end;
@@ -601,11 +611,6 @@ textarea {
     align-items: flex-start;
     flex-direction: column;
   }
-}
-
-.post-icon {
-  display: inline-block;
-  margin-right: 6px;
 }
 
 .preview-body img {

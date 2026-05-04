@@ -4,6 +4,7 @@ import (
 	"fmt"
 	htmlTemplate "html/template"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -265,6 +266,7 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		SiteTitle:       blogService.options.Title,
 		SiteDescription: blogService.options.Description,
 		SiteIconURL:     blogService.options.SiteIconURL,
+		FaviconHref:     faviconHref(blogService.options.SiteIconURL),
 		ThemeDefault:    blogService.options.ThemeDefault,
 		Font:            blogService.options.Font,
 		CanonicalPath:   "/",
@@ -288,6 +290,7 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 			SiteTitle:       blogService.options.Title,
 			SiteDescription: blogService.options.Description,
 			SiteIconURL:     blogService.options.SiteIconURL,
+			FaviconHref:     postFaviconHref(currentPost.Icon, blogService.options.SiteIconURL),
 			ThemeDefault:    blogService.options.ThemeDefault,
 			Font:            blogService.options.Font,
 			CanonicalPath:   "/" + currentPost.URL,
@@ -436,7 +439,6 @@ func postsToSummaries(posts []model.Post) []model.PostSummary {
 		postSummaries = append(postSummaries, model.PostSummary{
 			ID:          currentPost.SourceFileName,
 			Title:       currentPost.Title,
-			Icon:        currentPost.Icon,
 			Date:        currentPost.DateText,
 			Description: currentPost.Description,
 			Draft:       currentPost.Draft,
@@ -447,6 +449,30 @@ func postsToSummaries(posts []model.Post) []model.PostSummary {
 		})
 	}
 	return postSummaries
+}
+
+func postFaviconHref(postIcon string, siteIconURL string) htmlTemplate.URL {
+	if emojiHref := emojiFaviconHref(postIcon); emojiHref != "" {
+		return emojiHref
+	}
+	return faviconHref(siteIconURL)
+}
+
+func faviconHref(iconURL string) htmlTemplate.URL {
+	trimmedIconURL := strings.TrimSpace(iconURL)
+	if trimmedIconURL == "" {
+		return ""
+	}
+	return htmlTemplate.URL(trimmedIconURL)
+}
+
+func emojiFaviconHref(emoji string) htmlTemplate.URL {
+	trimmedEmoji := strings.TrimSpace(emoji)
+	if trimmedEmoji == "" {
+		return ""
+	}
+	svgContent := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50%" y="50%" style="dominant-baseline:central;text-anchor:middle;font-size:86px;">` + htmlTemplate.HTMLEscapeString(trimmedEmoji) + `</text></svg>`
+	return htmlTemplate.URL("data:image/svg+xml," + url.PathEscape(svgContent))
 }
 
 func templateLabels(themeDefault string) model.TemplateLabels {
@@ -460,7 +486,7 @@ func templateLabels(themeDefault string) model.TemplateLabels {
 		PublishedAt:      "发布于",
 		NoPosts:          "还没有文章。",
 		BackToList:       "返回文章列表",
-		Footer:           "由 Go 静态渲染生成",
+		Footer:           "Powered by HonePress",
 		ThemeButtonLabel: themeButtonLabel(themeDefault),
 	}
 }
