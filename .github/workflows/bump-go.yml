@@ -1,5 +1,5 @@
 ---
-name: "Bump Go Version"
+name: "Bump go version"
 
 on:
   push:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   bump-go:
-    name: "Bump Go Version"
+    name: "Bump go version"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -36,7 +36,7 @@ jobs:
           go-version: "stable"
           check-latest: true
 
-      - name: "Bump Go Version"
+      - name: "Bump go version"
         run: |
           cp .github/bump-go.sh .
           bash bump-go.sh
