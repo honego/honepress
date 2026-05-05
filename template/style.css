@@ -179,13 +179,17 @@ a:hover {
 }
 
 .page-home .intro {
-  padding-top: 18px;
-  padding-bottom: 40px;
+  padding-top: 0;
+  padding-bottom: 18px;
 }
 
 .site-kicker {
   margin: 0 0 12px;
   color: var(--muted);
+}
+
+.page-home .site-kicker {
+  margin-bottom: 0;
 }
 
 h1 {
@@ -257,6 +261,10 @@ h1 {
   border-bottom: 1px solid transparent;
 }
 
+.page-home .post-item:first-child {
+  padding-top: 10px;
+}
+
 .post-item time,
 .article-header time {
   display: block;
@@ -297,6 +305,21 @@ h1 {
 .read-link,
 .back-link {
   font-weight: 600;
+}
+
+button.back-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+button.back-link:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
 }
 
 .article {
@@ -416,6 +439,10 @@ h1 {
   .page-home,
   .page-archive {
     padding-top: 24px;
+  }
+
+  .page-home .post-item:first-child {
+    padding-top: 6px;
   }
 
   h1 {

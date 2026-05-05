@@ -33,13 +33,16 @@
   }
 
   function initializeBackLinks() {
-    document.querySelectorAll("[data-back-link]").forEach((backLink) => {
-      backLink.addEventListener("click", (event) => {
-        if (window.history.length <= 1) {
+    document.querySelectorAll("[data-back-link]").forEach((backControl) => {
+      backControl.addEventListener("click", () => {
+        if (window.history.length > 1) {
+          window.history.back();
           return;
         }
-        event.preventDefault();
-        window.history.back();
+        const fallbackURL = backControl.dataset.fallbackUrl;
+        if (fallbackURL) {
+          window.location.assign(fallbackURL);
+        }
       });
     });
   }

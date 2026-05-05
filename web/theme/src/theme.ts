@@ -41,14 +41,18 @@ function initializePage(): void {
 }
 
 function initializeBackLinks(): void {
-  const backLinks = document.querySelectorAll<HTMLAnchorElement>("[data-back-link]");
-  backLinks.forEach((backLink) => {
-    backLink.addEventListener("click", (event) => {
-      if (window.history.length <= 1) {
+  const backControls = document.querySelectorAll<HTMLElement>("[data-back-link]");
+  backControls.forEach((backControl) => {
+    backControl.addEventListener("click", () => {
+      if (window.history.length > 1) {
+        window.history.back();
         return;
       }
-      event.preventDefault();
-      window.history.back();
+
+      const fallbackURL = backControl.dataset.fallbackUrl;
+      if (fallbackURL) {
+        window.location.assign(fallbackURL);
+      }
     });
   });
 }

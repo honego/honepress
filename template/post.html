@@ -40,7 +40,9 @@
 
     <main class="page">
       <article class="article">
-        <a class="back-link" href="{{.BlogPath}}" data-back-link>{{.Labels.BackToList}}</a>
+        <button type="button" class="back-link" data-back-link data-fallback-url="{{.HomePath}}">
+          {{.Labels.BackToList}}
+        </button>
         <header class="article-header">
           <time datetime="{{.Post.DateText}}">{{.Labels.PublishedAt}} {{.Post.DateText}}</time>
           <h1>{{.Post.Title}}</h1>
