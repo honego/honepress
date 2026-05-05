@@ -679,18 +679,6 @@ function escapeHTML(rawText: string): string {
               <section class="markdown-editor">
                 <div class="markdown-editor-head">
                   <span>Markdown</span>
-                  <div class="markdown-toolbar" aria-label="Markdown 工具栏">
-                    <button type="button" title="加粗 Ctrl+B" @click="applyMarkdownAction('bold')">B</button>
-                    <button type="button" title="斜体 Ctrl+I" @click="applyMarkdownAction('italic')">I</button>
-                    <button type="button" title="标题" @click="applyMarkdownAction('heading')">H</button>
-                    <button type="button" title="引用" @click="applyMarkdownAction('quote')">&gt;</button>
-                    <button type="button" title="行内代码" @click="applyMarkdownAction('code')">`</button>
-                    <button type="button" title="代码块" @click="applyMarkdownAction('codeblock')">{ }</button>
-                    <button type="button" title="链接 Ctrl+K" @click="applyMarkdownAction('link')">链</button>
-                    <button type="button" title="图片" @click="applyMarkdownAction('image')">图</button>
-                    <button type="button" title="无序列表" @click="applyMarkdownAction('ul')">-</button>
-                    <button type="button" title="有序列表" @click="applyMarkdownAction('ol')">1.</button>
-                  </div>
                 </div>
                 <textarea ref="markdownTextarea" v-model="editorForm.body" spellcheck="false"
                   @keydown="handleMarkdownKeydown"></textarea>
