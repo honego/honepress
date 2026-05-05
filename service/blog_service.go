@@ -289,33 +289,49 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		return err
 	}
 
+	postRenderErrors := make(chan error, len(posts))
+	var postRenderWaitGroup sync.WaitGroup
 	for _, currentPost := range posts {
-		postViewData := model.PostViewData{
-			SiteTitle:       blogService.options.Title,
-			SiteDescription: blogService.options.Description,
-			SiteIconURL:     blogService.options.SiteIconURL,
-			FaviconHref:     postFaviconHref(currentPost.Icon, blogService.options.SiteIconURL),
-			ThemeDefault:    blogService.options.ThemeDefault,
-			Font:            blogService.options.Font,
-			CanonicalPath:   "/" + currentPost.URL,
-			HomePath:        "/",
-			BlogPath:        archivePath,
-			RSSPath:         "/rss.xml",
-			SitemapPath:     "/sitemap.xml",
-			Labels:          labels,
-			Post:            currentPost,
-			CommentHTML:     blogService.commentHTML(),
-		}
-		if err := templateRenderer.RenderPost(filepath.Join(blogService.options.PublicDir, currentPost.URL), postViewData); err != nil {
-			return err
-		}
-		for _, normalizedAlias := range currentPost.Aliases {
-			if err := templateRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, normalizedAlias), "/"+currentPost.URL); err != nil {
-				return err
+		currentPost := currentPost
+		postRenderWaitGroup.Add(1)
+		go func() {
+			defer postRenderWaitGroup.Done()
+
+			postViewData := model.PostViewData{
+				SiteTitle:       blogService.options.Title,
+				SiteDescription: blogService.options.Description,
+				SiteIconURL:     blogService.options.SiteIconURL,
+				FaviconHref:     postFaviconHref(currentPost.Icon, blogService.options.SiteIconURL),
+				ThemeDefault:    blogService.options.ThemeDefault,
+				Font:            blogService.options.Font,
+				CanonicalPath:   "/" + currentPost.URL,
+				HomePath:        "/",
+				BlogPath:        archivePath,
+				RSSPath:         "/rss.xml",
+				SitemapPath:     "/sitemap.xml",
+				Labels:          labels,
+				Post:            currentPost,
+				CommentHTML:     blogService.commentHTML(),
 			}
+			if err := templateRenderer.RenderPost(filepath.Join(blogService.options.PublicDir, currentPost.URL), postViewData); err != nil {
+				postRenderErrors <- err
+				return
+			}
+			for _, normalizedAlias := range currentPost.Aliases {
+				if err := templateRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, normalizedAlias), "/"+currentPost.URL); err != nil {
+					postRenderErrors <- err
+					return
+				}
+			}
+		}()
+	}
+	postRenderWaitGroup.Wait()
+	close(postRenderErrors)
+	for renderErr := range postRenderErrors {
+		if renderErr != nil {
+			return renderErr
 		}
 	}
-
 	if err := templateRenderer.RenderRSS(filepath.Join(blogService.options.PublicDir, "rss.xml"), blogService.options.Title, blogService.options.Description, "/", posts, ""); err != nil {
 		return err
 	}
@@ -508,7 +524,7 @@ func templateLabels(themeDefault string) model.TemplateLabels {
 		ReadMore:         "阅读",
 		PublishedAt:      "发布于",
 		NoPosts:          "还没有文章。",
-		BackToList:       "返回归档",
+		BackToList:       "返回",
 		Footer:           "Powered by HonePress",
 		ThemeButtonLabel: themeButtonLabel(themeDefault),
 	}

@@ -17,6 +17,7 @@
 
   function initializePage() {
     initializeIcons();
+    initializeBackLinks();
     initializeGiscusComments();
     updateToggleButtons(readStoredTheme());
 
@@ -31,6 +32,17 @@
     });
   }
 
+  function initializeBackLinks() {
+    document.querySelectorAll("[data-back-link]").forEach((backLink) => {
+      backLink.addEventListener("click", (event) => {
+        if (window.history.length <= 1) {
+          return;
+        }
+        event.preventDefault();
+        window.history.back();
+      });
+    });
+  }
   function initializeIcons() {
     window.lucide?.createIcons({ nameAttr: "data-lucide" });
   }

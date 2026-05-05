@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{.SiteTitle}}</title>
+    <title>{{.SiteTitle}}{{if .SiteDescription}} - {{.SiteDescription}}{{end}}</title>
     <meta name="description" content="{{.SiteDescription}}" />
     <link rel="canonical" href="{{.CanonicalPath}}" />
     {{if .FaviconHref}}
@@ -39,10 +39,12 @@
       </nav>
     </header>
 
-    <main class="page">
+    <main class="page page-home">
+      {{if .SiteDescription}}
       <section class="intro">
         <p class="site-kicker">{{.SiteDescription}}</p>
       </section>
+      {{end}}
       <section class="post-list" aria-label="文章">
         {{range .Posts}}
         <article class="post-item">

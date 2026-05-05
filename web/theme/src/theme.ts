@@ -24,6 +24,7 @@ if (document.readyState === "loading") {
 
 function initializePage(): void {
   initializeIcons();
+  initializeBackLinks();
   initializeGiscusComments();
   updateToggleButtons(readStoredTheme());
 
@@ -39,6 +40,18 @@ function initializePage(): void {
   });
 }
 
+function initializeBackLinks(): void {
+  const backLinks = document.querySelectorAll<HTMLAnchorElement>("[data-back-link]");
+  backLinks.forEach((backLink) => {
+    backLink.addEventListener("click", (event) => {
+      if (window.history.length <= 1) {
+        return;
+      }
+      event.preventDefault();
+      window.history.back();
+    });
+  });
+}
 function initializeIcons(): void {
   const lucide = (window as LucideWindow).lucide;
   lucide?.createIcons({ nameAttr: "data-lucide" });
