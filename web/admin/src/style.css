@@ -16,7 +16,7 @@
   --shadow: 0 12px 30px rgba(35, 39, 44, 0.08);
 }
 
-:root[data-admin-theme="dark"] {
+:root[data-theme="dark"] {
   --background: #17191c;
   --panel: #202327;
   --panel-soft: #252a2f;
@@ -34,7 +34,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-admin-theme="auto"] {
+  :root[data-theme="auto"] {
     --background: #17191c;
     --panel: #202327;
     --panel-soft: #252a2f;
@@ -145,18 +145,44 @@ a:hover {
   font-weight: 700;
 }
 
-.topbar button {
-  min-height: 30px;
-  border-color: #3c434a;
+.topbar .icon-button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  padding: 0;
+  border: 0;
   color: var(--sidebar-text);
   background: transparent;
+  transform: translateY(0);
+  transition:
+    color 160ms ease,
+    transform 180ms ease;
 }
 
-.topbar button:hover:not(:disabled) {
-  border-color: #8c959f;
+.topbar .icon-button:hover:not(:disabled) {
   color: #ffffff;
+  transform: translateY(-2px);
 }
 
+.topbar .icon-button:hover .nav-icon {
+  transform: rotate(-8deg) scale(1.08);
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 180ms ease;
+}
 .admin-layout {
   min-height: calc(100vh - 48px);
   display: grid;

@@ -17,10 +17,20 @@ import type { PostDetail, PostSummary, SavePostRequest, SiteSettings } from "./t
 type EditorMode = "create" | "edit";
 type AdminSection = "posts" | "settings";
 type AdminThemeMode = "auto" | "light" | "dark";
+type LucideWindow = Window & {
+  lucide?: {
+    createIcons: (options?: { nameAttr?: string }) => void;
+  };
+};
 type MarkdownAction = "bold" | "italic" | "heading" | "quote" | "code" | "codeblock" | "link" | "image" | "ul" | "ol";
 
 const themeStorageKey = "honepress-theme";
-const adminThemeModes: AdminThemeMode[] = ["auto", "light", "dark"];
+const themeModes: AdminThemeMode[] = ["auto", "light", "dark"];
+const themeLabels: Record<AdminThemeMode, string> = {
+  auto: "主题：自动",
+  light: "主题：亮色",
+  dark: "主题：暗色",
+};
 const emojiOptions = [
   { value: "", label: "默认网站 icon" },
   { value: "☘️", label: "☘️ 日常" },
@@ -46,7 +56,7 @@ const statusMessage = ref("");
 const errorMessage = ref("");
 const isSaving = ref(false);
 const isPreviewLoading = ref(false);
-const adminTheme = ref<AdminThemeMode>(readStoredAdminTheme());
+const adminTheme = ref<AdminThemeMode>(readStoredTheme());
 const siteSettings = ref<SiteSettings>(createEmptySiteSettings());
 const siteIconFileInput = ref<HTMLInputElement | null>(null);
 const markdownTextarea = ref<HTMLTextAreaElement | null>(null);
@@ -55,25 +65,20 @@ let previewTimerID: number | undefined;
 
 const selectedPostID = computed(() => (isEditorOpen.value && editorMode.value === "edit" ? editorForm.value.id : ""));
 const canEditExistingPost = computed(() => isEditorOpen.value && editorMode.value === "edit" && selectedPostID.value !== "");
-const adminThemeLabel = computed(() => {
-  if (adminTheme.value === "light") {
-    return "主题：亮色";
-  }
-  if (adminTheme.value === "dark") {
-    return "主题：暗色";
-  }
-  return "主题：自动";
-});
+const adminThemeLabel = computed(() => themeLabels[adminTheme.value]);
 const pageTitle = computed(() => (activeSection.value === "posts" ? "文章" : "设置"));
 
 onMounted(() => {
-  applyAdminTheme();
+  applyTheme(adminTheme.value);
+  initializeIcons();
+  window.addEventListener("load", initializeIcons);
   window.addEventListener("keydown", handleGlobalKeydown);
   void loadPosts();
   void loadSettings();
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener("load", initializeIcons);
   window.removeEventListener("keydown", handleGlobalKeydown);
   if (previewTimerID !== undefined) {
     window.clearTimeout(previewTimerID);
@@ -405,30 +410,52 @@ function handleGlobalKeydown(event: KeyboardEvent): void {
 }
 
 function cycleAdminTheme(): void {
-  const currentThemeIndex = adminThemeModes.indexOf(adminTheme.value);
-  const nextThemeIndex = (currentThemeIndex + 1) % adminThemeModes.length;
-  adminTheme.value = adminThemeModes[nextThemeIndex];
-  try {
-    window.localStorage.setItem(themeStorageKey, adminTheme.value);
-  } catch {
-    statusMessage.value = "浏览器阻止保存主题。";
-  }
-  applyAdminTheme();
+  const nextTheme = nextThemeMode(readStoredTheme());
+  adminTheme.value = nextTheme;
+  saveTheme(nextTheme);
+  applyTheme(nextTheme);
+  initializeIcons();
 }
 
-function applyAdminTheme(): void {
-  document.documentElement.dataset.adminTheme = adminTheme.value;
-  document.documentElement.dataset.theme = adminTheme.value;
+function initializeIcons(): void {
+  const lucide = (window as LucideWindow).lucide;
+  lucide?.createIcons({ nameAttr: "data-lucide" });
 }
 
-function readStoredAdminTheme(): AdminThemeMode {
+function applyTheme(themeMode: AdminThemeMode): void {
+  document.documentElement.dataset.theme = themeMode;
+}
+
+function nextThemeMode(themeMode: AdminThemeMode): AdminThemeMode {
+  const currentThemeIndex = themeModes.indexOf(themeMode);
+  const nextThemeIndex = (currentThemeIndex + 1) % themeModes.length;
+  return themeModes[nextThemeIndex];
+}
+
+function readStoredTheme(): AdminThemeMode {
   try {
     const storedTheme = window.localStorage.getItem(themeStorageKey);
     if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "auto") {
       return storedTheme;
     }
   } catch {
-    return "auto";
+    return readDocumentDefaultTheme();
+  }
+  return readDocumentDefaultTheme();
+}
+
+function saveTheme(themeMode: AdminThemeMode): void {
+  try {
+    window.localStorage.setItem(themeStorageKey, themeMode);
+  } catch {
+    return;
+  }
+}
+
+function readDocumentDefaultTheme(): AdminThemeMode {
+  const defaultTheme = document.documentElement.dataset.theme;
+  if (defaultTheme === "light" || defaultTheme === "dark" || defaultTheme === "auto") {
+    return defaultTheme;
   }
   return "auto";
 }
@@ -549,7 +576,10 @@ function escapeHTML(rawText: string): string {
         <span>HonePress</span>
       </a>
       <div class="topbar-actions">
-        <button type="button" @click="cycleAdminTheme">{{ adminThemeLabel }}</button>
+        <button type="button" class="theme-toggle icon-button" data-theme-toggle :aria-label="adminThemeLabel"
+          :title="adminThemeLabel" @click="cycleAdminTheme">
+          <i class="nav-icon" data-lucide="moon" aria-hidden="true"></i>
+        </button>
       </div>
     </header>
 
