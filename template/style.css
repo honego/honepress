@@ -178,6 +178,26 @@ a:hover {
   transition: transform 180ms ease;
 }
 
+.theme-icon {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-icon-sun,
+:root[data-theme="dark"] .theme-icon-moon,
+:root[data-theme="auto"] .theme-icon-sun {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] .theme-icon-sun {
+    display: none;
+  }
+
+  :root[data-theme="auto"] .theme-icon-moon {
+    display: block;
+  }
+}
+
 .page {
   width: var(--content-width);
   margin: 0 auto;

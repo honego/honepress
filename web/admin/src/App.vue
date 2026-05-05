@@ -578,7 +578,8 @@ function escapeHTML(rawText: string): string {
       <div class="topbar-actions">
         <button type="button" class="theme-toggle icon-button" data-theme-toggle :aria-label="adminThemeLabel"
           :title="adminThemeLabel" @click="cycleAdminTheme">
-          <i class="nav-icon" data-lucide="moon" aria-hidden="true"></i>
+          <i class="nav-icon theme-icon theme-icon-sun" data-lucide="sun" aria-hidden="true"></i>
+          <i class="nav-icon theme-icon theme-icon-moon" data-lucide="moon" aria-hidden="true"></i>
         </button>
       </div>
     </header>
