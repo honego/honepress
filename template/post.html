@@ -57,9 +57,19 @@
     <footer class="site-footer">
       <div class="footer-inner">
         <p>{{.Labels.Footer}}</p>
-        <a class="footer-rss icon-link" href="{{.RSSPath}}" aria-label="{{.Labels.RSS}}" title="{{.Labels.RSS}}">
-          <i class="nav-icon" data-lucide="rss" aria-hidden="true"></i>
-        </a>
+        <div class="footer-links">
+          <a
+            class="footer-sitemap icon-link"
+            href="{{.SitemapPath}}"
+            aria-label="{{.Labels.Sitemap}}"
+            title="{{.Labels.Sitemap}}"
+          >
+            <i class="nav-icon" data-lucide="map" aria-hidden="true"></i>
+          </a>
+          <a class="footer-rss icon-link" href="{{.RSSPath}}" aria-label="{{.Labels.RSS}}" title="{{.Labels.RSS}}">
+            <i class="nav-icon" data-lucide="rss" aria-hidden="true"></i>
+          </a>
+        </div>
       </div>
     </footer>
   </body>

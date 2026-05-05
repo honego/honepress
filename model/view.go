@@ -7,7 +7,7 @@ type TemplateLabels struct {
 	Home             string
 	Blog             string
 	RSS              string
-	LatestPosts      string
+	Sitemap          string
 	AllPosts         string
 	ReadMore         string
 	PublishedAt      string
@@ -29,6 +29,7 @@ type SiteViewData struct {
 	HomePath        string
 	BlogPath        string
 	RSSPath         string
+	SitemapPath     string
 	Labels          TemplateLabels
 	Posts           []PostSummary
 	PostCount       int
@@ -47,6 +48,7 @@ type PostViewData struct {
 	HomePath        string
 	BlogPath        string
 	RSSPath         string
+	SitemapPath     string
 	Labels          TemplateLabels
 	Post            Post
 	CommentHTML     template.HTML

@@ -376,6 +376,13 @@ h1 {
   margin: 0;
 }
 
+.footer-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-sitemap,
 .footer-rss {
   color: var(--muted);
 }
