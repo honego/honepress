@@ -9,6 +9,13 @@
   --accent-strong: #000000;
   --code: #eeeeee;
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --layout-width: 860px;
+  --layout-gutter: 32px;
+  --content-width: min(var(--layout-width), calc(100% - var(--layout-gutter)));
+  --page-top: 28px;
+  --page-top-mobile: 24px;
+  --page-bottom: 72px;
+  --lead-gap: 28px;
 }
 
 @font-face {
@@ -51,6 +58,16 @@
   box-sizing: border-box;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
 body {
   min-height: 100vh;
   display: flex;
@@ -78,7 +95,7 @@ a:hover {
 }
 
 .nav {
-  width: min(860px, calc(100% - 32px));
+  width: var(--content-width);
   min-height: 64px;
   margin: 0 auto;
   display: flex;
@@ -162,34 +179,27 @@ a:hover {
 }
 
 .page {
-  width: min(860px, calc(100% - 32px));
+  width: var(--content-width);
   margin: 0 auto;
   flex: 1 0 auto;
-  padding: 56px 0 72px;
+  padding: var(--page-top) 0 var(--page-bottom);
 }
 
-.page-home,
-.page-archive {
-  padding-top: 28px;
+.page-lead {
+  display: flex;
+  align-items: flex-start;
+  margin: 0 0 var(--lead-gap);
+  min-height: 1.7em;
+  min-height: 1lh;
 }
 
-.intro {
-  padding: 32px 0 48px;
-  border-bottom: 1px solid transparent;
-}
-
-.page-home .intro {
-  padding-top: 0;
-  padding-bottom: 18px;
+.page-body {
+  margin-top: 0;
 }
 
 .site-kicker {
-  margin: 0 0 12px;
+  margin: 0;
   color: var(--muted);
-}
-
-.page-home .site-kicker {
-  margin-bottom: 0;
 }
 
 h1 {
@@ -261,10 +271,6 @@ h1 {
   border-bottom: 1px solid transparent;
 }
 
-.page-home .post-item:first-child {
-  padding-top: 10px;
-}
-
 .post-item time,
 .article-header time {
   display: block;
@@ -331,6 +337,10 @@ button.back-link:hover {
   border-bottom: 1px solid transparent;
 }
 
+.page-entry {
+  padding-top: 0;
+}
+
 .article-header p {
   max-width: 720px;
   color: var(--muted);
@@ -391,7 +401,7 @@ button.back-link:hover {
 }
 
 .site-footer {
-  width: min(860px, calc(100% - 32px));
+  width: var(--content-width);
   margin: 32px auto 0;
   padding: 42px 0 46px;
   border-top: 1px solid transparent;
@@ -433,16 +443,7 @@ button.back-link:hover {
   }
 
   .page {
-    padding-top: 36px;
-  }
-
-  .page-home,
-  .page-archive {
-    padding-top: 24px;
-  }
-
-  .page-home .post-item:first-child {
-    padding-top: 6px;
+    padding-top: var(--page-top-mobile);
   }
 
   h1 {

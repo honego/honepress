@@ -41,13 +41,13 @@
 
     <main class="page page-home">
       {{if .SiteDescription}}
-      <section class="intro">
+      <section class="page-lead">
         <p class="site-kicker">{{.SiteDescription}}</p>
       </section>
       {{end}}
-      <section class="post-list" aria-label="文章">
+      <section class="page-body post-list" aria-label="文章">
         {{range .Posts}}
-        <article class="post-item">
+        <article class="page-entry post-item">
           <time datetime="{{.Date}}">{{.Date}}</time>
           <h3>
             <a href="{{.PublicURL}}">{{.Title}}</a>
