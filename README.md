@@ -98,7 +98,7 @@ icon: "☘️"
 date: "2026-05-05 00:00:00"
 description: "欢迎使用 HonePress。"
 draft: false
-url: "helloWorld.html"
+url: "hello.html"
 aliases: []
 tags:
   - HonePress
@@ -111,7 +111,7 @@ Front Matter 只给程序读取，不会出现在渲染后的正文中。站点 
 
 ## 固定链接说明
 
-`url` 决定文章最终 HTML 文件名，例如 `url: "helloWorld.html"` 生成 `/helloWorld.html`。后台会按标题自动维护 Markdown 文件名，例如标题“世界你好”保存为 `世界你好.md`。固定链接禁止路径穿越、中文路径、空格、斜杠和保留文件名。
+`url` 决定文章最终 HTML 文件名，例如 `url: "hello.html"` 生成 `/hello.html`。后台会按标题自动维护 Markdown 文件名，例如标题“世界你好”保存为 `世界你好.md`。固定链接禁止路径穿越、中文路径、空格、斜杠和保留文件名。
 
 ## RSS 说明
 

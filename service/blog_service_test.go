@@ -26,7 +26,7 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 		t.Fatalf("渲染失败：%v", err)
 	}
 
-	postHTMLPath := filepath.Join(testOptions.PublicDir, "helloWorld.html")
+	postHTMLPath := filepath.Join(testOptions.PublicDir, "hello.html")
 	postHTMLContent, err := os.ReadFile(postHTMLPath)
 	if err != nil {
 		t.Fatalf("读取文章 HTML 失败：%v", err)
