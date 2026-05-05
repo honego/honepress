@@ -42,7 +42,6 @@
     <main class="page">
       <section class="intro">
         <p class="site-kicker">{{.SiteDescription}}</p>
-        <h1>{{.SiteTitle}}</h1>
       </section>
       <section class="post-list" aria-label="文章">
         {{range .Posts}}
@@ -52,10 +51,6 @@
             <a href="{{.PublicURL}}">{{.Title}}</a>
           </h3>
           <p>{{.Description}}</p>
-          {{if .Tags}}
-          <div class="post-tags">{{range .Tags}}<span>{{.}}</span>{{end}}</div>
-          {{end}}
-          <a class="read-link" href="{{.PublicURL}}">{{$.Labels.ReadMore}}</a>
         </article>
         {{else}}
         <p class="empty">{{.Labels.NoPosts}}</p>
