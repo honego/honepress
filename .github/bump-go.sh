@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 honeok <i@honeok.com>
 
-set -eEo pipefail
+set -eExo pipefail
 
 die() {
     printf >&2 "Error: %s\n" "$*"
