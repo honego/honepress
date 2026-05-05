@@ -222,3 +222,65 @@ Comment body.`
 		t.Fatalf("theme script should load the giscus client")
 	}
 }
+
+func TestRenderAllUsesPostSEOFields(t *testing.T) {
+	dataDirectoryPath := t.TempDir()
+
+	testOptions := option.Options{
+		Title:       "HonePress",
+		Description: "site description",
+		DataDir:     dataDirectoryPath,
+		ContentDir:  filepath.Join(dataDirectoryPath, "content"),
+		PostsDir:    filepath.Join(dataDirectoryPath, "content", "posts"),
+		PublicDir:   filepath.Join(dataDirectoryPath, "public"),
+		SiteIconURL: "/site-icon.png",
+	}
+
+	if err := os.MkdirAll(testOptions.PostsDir, 0755); err != nil {
+		t.Fatalf("create posts directory failed: %v", err)
+	}
+
+	postContent := `---
+title: "Visible Post Title"
+date: "2026-05-04 12:00:00"
+description: "Visible summary"
+seoTitle: "Custom SEO Title"
+seoDescription: "Custom SEO Description"
+draft: false
+url: "seo-post.html"
+aliases: []
+tags: []
+---
+
+Post body.`
+	if err := os.WriteFile(filepath.Join(testOptions.PostsDir, "seo.md"), []byte(postContent), 0644); err != nil {
+		t.Fatalf("write post failed: %v", err)
+	}
+
+	blogService := NewBlogService(testOptions)
+	if err := blogService.RenderAll(); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+
+	postHTMLContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "seo-post.html"))
+	if err != nil {
+		t.Fatalf("read post html failed: %v", err)
+	}
+	postHTML := string(postHTMLContent)
+	requiredFragments := []string{
+		`<title>Custom SEO Title</title>`,
+		`<meta name="description" content="Custom SEO Description" />`,
+		`<meta property="og:title" content="Custom SEO Title" />`,
+		`<meta property="og:description" content="Custom SEO Description" />`,
+		`<meta property="og:image" content="/site-icon.png" />`,
+		`<meta name="twitter:card" content="summary_large_image" />`,
+		`<meta name="twitter:image" content="/site-icon.png" />`,
+		`"description":"Custom SEO Description"`,
+		`"image":"/site-icon.png"`,
+	}
+	for _, requiredFragment := range requiredFragments {
+		if !strings.Contains(postHTML, requiredFragment) {
+			t.Fatalf("post html missing SEO fragment %q", requiredFragment)
+		}
+	}
+}

@@ -7,14 +7,16 @@ import (
 
 // Markdown Front Matter
 type PostFrontMatter struct {
-	Title       string   `yaml:"title"`
-	Icon        string   `yaml:"icon,omitempty"`
-	Date        string   `yaml:"date"`
-	Description string   `yaml:"description"`
-	Draft       bool     `yaml:"draft"`
-	URL         string   `yaml:"url"`
-	Aliases     []string `yaml:"aliases"`
-	Tags        []string `yaml:"tags"`
+	Title          string   `yaml:"title"`
+	Icon           string   `yaml:"icon,omitempty"`
+	Date           string   `yaml:"date"`
+	Description    string   `yaml:"description"`
+	SEOTitle       string   `yaml:"seoTitle,omitempty"`
+	SEODescription string   `yaml:"seoDescription,omitempty"`
+	Draft          bool     `yaml:"draft"`
+	URL            string   `yaml:"url"`
+	Aliases        []string `yaml:"aliases"`
+	Tags           []string `yaml:"tags"`
 }
 
 // 完整文章模型
@@ -26,6 +28,8 @@ type Post struct {
 	DateText       string
 	PublishedAt    time.Time
 	Description    string
+	SEOTitle       string
+	SEODescription string
 	Draft          bool
 	URL            string
 	Aliases        []string
@@ -48,30 +52,34 @@ type PostSummary struct {
 
 // 文章详情
 type PostDetail struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title"`
-	Icon        string   `json:"icon"`
-	Date        string   `json:"date"`
-	Description string   `json:"description"`
-	Draft       bool     `json:"draft"`
-	URL         string   `json:"url"`
-	Aliases     []string `json:"aliases"`
-	Tags        []string `json:"tags"`
-	Body        string   `json:"body"`
+	ID             string   `json:"id"`
+	Title          string   `json:"title"`
+	Icon           string   `json:"icon"`
+	Date           string   `json:"date"`
+	Description    string   `json:"description"`
+	SEOTitle       string   `json:"seoTitle"`
+	SEODescription string   `json:"seoDescription"`
+	Draft          bool     `json:"draft"`
+	URL            string   `json:"url"`
+	Aliases        []string `json:"aliases"`
+	Tags           []string `json:"tags"`
+	Body           string   `json:"body"`
 }
 
 // 文章保存请求
 type SavePostRequest struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title"`
-	Icon        string   `json:"icon"`
-	Date        string   `json:"date"`
-	Description string   `json:"description"`
-	Draft       bool     `json:"draft"`
-	URL         string   `json:"url"`
-	Aliases     []string `json:"aliases"`
-	Tags        []string `json:"tags"`
-	Body        string   `json:"body"`
+	ID             string   `json:"id"`
+	Title          string   `json:"title"`
+	Icon           string   `json:"icon"`
+	Date           string   `json:"date"`
+	Description    string   `json:"description"`
+	SEOTitle       string   `json:"seoTitle"`
+	SEODescription string   `json:"seoDescription"`
+	Draft          bool     `json:"draft"`
+	URL            string   `json:"url"`
+	Aliases        []string `json:"aliases"`
+	Tags           []string `json:"tags"`
+	Body           string   `json:"body"`
 }
 
 // Markdown 预览请求

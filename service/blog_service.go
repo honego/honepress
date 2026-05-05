@@ -243,6 +243,8 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			DateText:       parsedFrontMatter.Date,
 			PublishedAt:    publishedAt,
 			Description:    parsedFrontMatter.Description,
+			SEOTitle:       parsedFrontMatter.SEOTitle,
+			SEODescription: parsedFrontMatter.SEODescription,
 			Draft:          parsedFrontMatter.Draft,
 			URL:            normalizedPermalink,
 			Aliases:        normalizedAliases,
@@ -318,8 +320,8 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 				Font:            blogService.options.Font,
 				CanonicalPath:   "/" + currentPost.URL,
 				CanonicalURL:    seoPublicURL(blogService.options, "/"+currentPost.URL),
-				SEOTitle:        pageSEOTitle(currentPost.Title, blogService.options.Title),
-				SEODescription:  seoDescription(currentPost.Title, currentPost.Description),
+				SEOTitle:        postSEOTitle(currentPost, blogService.options.Title),
+				SEODescription:  postSEODescription(currentPost),
 				SEOType:         "article",
 				SEOImage:        seoImageURL(blogService.options, blogService.options.SiteIconURL),
 				StructuredData:  postStructuredData(blogService.options, currentPost),
@@ -500,6 +502,20 @@ func seoImageURL(options option.Options, imageURL string) htmlTemplate.URL {
 	return htmlTemplate.URL(options.AbsoluteURL(trimmedImageURL))
 }
 
+func postSEOTitle(post model.Post, siteTitle string) string {
+	if trimmedSEOTitle := strings.TrimSpace(post.SEOTitle); trimmedSEOTitle != "" {
+		return trimmedSEOTitle
+	}
+	return pageSEOTitle(post.Title, siteTitle)
+}
+
+func postSEODescription(post model.Post) string {
+	if trimmedSEODescription := strings.TrimSpace(post.SEODescription); trimmedSEODescription != "" {
+		return trimmedSEODescription
+	}
+	return seoDescription(post.Title, post.Description)
+}
+
 func structuredData(document map[string]interface{}) htmlTemplate.JS {
 	encodedDocument, err := json.Marshal(document)
 	if err != nil {
@@ -564,7 +580,7 @@ func postStructuredData(options option.Options, post model.Post) htmlTemplate.JS
 		"@context":         "https://schema.org",
 		"@type":            "BlogPosting",
 		"headline":         post.Title,
-		"description":      seoDescription(post.Title, post.Description),
+		"description":      postSEODescription(post),
 		"datePublished":    post.PublishedAt.Format(time.RFC3339),
 		"dateModified":     post.PublishedAt.Format(time.RFC3339),
 		"url":              postURL,

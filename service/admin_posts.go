@@ -50,16 +50,18 @@ func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail
 	}
 
 	return model.PostDetail{
-		ID:          sourceFileName,
-		Title:       frontMatter.Title,
-		Icon:        frontMatter.Icon,
-		Date:        frontMatter.Date,
-		Description: frontMatter.Description,
-		Draft:       frontMatter.Draft,
-		URL:         normalizedPermalink,
-		Aliases:     frontMatter.Aliases,
-		Tags:        frontMatter.Tags,
-		Body:        bodyMarkdownContent,
+		ID:             sourceFileName,
+		Title:          frontMatter.Title,
+		Icon:           frontMatter.Icon,
+		Date:           frontMatter.Date,
+		Description:    frontMatter.Description,
+		SEOTitle:       frontMatter.SEOTitle,
+		SEODescription: frontMatter.SEODescription,
+		Draft:          frontMatter.Draft,
+		URL:            normalizedPermalink,
+		Aliases:        frontMatter.Aliases,
+		Tags:           frontMatter.Tags,
+		Body:           bodyMarkdownContent,
 	}, nil
 }
 
@@ -192,14 +194,16 @@ func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.Post
 	}
 
 	frontMatter := model.PostFrontMatter{
-		Title:       strings.TrimSpace(savePostRequest.Title),
-		Icon:        strings.TrimSpace(savePostRequest.Icon),
-		Date:        strings.TrimSpace(savePostRequest.Date),
-		Description: strings.TrimSpace(savePostRequest.Description),
-		Draft:       savePostRequest.Draft,
-		URL:         normalizedPermalink,
-		Aliases:     normalizedAliases,
-		Tags:        normalizeTags(savePostRequest.Tags),
+		Title:          strings.TrimSpace(savePostRequest.Title),
+		Icon:           strings.TrimSpace(savePostRequest.Icon),
+		Date:           strings.TrimSpace(savePostRequest.Date),
+		Description:    strings.TrimSpace(savePostRequest.Description),
+		SEOTitle:       strings.TrimSpace(savePostRequest.SEOTitle),
+		SEODescription: strings.TrimSpace(savePostRequest.SEODescription),
+		Draft:          savePostRequest.Draft,
+		URL:            normalizedPermalink,
+		Aliases:        normalizedAliases,
+		Tags:           normalizeTags(savePostRequest.Tags),
 	}
 
 	return frontMatter, savePostRequest.Body, nil

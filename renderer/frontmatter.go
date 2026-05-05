@@ -10,56 +10,60 @@ import (
 )
 
 type postFrontMatterYAML struct {
-	Title       string   `yaml:"title"`
-	Icon        string   `yaml:"icon,omitempty"`
-	Date        string   `yaml:"date"`
-	Description string   `yaml:"description"`
-	Draft       bool     `yaml:"draft"`
-	URL         string   `yaml:"url"`
-	Aliases     []string `yaml:"aliases"`
-	Tags        []string `yaml:"tags"`
+	Title          string   `yaml:"title"`
+	Icon           string   `yaml:"icon,omitempty"`
+	Date           string   `yaml:"date"`
+	Description    string   `yaml:"description"`
+	SEOTitle       string   `yaml:"seoTitle,omitempty"`
+	SEODescription string   `yaml:"seoDescription,omitempty"`
+	Draft          bool     `yaml:"draft"`
+	URL            string   `yaml:"url"`
+	Aliases        []string `yaml:"aliases"`
+	Tags           []string `yaml:"tags"`
 }
 
-// 解析 Markdown 文件并剥离 Front Matter
 func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.PostFrontMatter, string, error) {
 	frontMatterContent, bodyMarkdownContent, hasFrontMatter := splitFrontMatter(markdownContent)
 	if !hasFrontMatter {
-		return model.PostFrontMatter{}, "", fmt.Errorf("Front Matter 缺失：%s", sourceFileName)
+		return model.PostFrontMatter{}, "", fmt.Errorf("Front Matter missing: %s", sourceFileName)
 	}
 
 	var decodedFrontMatter postFrontMatterYAML
 	if err := yaml.Unmarshal([]byte(frontMatterContent), &decodedFrontMatter); err != nil {
-		return model.PostFrontMatter{}, "", fmt.Errorf("解析 Front Matter 失败：%s：%w", sourceFileName, err)
+		return model.PostFrontMatter{}, "", fmt.Errorf("parse Front Matter failed: %s: %w", sourceFileName, err)
 	}
 
 	parsedFrontMatter := model.PostFrontMatter{
-		Title:       strings.TrimSpace(decodedFrontMatter.Title),
-		Icon:        strings.TrimSpace(decodedFrontMatter.Icon),
-		Date:        strings.TrimSpace(decodedFrontMatter.Date),
-		Description: strings.TrimSpace(decodedFrontMatter.Description),
-		Draft:       decodedFrontMatter.Draft,
-		URL:         strings.TrimSpace(decodedFrontMatter.URL),
-		Aliases:     normalizeStringList(decodedFrontMatter.Aliases),
-		Tags:        normalizeStringList(decodedFrontMatter.Tags),
+		Title:          strings.TrimSpace(decodedFrontMatter.Title),
+		Icon:           strings.TrimSpace(decodedFrontMatter.Icon),
+		Date:           strings.TrimSpace(decodedFrontMatter.Date),
+		Description:    strings.TrimSpace(decodedFrontMatter.Description),
+		SEOTitle:       strings.TrimSpace(decodedFrontMatter.SEOTitle),
+		SEODescription: strings.TrimSpace(decodedFrontMatter.SEODescription),
+		Draft:          decodedFrontMatter.Draft,
+		URL:            strings.TrimSpace(decodedFrontMatter.URL),
+		Aliases:        normalizeStringList(decodedFrontMatter.Aliases),
+		Tags:           normalizeStringList(decodedFrontMatter.Tags),
 	}
 
 	return parsedFrontMatter, bodyMarkdownContent, nil
 }
 
-// 生成 Markdown 文件内容
 func BuildPostDocument(frontMatter model.PostFrontMatter, bodyMarkdownContent string) ([]byte, error) {
 	encodedFrontMatter, err := yaml.Marshal(postFrontMatterYAML{
-		Title:       frontMatter.Title,
-		Icon:        frontMatter.Icon,
-		Date:        frontMatter.Date,
-		Description: frontMatter.Description,
-		Draft:       frontMatter.Draft,
-		URL:         frontMatter.URL,
-		Aliases:     frontMatter.Aliases,
-		Tags:        frontMatter.Tags,
+		Title:          frontMatter.Title,
+		Icon:           frontMatter.Icon,
+		Date:           frontMatter.Date,
+		Description:    frontMatter.Description,
+		SEOTitle:       frontMatter.SEOTitle,
+		SEODescription: frontMatter.SEODescription,
+		Draft:          frontMatter.Draft,
+		URL:            frontMatter.URL,
+		Aliases:        frontMatter.Aliases,
+		Tags:           frontMatter.Tags,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("生成 Front Matter 失败：%w", err)
+		return nil, fmt.Errorf("build Front Matter failed: %w", err)
 	}
 
 	normalizedBodyMarkdownContent := strings.TrimLeft(bodyMarkdownContent, "\r\n")

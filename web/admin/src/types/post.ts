@@ -15,6 +15,8 @@ export interface PostDetail {
   icon: string;
   date: string;
   description: string;
+  seoTitle: string;
+  seoDescription: string;
   draft: boolean;
   url: string;
   aliases: string[];
@@ -28,6 +30,8 @@ export interface SavePostRequest {
   icon: string;
   date: string;
   description: string;
+  seoTitle: string;
+  seoDescription: string;
   draft: boolean;
   url: string;
   aliases: string[];

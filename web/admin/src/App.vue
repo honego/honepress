@@ -440,6 +440,8 @@ function buildSavePostRequest(): SavePostRequest {
     icon: editorForm.value.icon,
     date: editorForm.value.date,
     description: editorForm.value.description,
+    seoTitle: editorForm.value.seoTitle,
+    seoDescription: editorForm.value.seoDescription,
     draft: editorForm.value.draft,
     url: editorForm.value.url,
     aliases: aliasesText.value
@@ -471,6 +473,8 @@ function createEmptyPost(): PostDetail {
     icon: "",
     date: formatCurrentDate(),
     description: "",
+    seoTitle: "",
+    seoDescription: "",
     draft: false,
     url: "new-post.html",
     aliases: [],
@@ -483,6 +487,8 @@ function normalizePostDetail(postDetail: PostDetail): PostDetail {
   return {
     ...postDetail,
     icon: postDetail.icon ?? "",
+    seoTitle: postDetail.seoTitle ?? "",
+    seoDescription: postDetail.seoDescription ?? "",
     aliases: postDetail.aliases ?? [],
     tags: postDetail.tags ?? [],
   };
@@ -608,6 +614,9 @@ function escapeHTML(rawText: string): string {
             </header>
 
             <section class="form-grid">
+              <section class="settings-section wide">
+                <h3>文章设置</h3>
+              </section>
               <label>
                 <span>标题</span>
                 <input v-model="editorForm.title" type="text" />
@@ -635,11 +644,7 @@ function escapeHTML(rawText: string): string {
                 <span>摘要</span>
                 <input v-model="editorForm.description" type="text" />
               </label>
-              <label class="wide">
-                <span>别名</span>
-                <textarea v-model="aliasesText" rows="3"></textarea>
-              </label>
-              <label class="wide tag-editor-field">
+              <label class="tag-editor-field">
                 <span>标签</span>
                 <div class="tag-editor">
                   <span v-for="(tag, tagIndex) in editorForm.tags" :key="tag" class="tag-chip">
@@ -650,9 +655,24 @@ function escapeHTML(rawText: string): string {
                     @blur="addTagFromDraft" />
                 </div>
               </label>
+              <label class="wide">
+                <span>别名</span>
+                <textarea v-model="aliasesText" rows="1"></textarea>
+              </label>
               <div class="switches">
                 <label><input v-model="editorForm.draft" type="checkbox" /> 草稿</label>
               </div>
+              <section class="settings-section wide">
+                <h3>SEO 设置</h3>
+              </section>
+              <label>
+                <span>SEO 标题</span>
+                <input v-model="editorForm.seoTitle" type="text" placeholder="留空则使用文章标题" />
+              </label>
+              <label>
+                <span>SEO 描述</span>
+                <textarea v-model="editorForm.seoDescription" rows="1" placeholder="留空则使用文章摘要"></textarea>
+              </label>
             </section>
 
             <section class="workspace">
