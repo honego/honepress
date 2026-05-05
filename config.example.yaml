@@ -15,7 +15,7 @@ site:
   description: ""
   iconURL: ""
 
-# 评论设置。文章还可以用 comments: false 单独关闭评论。
+# 评论设置。后台“站点设置”也可以修改这些字段。
 comment:
   enabled: false
   giscus:

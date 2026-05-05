@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
+	"unicode"
 
 	"github.com/honeok/honepress/common/filesystem"
 	"github.com/honeok/honepress/common/validation"
@@ -122,21 +124,17 @@ func (blogService *BlogService) createExamplePostsIfEmpty() error {
 		return nil
 	}
 
-	examplePosts := map[string]string{
-		"1.md": examplePostOne,
-		"2.md": examplePostTwo,
+	exampleFileName := "世界你好.md"
+	exampleFilePath, err := filesystem.SafeJoin(blogService.options.PostsDir, exampleFileName)
+	if err != nil {
+		return err
 	}
-	for exampleFileName, exampleMarkdownContent := range examplePosts {
-		exampleFilePath, err := filesystem.SafeJoin(blogService.options.PostsDir, exampleFileName)
-		if err != nil {
-			return err
-		}
-		if err := filesystem.WriteFileCreatingDirectory(exampleFilePath, []byte(exampleMarkdownContent), 0644); err != nil {
-			return err
-		}
+	exampleMarkdownContent := defaultFirstPost(time.Now().Format("2006-01-02 15:04:05"))
+	if err := filesystem.WriteFileCreatingDirectory(exampleFilePath, []byte(exampleMarkdownContent), 0644); err != nil {
+		return err
 	}
 
-	log.Println("未发现文章，已生成示例文章 1.md 和 2.md。")
+	log.Println("未发现文章，已生成默认文章 世界你好.md。")
 	return nil
 }
 
@@ -248,7 +246,6 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			URL:            normalizedPermalink,
 			Aliases:        normalizedAliases,
 			Tags:           parsedFrontMatter.Tags,
-			Comments:       parsedFrontMatter.Comments,
 			BodyMarkdown:   bodyMarkdownContent,
 			BodyHTML:       renderedPostHTML,
 		}
@@ -262,6 +259,7 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRenderer, posts []model.Post) error {
 	postSummaries := postsToSummaries(posts)
 	labels := templateLabels(blogService.options.ThemeDefault)
+	archivePath := "/archive.html"
 	siteViewData := model.SiteViewData{
 		SiteTitle:       blogService.options.Title,
 		SiteDescription: blogService.options.Description,
@@ -271,17 +269,22 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		Font:            blogService.options.Font,
 		CanonicalPath:   "/",
 		HomePath:        "/",
-		BlogPath:        "/blog.html",
+		BlogPath:        archivePath,
 		RSSPath:         "/rss.xml",
 		Labels:          labels,
 		Posts:           postSummaries,
+		PostCount:       len(posts),
+		WordCount:       totalPostWords(posts),
 	}
 
 	if err := templateRenderer.RenderIndex(filepath.Join(blogService.options.PublicDir, "index.html"), siteViewData); err != nil {
 		return err
 	}
-	siteViewData.CanonicalPath = "/blog.html"
-	if err := templateRenderer.RenderBlog(filepath.Join(blogService.options.PublicDir, "blog.html"), siteViewData); err != nil {
+	siteViewData.CanonicalPath = archivePath
+	if err := templateRenderer.RenderBlog(filepath.Join(blogService.options.PublicDir, "archive.html"), siteViewData); err != nil {
+		return err
+	}
+	if err := templateRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, "blog.html"), archivePath); err != nil {
 		return err
 	}
 
@@ -295,11 +298,11 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 			Font:            blogService.options.Font,
 			CanonicalPath:   "/" + currentPost.URL,
 			HomePath:        "/",
-			BlogPath:        "/blog.html",
+			BlogPath:        archivePath,
 			RSSPath:         "/rss.xml",
 			Labels:          labels,
 			Post:            currentPost,
-			CommentHTML:     blogService.commentHTMLForPost(currentPost),
+			CommentHTML:     blogService.commentHTML(),
 		}
 		if err := templateRenderer.RenderPost(filepath.Join(blogService.options.PublicDir, currentPost.URL), postViewData); err != nil {
 			return err
@@ -315,7 +318,7 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		return err
 	}
 
-	sitemapPaths := []string{"/", "/blog.html"}
+	sitemapPaths := []string{"/", archivePath}
 	for _, currentPost := range posts {
 		sitemapPaths = append(sitemapPaths, "/"+currentPost.URL)
 	}
@@ -380,8 +383,8 @@ func (blogService *BlogService) copyAssets() error {
 	})
 }
 
-func (blogService *BlogService) commentHTMLForPost(post model.Post) htmlTemplate.HTML {
-	if !blogService.options.Comment.Enabled || !post.Comments {
+func (blogService *BlogService) commentHTML() htmlTemplate.HTML {
+	if !blogService.options.Comment.Enabled {
 		return ""
 	}
 	if !blogService.options.Comment.HasRequiredGiscusConfig() {
@@ -444,11 +447,29 @@ func postsToSummaries(posts []model.Post) []model.PostSummary {
 			Draft:       currentPost.Draft,
 			URL:         currentPost.URL,
 			PublicURL:   publicURL,
-			Comments:    currentPost.Comments,
 			Tags:        currentPost.Tags,
 		})
 	}
 	return postSummaries
+}
+
+func totalPostWords(posts []model.Post) int {
+	totalWords := 0
+	for _, currentPost := range posts {
+		totalWords += countVisibleRunes(currentPost.BodyMarkdown)
+	}
+	return totalWords
+}
+
+func countVisibleRunes(text string) int {
+	visibleRuneCount := 0
+	for _, currentRune := range text {
+		if unicode.IsSpace(currentRune) {
+			continue
+		}
+		visibleRuneCount++
+	}
+	return visibleRuneCount
 }
 
 func postFaviconHref(postIcon string, siteIconURL string) htmlTemplate.URL {
@@ -478,14 +499,14 @@ func emojiFaviconHref(emoji string) htmlTemplate.URL {
 func templateLabels(themeDefault string) model.TemplateLabels {
 	return model.TemplateLabels{
 		Home:             "首页",
-		Blog:             "文章",
+		Blog:             "归档",
 		RSS:              "RSS",
 		LatestPosts:      "最新文章",
-		AllPosts:         "全部文章",
+		AllPosts:         "归档",
 		ReadMore:         "阅读",
 		PublishedAt:      "发布于",
 		NoPosts:          "还没有文章。",
-		BackToList:       "返回文章列表",
+		BackToList:       "返回归档",
 		Footer:           "Powered by HonePress",
 		ThemeButtonLabel: themeButtonLabel(themeDefault),
 	}
@@ -502,38 +523,19 @@ func themeButtonLabel(themeDefault string) string {
 	}
 }
 
-const examplePostOne = `---
-title: "Docker 搭建第一篇博客"
-date: "2026-05-04 12:00:00"
-description: "这是一篇 Docker 部署笔记。"
+func defaultFirstPost(dateText string) string {
+	return fmt.Sprintf(`---
+title: "世界你好"
+icon: "☘️"
+date: "%s"
+description: "欢迎使用 HonePress。"
 draft: false
-url: "1.html"
-comments: true
-aliases:
-  - "docker-old.html"
-tags:
-  - Docker
-  - 部署
----
-
-这里是第一篇示例文章的正文。
-
-## 部署记录
-
-使用 Docker 部署博客时，最重要的是把 ` + "`data/content/posts`" + ` 目录作为长期保存的内容目录。
-`
-
-const examplePostTwo = `---
-title: "记录生活"
-date: "2026-05-04 13:00:00"
-description: "这是一篇用于验证排序和固定链接的示例。"
-draft: false
-url: "2.html"
-comments: true
+url: "helloWorld.html"
 aliases: []
 tags:
-  - 生活
+  - HonePress
 ---
 
-这篇文章的标题和日期可以修改，但 ` + "`url`" + ` 字段决定的固定链接不会跟着标题变化。
-`
+欢迎使用 HonePress 。这是您的第一篇文章，编辑或删除它，然后开始写作吧！
+`, dateText)
+}

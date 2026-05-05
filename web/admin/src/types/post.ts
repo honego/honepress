@@ -6,33 +6,32 @@ export interface PostSummary {
   draft: boolean;
   url: string;
   publicUrl: string;
-  comments: boolean;
   tags: string[];
 }
 
 export interface PostDetail {
   id: string;
   title: string;
+  icon: string;
   date: string;
   description: string;
   draft: boolean;
   url: string;
   aliases: string[];
   tags: string[];
-  comments: boolean;
   body: string;
 }
 
 export interface SavePostRequest {
   id: string;
   title: string;
+  icon: string;
   date: string;
   description: string;
   draft: boolean;
   url: string;
   aliases: string[];
   tags: string[];
-  comments: boolean;
   body: string;
 }
 

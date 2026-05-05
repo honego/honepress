@@ -26,7 +26,7 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 		t.Fatalf("渲染失败：%v", err)
 	}
 
-	postHTMLPath := filepath.Join(testOptions.PublicDir, "1.html")
+	postHTMLPath := filepath.Join(testOptions.PublicDir, "helloWorld.html")
 	postHTMLContent, err := os.ReadFile(postHTMLPath)
 	if err != nil {
 		t.Fatalf("读取文章 HTML 失败：%v", err)
@@ -37,12 +37,13 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 	if !strings.Contains(string(postHTMLContent), `data-font="default"`) {
 		t.Fatalf("文章 HTML 缺少默认字体标记")
 	}
-	if !strings.Contains(string(postHTMLContent), "第一篇示例文章") {
+	if !strings.Contains(string(postHTMLContent), "欢迎使用 HonePress") {
 		t.Fatalf("文章 HTML 缺少正文内容")
 	}
 
 	requiredGeneratedFiles := []string{
 		filepath.Join(testOptions.PublicDir, "index.html"),
+		filepath.Join(testOptions.PublicDir, "archive.html"),
 		filepath.Join(testOptions.PublicDir, "blog.html"),
 		filepath.Join(testOptions.PublicDir, "rss.xml"),
 		filepath.Join(testOptions.PublicDir, "sitemap.xml"),
@@ -79,7 +80,6 @@ date: "2026-05-04 12:00:00"
 description: "公开内容"
 draft: false
 url: "published.html"
-comments: true
 aliases: []
 ---
 
@@ -91,7 +91,6 @@ date: "2026-05-04 13:00:00"
 description: "草稿内容"
 draft: true
 url: "draft.html"
-comments: true
 aliases: []
 ---
 
@@ -103,7 +102,6 @@ date: "2026-05-04 14:00:00"
 description: "草稿链接可以暂时和公开文章重复"
 draft: true
 url: "published.html"
-comments: true
 aliases: []
 ---
 
@@ -130,6 +128,7 @@ aliases: []
 
 	generatedFiles := []string{
 		filepath.Join(testOptions.PublicDir, "index.html"),
+		filepath.Join(testOptions.PublicDir, "archive.html"),
 		filepath.Join(testOptions.PublicDir, "blog.html"),
 		filepath.Join(testOptions.PublicDir, "rss.xml"),
 		filepath.Join(testOptions.PublicDir, "sitemap.xml"),
@@ -175,7 +174,6 @@ date: "2026-05-04 12:00:00"
 description: "comment test"
 draft: false
 url: "giscus.html"
-comments: true
 aliases: []
 ---
 

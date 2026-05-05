@@ -11,12 +11,11 @@ import (
 
 type postFrontMatterYAML struct {
 	Title       string   `yaml:"title"`
-	Icon        string   `yaml:"icon"`
+	Icon        string   `yaml:"icon,omitempty"`
 	Date        string   `yaml:"date"`
 	Description string   `yaml:"description"`
 	Draft       bool     `yaml:"draft"`
 	URL         string   `yaml:"url"`
-	Comments    *bool    `yaml:"comments"`
 	Aliases     []string `yaml:"aliases"`
 	Tags        []string `yaml:"tags"`
 }
@@ -28,9 +27,7 @@ func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.Pos
 		return model.PostFrontMatter{}, "", fmt.Errorf("Front Matter 缺失：%s", sourceFileName)
 	}
 
-	decodedFrontMatter := postFrontMatterYAML{
-		Comments: boolPointer(true),
-	}
+	var decodedFrontMatter postFrontMatterYAML
 	if err := yaml.Unmarshal([]byte(frontMatterContent), &decodedFrontMatter); err != nil {
 		return model.PostFrontMatter{}, "", fmt.Errorf("解析 Front Matter 失败：%s：%w", sourceFileName, err)
 	}
@@ -42,12 +39,8 @@ func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.Pos
 		Description: strings.TrimSpace(decodedFrontMatter.Description),
 		Draft:       decodedFrontMatter.Draft,
 		URL:         strings.TrimSpace(decodedFrontMatter.URL),
-		Comments:    true,
 		Aliases:     normalizeStringList(decodedFrontMatter.Aliases),
 		Tags:        normalizeStringList(decodedFrontMatter.Tags),
-	}
-	if decodedFrontMatter.Comments != nil {
-		parsedFrontMatter.Comments = *decodedFrontMatter.Comments
 	}
 
 	return parsedFrontMatter, bodyMarkdownContent, nil
@@ -62,7 +55,6 @@ func BuildPostDocument(frontMatter model.PostFrontMatter, bodyMarkdownContent st
 		Description: frontMatter.Description,
 		Draft:       frontMatter.Draft,
 		URL:         frontMatter.URL,
-		Comments:    boolPointer(frontMatter.Comments),
 		Aliases:     frontMatter.Aliases,
 		Tags:        frontMatter.Tags,
 	})
@@ -88,10 +80,6 @@ func splitFrontMatter(markdownContent []byte) (string, string, bool) {
 	frontMatterContent := normalizedMarkdownContent[4 : 4+frontMatterEndIndex]
 	bodyMarkdownContent := strings.TrimLeft(normalizedMarkdownContent[4+frontMatterEndIndex+5:], "\n")
 	return frontMatterContent, bodyMarkdownContent, true
-}
-
-func boolPointer(booleanValue bool) *bool {
-	return &booleanValue
 }
 
 func normalizeStringList(rawValues []string) []string {

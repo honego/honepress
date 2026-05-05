@@ -437,6 +437,57 @@ textarea {
   width: auto;
   min-height: auto;
 }
+.tag-editor {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+}
+
+.tag-chip {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-radius: 999px;
+  color: var(--text);
+  background: var(--panel-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tag-chip button {
+  width: 18px;
+  min-height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: transparent;
+  line-height: 1;
+}
+
+.tag-chip button:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+.tag-editor input {
+  width: 140px;
+  min-width: 120px;
+  flex: 1 0 140px;
+  min-height: 26px;
+  padding: 0 2px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
 
 .workspace {
   min-height: 620px;
@@ -453,6 +504,32 @@ textarea {
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 8px;
+}
+.markdown-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.markdown-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.markdown-toolbar button {
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .markdown-editor textarea,

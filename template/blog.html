@@ -41,21 +41,22 @@
 
     <main class="page">
       <section class="archive">
-        <h1>{{.Labels.AllPosts}}</h1>
-        {{range .Posts}}
-        <article class="post-item compact">
-          <time datetime="{{.Date}}">{{.Date}}</time>
-          <h2>
-            <a href="{{.PublicURL}}">{{.Title}}</a>
-          </h2>
-          <p>{{.Description}}</p>
-          {{if .Tags}}
-          <div class="post-tags">{{range .Tags}}<span>{{.}}</span>{{end}}</div>
+        <header class="archive-header">
+          <h1>{{.Labels.AllPosts}}</h1>
+          <p class="archive-stats">共 {{.PostCount}} 篇文章，约 {{.WordCount}} 字</p>
+        </header>
+        <div class="archive-list">
+          {{range .Posts}}
+          <article class="archive-item">
+            <time datetime="{{.Date}}">{{.Date}}</time>
+            <h2>
+              <a href="{{.PublicURL}}">{{.Title}}</a>
+            </h2>
+          </article>
+          {{else}}
+          <p class="empty">{{.Labels.NoPosts}}</p>
           {{end}}
-        </article>
-        {{else}}
-        <p class="empty">{{.Labels.NoPosts}}</p>
-        {{end}}
+        </div>
       </section>
     </main>
 

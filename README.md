@@ -10,7 +10,7 @@ HonePress 是一个用 Go 和 TypeScript 编写的轻量博客程序。Go 负责
 - 固定链接由 Front Matter 的 `url` 字段决定，标题变更不会影响链接。`icon` 可给文章页生成 emoji favicon。
 - 自动生成 `/rss.xml`、`/sitemap.xml`。
 - 后台提供文章列表、新建、编辑、删除、保存、预览、站点 icon 上传、评论配置和站点设置；发布后自动生成公开页面，草稿不生成公开页面。
-- 支持 Basic Auth、giscus 评论开关、auto/light/dark 主题和 Markdown emoji 短码。
+- 支持 Basic Auth、giscus 全局评论开关、auto/light/dark 主题、Markdown emoji 短码、代码高亮和代码块一键复制。
 
 ## 目录结构
 
@@ -54,7 +54,7 @@ docker compose up -d
 默认访问：
 
 - 首页：`http://127.0.0.1:8080/`
-- 文章列表：`http://127.0.0.1:8080/blog.html`
+- 归档页：`http://127.0.0.1:8080/archive.html`
 - 后台：`http://127.0.0.1:8080/admin/`
 
 Go 构建命令：
@@ -89,32 +89,29 @@ Docker 内部启动命令：
 
 ## Markdown 文章格式
 
-文章放在 `data/content/posts/`：
+文章放在 `data/content/posts/`，文件名会由后台按标题自动维护，例如 `世界你好.md`：
 
 ```md
 ---
-title: "Docker 搭建 xxxx"
-icon: "✨"
-date: "2026-05-04 12:00:00"
-description: "这是一篇 Docker 部署笔记。"
+title: "世界你好"
+icon: "☘️"
+date: "2026-05-05 00:00:00"
+description: "欢迎使用 HonePress。"
 draft: false
-url: "1.html"
-comments: true
-aliases:
-  - "docker-old.html"
+url: "helloWorld.html"
+aliases: []
 tags:
-  - Docker
-  - 部署
+  - HonePress
 ---
 
-这里是正文内容。
+欢迎使用 HonePress 。这是您的第一篇文章，编辑或删除它，然后开始写作吧！
 ```
 
-Front Matter 只给程序读取，不会出现在渲染后的正文中。`icon` 不显示在标题里，只用于文章页浏览器标签的 emoji favicon；正文支持 `:sparkles:` 这类 Markdown emoji 短码。`tags` 会显示在文章列表、文章页，并写入 RSS category。
+Front Matter 只给程序读取，不会出现在渲染后的正文中。站点 icon 是全站默认 favicon；单篇文章的 `icon` 会生成该文章自己的 emoji favicon，没有设置时回退到站点 icon。正文支持 `:sparkles:` 这类 Markdown emoji 短码。`tags` 会显示在文章列表、文章页，并写入 RSS category。
 
 ## 固定链接说明
 
-`url` 决定文章最终 HTML 文件名，例如 `url: "1.html"` 生成 `/1.html`。没有 `url` 时才使用 Markdown 文件名兜底。禁止路径穿越、中文路径、空格、斜杠和保留文件名。
+`url` 决定文章最终 HTML 文件名，例如 `url: "helloWorld.html"` 生成 `/helloWorld.html`。后台会按标题自动维护 Markdown 文件名，例如标题“世界你好”保存为 `世界你好.md`。固定链接禁止路径穿越、中文路径、空格、斜杠和保留文件名。
 
 ## RSS 说明
 
@@ -126,7 +123,7 @@ sitemap 自动生成到 `/sitemap.xml`。后台路径和 API 路径不会进入 
 
 ## 评论系统说明
 
-评论使用 giscus，评论数据保存在 GitHub Discussions。设置 `comment.enabled: false` 或文章 `comments: false` 时不会输出评论脚本。giscus 配置缺失不会阻止启动，只会输出中文警告。
+评论使用 giscus，评论数据保存在 GitHub Discussions。评论只由全局 `comment.enabled` 控制；关闭时不会输出评论脚本。giscus 配置缺失不会阻止启动，只会输出中文警告。
 
 ## 明暗主题说明
 

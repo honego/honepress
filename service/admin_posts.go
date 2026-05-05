@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/honeok/honepress/common/filesystem"
@@ -51,13 +52,13 @@ func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail
 	return model.PostDetail{
 		ID:          sourceFileName,
 		Title:       frontMatter.Title,
+		Icon:        frontMatter.Icon,
 		Date:        frontMatter.Date,
 		Description: frontMatter.Description,
 		Draft:       frontMatter.Draft,
 		URL:         normalizedPermalink,
 		Aliases:     frontMatter.Aliases,
 		Tags:        frontMatter.Tags,
-		Comments:    frontMatter.Comments,
 		Body:        bodyMarkdownContent,
 	}, nil
 }
@@ -72,25 +73,13 @@ func (blogService *BlogService) CreatePost(savePostRequest model.SavePostRequest
 		return model.PostDetail{}, err
 	}
 
-	sourceFileName := strings.TrimSpace(savePostRequest.ID)
-	if sourceFileName == "" {
-		sourceFileName, err = validation.MarkdownFileNameFromPermalink(frontMatter.URL)
-		if err != nil {
-			return model.PostDetail{}, err
-		}
-	}
-	if err := validation.ValidateMarkdownFileName(sourceFileName); err != nil {
-		return model.PostDetail{}, err
-	}
-
-	sourceFilePath, err := filesystem.SafeJoin(blogService.options.PostsDir, sourceFileName)
+	sourceFileName, err := blogService.availableMarkdownFileNameForTitle(frontMatter.Title, "")
 	if err != nil {
 		return model.PostDetail{}, err
 	}
-	if _, err := os.Stat(sourceFilePath); err == nil {
-		return model.PostDetail{}, fmt.Errorf("文章已存在：%s", sourceFileName)
-	} else if !os.IsNotExist(err) {
-		return model.PostDetail{}, fmt.Errorf("检查文章是否存在失败：%w", err)
+	sourceFilePath, err := filesystem.SafeJoin(blogService.options.PostsDir, sourceFileName)
+	if err != nil {
+		return model.PostDetail{}, err
 	}
 
 	if err := blogService.writePostAndRenderWithRollback(sourceFilePath, nil, false, frontMatter, bodyMarkdownContent); err != nil {
@@ -120,16 +109,27 @@ func (blogService *BlogService) UpdatePost(sourceFileName string, savePostReques
 	if err != nil {
 		return model.PostDetail{}, fmt.Errorf("读取原文章失败：%w", err)
 	}
-	previousFrontMatter, _, err := renderer.ParsePostDocument(sourceFileName, previousFileContent)
+
+	targetFileName, err := blogService.availableMarkdownFileNameForTitle(frontMatter.Title, sourceFileName)
 	if err != nil {
 		return model.PostDetail{}, err
 	}
-	frontMatter.Icon = previousFrontMatter.Icon
-
-	if err := blogService.writePostAndRenderWithRollback(sourceFilePath, previousFileContent, true, frontMatter, bodyMarkdownContent); err != nil {
+	targetFilePath, err := filesystem.SafeJoin(blogService.options.PostsDir, targetFileName)
+	if err != nil {
 		return model.PostDetail{}, err
 	}
-	return blogService.GetPost(sourceFileName)
+
+	if samePath(sourceFilePath, targetFilePath) {
+		if err := blogService.writePostAndRenderWithRollback(sourceFilePath, previousFileContent, true, frontMatter, bodyMarkdownContent); err != nil {
+			return model.PostDetail{}, err
+		}
+		return blogService.GetPost(sourceFileName)
+	}
+
+	if err := blogService.writeMovedPostAndRenderWithRollback(sourceFilePath, targetFilePath, previousFileContent, frontMatter, bodyMarkdownContent); err != nil {
+		return model.PostDetail{}, err
+	}
+	return blogService.GetPost(targetFileName)
 }
 
 // 删除文章
@@ -193,11 +193,11 @@ func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.Post
 
 	frontMatter := model.PostFrontMatter{
 		Title:       strings.TrimSpace(savePostRequest.Title),
+		Icon:        strings.TrimSpace(savePostRequest.Icon),
 		Date:        strings.TrimSpace(savePostRequest.Date),
 		Description: strings.TrimSpace(savePostRequest.Description),
 		Draft:       savePostRequest.Draft,
 		URL:         normalizedPermalink,
-		Comments:    savePostRequest.Comments,
 		Aliases:     normalizedAliases,
 		Tags:        normalizeTags(savePostRequest.Tags),
 	}
@@ -222,6 +222,35 @@ func normalizeTags(rawTags []string) []string {
 	return normalizedTags
 }
 
+func (blogService *BlogService) availableMarkdownFileNameForTitle(title string, currentFileName string) (string, error) {
+	preferredFileName, err := validation.MarkdownFileNameFromTitle(title)
+	if err != nil {
+		return "", err
+	}
+	if currentFileName != "" && preferredFileName == currentFileName {
+		return preferredFileName, nil
+	}
+
+	extensionName := filepath.Ext(preferredFileName)
+	fileNameStem := strings.TrimSuffix(preferredFileName, extensionName)
+	candidateFileName := preferredFileName
+	for suffix := 2; ; suffix++ {
+		candidateFilePath, err := filesystem.SafeJoin(blogService.options.PostsDir, candidateFileName)
+		if err != nil {
+			return "", err
+		}
+		if _, err := os.Stat(candidateFilePath); os.IsNotExist(err) {
+			return candidateFileName, nil
+		} else if err != nil {
+			return "", fmt.Errorf("检查文章文件名失败：%w", err)
+		}
+		if currentFileName != "" && candidateFileName == currentFileName {
+			return candidateFileName, nil
+		}
+		candidateFileName = fmt.Sprintf("%s-%d%s", fileNameStem, suffix, extensionName)
+	}
+}
+
 func (blogService *BlogService) writePostAndRenderWithRollback(sourceFilePath string, previousFileContent []byte, targetExisted bool, frontMatter model.PostFrontMatter, bodyMarkdownContent string) error {
 	newFileContent, err := renderer.BuildPostDocument(frontMatter, bodyMarkdownContent)
 	if err != nil {
@@ -244,4 +273,39 @@ func (blogService *BlogService) writePostAndRenderWithRollback(sourceFilePath st
 	}
 
 	return nil
+}
+
+func (blogService *BlogService) writeMovedPostAndRenderWithRollback(sourceFilePath string, targetFilePath string, previousFileContent []byte, frontMatter model.PostFrontMatter, bodyMarkdownContent string) error {
+	newFileContent, err := renderer.BuildPostDocument(frontMatter, bodyMarkdownContent)
+	if err != nil {
+		return err
+	}
+	if err := filesystem.WriteFileCreatingDirectory(targetFilePath, newFileContent, 0644); err != nil {
+		return err
+	}
+	if err := os.Remove(sourceFilePath); err != nil {
+		_ = os.Remove(targetFilePath)
+		return fmt.Errorf("重命名文章文件失败：%w", err)
+	}
+
+	if err := blogService.renderAllWithoutLock(); err != nil {
+		if restoreErr := filesystem.WriteFileCreatingDirectory(sourceFilePath, previousFileContent, 0644); restoreErr != nil {
+			return fmt.Errorf("重新渲染失败且恢复原文章失败：%v；恢复错误：%w", err, restoreErr)
+		}
+		if removeErr := os.Remove(targetFilePath); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("重新渲染失败且删除新文章失败：%v；删除错误：%w", err, removeErr)
+		}
+		_ = blogService.renderAllWithoutLock()
+		return err
+	}
+	return nil
+}
+
+func samePath(firstPath string, secondPath string) bool {
+	firstAbsPath, firstErr := filepath.Abs(firstPath)
+	secondAbsPath, secondErr := filepath.Abs(secondPath)
+	if firstErr == nil && secondErr == nil {
+		return strings.EqualFold(firstAbsPath, secondAbsPath)
+	}
+	return strings.EqualFold(filepath.Clean(firstPath), filepath.Clean(secondPath))
 }

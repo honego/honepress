@@ -5,14 +5,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/honeok/honepress/constant"
 )
 
-var (
-	publicHTMLFileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*\.html$`)
-	markdownFileNamePattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*\.md$`)
-)
+var publicHTMLFileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*\.html$`)
 
 // 把后台输入的固定链接归一成最终输出文件名
 func NormalizePermalink(rawPermalink string) (string, error) {
@@ -57,14 +55,27 @@ func NormalizePermalinkWithFallback(rawPermalink string, sourceFileName string) 
 
 // 校验 Markdown 文件名
 func ValidateMarkdownFileName(markdownFileName string) error {
-	if strings.TrimSpace(markdownFileName) == "" {
+	trimmedFileName := strings.TrimSpace(markdownFileName)
+	if trimmedFileName == "" {
 		return fmt.Errorf("文章文件名不能为空")
 	}
-	if filepath.Base(markdownFileName) != markdownFileName {
+	if filepath.Base(trimmedFileName) != trimmedFileName {
 		return fmt.Errorf("文章文件名不能包含路径：%s", markdownFileName)
 	}
-	if !markdownFileNamePattern.MatchString(markdownFileName) {
-		return fmt.Errorf("文章文件名只能使用 ASCII 字母、数字、短横线和下划线：%s", markdownFileName)
+	if !strings.EqualFold(filepath.Ext(trimmedFileName), ".md") {
+		return fmt.Errorf("文章文件名必须以 .md 结尾：%s", markdownFileName)
+	}
+	fileNameStem := strings.TrimSuffix(trimmedFileName, filepath.Ext(trimmedFileName))
+	if strings.Trim(fileNameStem, " .") == "" {
+		return fmt.Errorf("文章文件名不能为空：%s", markdownFileName)
+	}
+	if strings.Contains(fileNameStem, "..") {
+		return fmt.Errorf("文章文件名不能包含路径穿越：%s", markdownFileName)
+	}
+	for _, currentRune := range trimmedFileName {
+		if isInvalidMarkdownFileRune(currentRune) {
+			return fmt.Errorf("文章文件名包含非法字符：%s", markdownFileName)
+		}
 	}
 	return nil
 }
@@ -80,4 +91,35 @@ func MarkdownFileNameFromPermalink(normalizedPermalink string) (string, error) {
 		return "", err
 	}
 	return markdownFileName, nil
+}
+
+// 根据标题生成 Markdown 文件名
+func MarkdownFileNameFromTitle(title string) (string, error) {
+	fileNameStem := strings.Join(strings.Fields(strings.TrimSpace(title)), " ")
+	if fileNameStem == "" {
+		return "", fmt.Errorf("标题不能为空")
+	}
+
+	var safeFileNameBuilder strings.Builder
+	for _, currentRune := range fileNameStem {
+		if isInvalidMarkdownFileRune(currentRune) {
+			continue
+		}
+		safeFileNameBuilder.WriteRune(currentRune)
+	}
+
+	fileNameStem = strings.Trim(safeFileNameBuilder.String(), " .")
+	if fileNameStem == "" {
+		return "", fmt.Errorf("标题不能只包含文件名非法字符")
+	}
+
+	markdownFileName := fileNameStem + ".md"
+	if err := ValidateMarkdownFileName(markdownFileName); err != nil {
+		return "", err
+	}
+	return markdownFileName, nil
+}
+
+func isInvalidMarkdownFileRune(currentRune rune) bool {
+	return unicode.IsControl(currentRune) || strings.ContainsRune(`<>:"/\|?*`, currentRune)
 }

@@ -73,7 +73,7 @@ a:hover {
 }
 
 .site-header {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid transparent;
   background: color-mix(in srgb, var(--background) 92%, transparent);
 }
 
@@ -170,7 +170,7 @@ a:hover {
 
 .intro {
   padding: 32px 0 48px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid transparent;
 }
 
 .site-kicker {
@@ -200,6 +200,42 @@ h1 {
   letter-spacing: 0;
 }
 
+.archive-header {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.archive-stats {
+  margin: 0;
+  color: var(--muted);
+}
+
+.archive-list {
+  display: grid;
+  gap: 14px;
+}
+
+.archive-item {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 18px;
+  align-items: baseline;
+  padding: 8px 0;
+}
+
+.archive-item time {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.archive-item h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
 .post-list,
 .archive {
   display: grid;
@@ -208,7 +244,7 @@ h1 {
 
 .post-item {
   padding: 20px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid transparent;
 }
 
 .post-item time,
@@ -259,7 +295,7 @@ h1 {
 
 .article-header {
   padding: 24px 0 28px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid transparent;
 }
 
 .article-header p {
@@ -313,7 +349,7 @@ h1 {
 
 .comments {
   padding-top: 28px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid transparent;
 }
 
 .empty,
@@ -325,7 +361,7 @@ h1 {
   width: min(860px, calc(100% - 32px));
   margin: 32px auto 0;
   padding: 42px 0 46px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid transparent;
   font-size: 14px;
 }
 
@@ -367,6 +403,11 @@ h1 {
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .archive-item {
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
 }
 

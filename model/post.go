@@ -13,7 +13,6 @@ type PostFrontMatter struct {
 	Description string   `yaml:"description"`
 	Draft       bool     `yaml:"draft"`
 	URL         string   `yaml:"url"`
-	Comments    bool     `yaml:"comments"`
 	Aliases     []string `yaml:"aliases"`
 	Tags        []string `yaml:"tags"`
 }
@@ -31,7 +30,6 @@ type Post struct {
 	URL            string
 	Aliases        []string
 	Tags           []string
-	Comments       bool
 	BodyMarkdown   string
 	BodyHTML       template.HTML
 }
@@ -45,7 +43,6 @@ type PostSummary struct {
 	Draft       bool     `json:"draft"`
 	URL         string   `json:"url"`
 	PublicURL   string   `json:"publicUrl"`
-	Comments    bool     `json:"comments"`
 	Tags        []string `json:"tags"`
 }
 
@@ -53,13 +50,13 @@ type PostSummary struct {
 type PostDetail struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
+	Icon        string   `json:"icon"`
 	Date        string   `json:"date"`
 	Description string   `json:"description"`
 	Draft       bool     `json:"draft"`
 	URL         string   `json:"url"`
 	Aliases     []string `json:"aliases"`
 	Tags        []string `json:"tags"`
-	Comments    bool     `json:"comments"`
 	Body        string   `json:"body"`
 }
 
@@ -67,13 +64,13 @@ type PostDetail struct {
 type SavePostRequest struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
+	Icon        string   `json:"icon"`
 	Date        string   `json:"date"`
 	Description string   `json:"description"`
 	Draft       bool     `json:"draft"`
 	URL         string   `json:"url"`
 	Aliases     []string `json:"aliases"`
 	Tags        []string `json:"tags"`
-	Comments    bool     `json:"comments"`
 	Body        string   `json:"body"`
 }
 

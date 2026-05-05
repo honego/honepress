@@ -31,6 +31,8 @@ type SiteViewData struct {
 	RSSPath         string
 	Labels          TemplateLabels
 	Posts           []PostSummary
+	PostCount       int
+	WordCount       int
 }
 
 // 文章模板数据

@@ -17,15 +17,30 @@ import type { PostDetail, PostSummary, SavePostRequest, SiteSettings } from "./t
 type EditorMode = "create" | "edit";
 type AdminSection = "posts" | "settings";
 type AdminThemeMode = "auto" | "light" | "dark";
+type MarkdownAction = "bold" | "italic" | "heading" | "quote" | "code" | "codeblock" | "link" | "image" | "ul" | "ol";
 
+const themeStorageKey = "honepress-theme";
 const adminThemeModes: AdminThemeMode[] = ["auto", "light", "dark"];
+const emojiOptions = [
+  { value: "", label: "默认网站 icon" },
+  { value: "☘️", label: "☘️ 日常" },
+  { value: "🌱", label: "🌱 记录" },
+  { value: "✨", label: "✨ 灵感" },
+  { value: "📝", label: "📝 笔记" },
+  { value: "💡", label: "💡 想法" },
+  { value: "🚀", label: "🚀 项目" },
+  { value: "📌", label: "📌 摘录" },
+  { value: "🌙", label: "🌙 夜读" },
+  { value: "🧩", label: "🧩 技术" },
+];
+
 const activeSection = ref<AdminSection>("posts");
 const posts = ref<PostSummary[]>([]);
 const editorMode = ref<EditorMode>("create");
 const isEditorOpen = ref(false);
 const editorForm = ref<PostDetail>(createEmptyPost());
 const aliasesText = ref("");
-const tagsText = ref("");
+const tagDraft = ref("");
 const previewHTML = ref("");
 const statusMessage = ref("");
 const errorMessage = ref("");
@@ -34,6 +49,7 @@ const isPreviewLoading = ref(false);
 const adminTheme = ref<AdminThemeMode>(readStoredAdminTheme());
 const siteSettings = ref<SiteSettings>(createEmptySiteSettings());
 const siteIconFileInput = ref<HTMLInputElement | null>(null);
+const markdownTextarea = ref<HTMLTextAreaElement | null>(null);
 
 let previewTimerID: number | undefined;
 
@@ -41,12 +57,12 @@ const selectedPostID = computed(() => (isEditorOpen.value && editorMode.value ==
 const canEditExistingPost = computed(() => isEditorOpen.value && editorMode.value === "edit" && selectedPostID.value !== "");
 const adminThemeLabel = computed(() => {
   if (adminTheme.value === "light") {
-    return "明亮";
+    return "主题：亮色";
   }
   if (adminTheme.value === "dark") {
-    return "暗色";
+    return "主题：暗色";
   }
-  return "自动";
+  return "主题：自动";
 });
 const pageTitle = computed(() => (activeSection.value === "posts" ? "文章" : "设置"));
 
@@ -109,9 +125,9 @@ async function selectPost(postID: string): Promise<void> {
     const loadedPost = await fetchPost(postID);
     editorMode.value = "edit";
     isEditorOpen.value = true;
-    editorForm.value = loadedPost;
+    editorForm.value = normalizePostDetail(loadedPost);
     aliasesText.value = loadedPost.aliases.join("\n");
-    tagsText.value = loadedPost.tags.join("\n");
+    tagDraft.value = "";
     statusMessage.value = `已打开：${loadedPost.title}`;
     schedulePreview();
   } catch (error) {
@@ -125,7 +141,7 @@ function createNewPost(): void {
   isEditorOpen.value = true;
   editorForm.value = createEmptyPost();
   aliasesText.value = "";
-  tagsText.value = "";
+  tagDraft.value = "";
   statusMessage.value = "正在新建文章。";
   errorMessage.value = "";
   schedulePreview();
@@ -135,6 +151,7 @@ async function saveCurrentPost(): Promise<void> {
   if (!isEditorOpen.value) {
     return;
   }
+  addTagFromDraft();
   isSaving.value = true;
   errorMessage.value = "";
   try {
@@ -145,9 +162,9 @@ async function saveCurrentPost(): Promise<void> {
         : await createPost(savePostRequest);
     editorMode.value = "edit";
     isEditorOpen.value = true;
-    editorForm.value = postDetailResponse.post;
+    editorForm.value = normalizePostDetail(postDetailResponse.post);
     aliasesText.value = postDetailResponse.post.aliases.join("\n");
-    tagsText.value = postDetailResponse.post.tags.join("\n");
+    tagDraft.value = "";
     statusMessage.value = postDetailResponse.message ?? "文章已保存。";
     await loadPosts();
   } catch (error) {
@@ -244,6 +261,22 @@ async function refreshPreview(): Promise<void> {
 }
 
 async function handleMarkdownKeydown(event: KeyboardEvent): Promise<void> {
+  const shortcutKey = event.key.toLowerCase();
+  if ((event.ctrlKey || event.metaKey) && shortcutKey === "b") {
+    event.preventDefault();
+    await applyMarkdownAction("bold");
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && shortcutKey === "i") {
+    event.preventDefault();
+    await applyMarkdownAction("italic");
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && shortcutKey === "k") {
+    event.preventDefault();
+    await applyMarkdownAction("link");
+    return;
+  }
   if (event.key !== "Tab") {
     return;
   }
@@ -257,6 +290,102 @@ async function handleMarkdownKeydown(event: KeyboardEvent): Promise<void> {
   await nextTick();
   textareaElement.selectionStart = selectionStart + 2;
   textareaElement.selectionEnd = selectionStart + 2;
+}
+
+async function applyMarkdownAction(action: MarkdownAction): Promise<void> {
+  const textareaElement = markdownTextarea.value;
+  if (textareaElement === null) {
+    return;
+  }
+  const selectionStart = textareaElement.selectionStart;
+  const selectionEnd = textareaElement.selectionEnd;
+  const selectedText = editorForm.value.body.slice(selectionStart, selectionEnd);
+  let replacementText = selectedText;
+  let nextSelectionStart = selectionStart;
+  let nextSelectionEnd = selectionEnd;
+
+  if (action === "bold") {
+    replacementText = `**${selectedText || "加粗文字"}**`;
+    nextSelectionStart = selectionStart + 2;
+    nextSelectionEnd = selectionStart + replacementText.length - 2;
+  } else if (action === "italic") {
+    replacementText = `*${selectedText || "斜体文字"}*`;
+    nextSelectionStart = selectionStart + 1;
+    nextSelectionEnd = selectionStart + replacementText.length - 1;
+  } else if (action === "code") {
+    replacementText = `\`${selectedText || "code"}\``;
+    nextSelectionStart = selectionStart + 1;
+    nextSelectionEnd = selectionStart + replacementText.length - 1;
+  } else if (action === "codeblock") {
+    replacementText = `\`\`\`shell\n${selectedText || "echo hello"}\n\`\`\``;
+    nextSelectionStart = selectionStart + 9;
+    nextSelectionEnd = selectionStart + replacementText.length - 4;
+  } else if (action === "link") {
+    replacementText = `[${selectedText || "链接文字"}](https://example.com)`;
+    nextSelectionStart = selectionStart + 1;
+    nextSelectionEnd = selectionStart + (selectedText || "链接文字").length + 1;
+  } else if (action === "image") {
+    replacementText = `![${selectedText || "图片描述"}](https://example.com/image.png)`;
+    nextSelectionStart = selectionStart + 2;
+    nextSelectionEnd = selectionStart + (selectedText || "图片描述").length + 2;
+  } else if (action === "heading") {
+    replacementText = prefixSelectedLines(selectedText || "小标题", "## ");
+    nextSelectionEnd = selectionStart + replacementText.length;
+  } else if (action === "quote") {
+    replacementText = prefixSelectedLines(selectedText || "引用内容", "> ");
+    nextSelectionEnd = selectionStart + replacementText.length;
+  } else if (action === "ul") {
+    replacementText = prefixSelectedLines(selectedText || "列表项", "- ");
+    nextSelectionEnd = selectionStart + replacementText.length;
+  } else if (action === "ol") {
+    replacementText = prefixSelectedLines(selectedText || "列表项", "1. ");
+    nextSelectionEnd = selectionStart + replacementText.length;
+  }
+
+  editorForm.value.body = `${editorForm.value.body.slice(0, selectionStart)}${replacementText}${editorForm.value.body.slice(selectionEnd)}`;
+  await nextTick();
+  textareaElement.focus();
+  textareaElement.selectionStart = nextSelectionStart;
+  textareaElement.selectionEnd = nextSelectionEnd;
+}
+
+function prefixSelectedLines(text: string, prefix: string): string {
+  return text
+    .split("\n")
+    .map((lineText) => `${prefix}${lineText}`)
+    .join("\n");
+}
+
+function handleTagKeydown(event: KeyboardEvent): void {
+  if (event.key === "Enter" || event.key === "," || event.key === "，") {
+    event.preventDefault();
+    addTagFromDraft();
+    return;
+  }
+  if (event.key === "Backspace" && tagDraft.value === "" && editorForm.value.tags.length > 0) {
+    editorForm.value.tags = editorForm.value.tags.slice(0, -1);
+  }
+}
+
+function addTagFromDraft(): void {
+  const rawTags = tagDraft.value
+    .split(/[\n,，]/)
+    .map((tagText) => tagText.trim())
+    .filter((tagText) => tagText !== "");
+  rawTags.forEach((tagText) => addTag(tagText));
+  tagDraft.value = "";
+}
+
+function addTag(tagText: string): void {
+  const normalizedTag = tagText.trim();
+  if (normalizedTag === "" || editorForm.value.tags.includes(normalizedTag)) {
+    return;
+  }
+  editorForm.value.tags = [...editorForm.value.tags, normalizedTag];
+}
+
+function removeTag(tagIndex: number): void {
+  editorForm.value.tags = editorForm.value.tags.filter((_, currentIndex) => currentIndex !== tagIndex);
 }
 
 function handleGlobalKeydown(event: KeyboardEvent): void {
@@ -280,20 +409,21 @@ function cycleAdminTheme(): void {
   const nextThemeIndex = (currentThemeIndex + 1) % adminThemeModes.length;
   adminTheme.value = adminThemeModes[nextThemeIndex];
   try {
-    window.localStorage.setItem("honepress-admin-theme", adminTheme.value);
+    window.localStorage.setItem(themeStorageKey, adminTheme.value);
   } catch {
-    statusMessage.value = "浏览器阻止保存后台主题。";
+    statusMessage.value = "浏览器阻止保存主题。";
   }
   applyAdminTheme();
 }
 
 function applyAdminTheme(): void {
   document.documentElement.dataset.adminTheme = adminTheme.value;
+  document.documentElement.dataset.theme = adminTheme.value;
 }
 
 function readStoredAdminTheme(): AdminThemeMode {
   try {
-    const storedTheme = window.localStorage.getItem("honepress-admin-theme");
+    const storedTheme = window.localStorage.getItem(themeStorageKey);
     if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "auto") {
       return storedTheme;
     }
@@ -307,6 +437,7 @@ function buildSavePostRequest(): SavePostRequest {
   return {
     id: editorMode.value === "create" ? "" : editorForm.value.id,
     title: editorForm.value.title,
+    icon: editorForm.value.icon,
     date: editorForm.value.date,
     description: editorForm.value.description,
     draft: editorForm.value.draft,
@@ -315,8 +446,7 @@ function buildSavePostRequest(): SavePostRequest {
       .split("\n")
       .map((aliasText) => aliasText.trim())
       .filter((aliasText) => aliasText !== ""),
-    tags: parseTextList(tagsText.value),
-    comments: editorForm.value.comments,
+    tags: editorForm.value.tags,
     body: editorForm.value.body,
   };
 }
@@ -326,7 +456,7 @@ function closeEditor(): void {
   editorMode.value = "create";
   editorForm.value = createEmptyPost();
   aliasesText.value = "";
-  tagsText.value = "";
+  tagDraft.value = "";
   previewHTML.value = "";
   if (previewTimerID !== undefined) {
     window.clearTimeout(previewTimerID);
@@ -338,14 +468,23 @@ function createEmptyPost(): PostDetail {
   return {
     id: "",
     title: "未命名文章",
+    icon: "",
     date: formatCurrentDate(),
     description: "",
     draft: false,
     url: "new-post.html",
     aliases: [],
     tags: [],
-    comments: true,
     body: "这里写 Markdown 正文。",
+  };
+}
+
+function normalizePostDetail(postDetail: PostDetail): PostDetail {
+  return {
+    ...postDetail,
+    icon: postDetail.icon ?? "",
+    aliases: postDetail.aliases ?? [],
+    tags: postDetail.tags ?? [],
   };
 }
 
@@ -366,13 +505,6 @@ function createEmptySiteSettings(): SiteSettings {
     themeDefault: "auto",
     font: "default",
   };
-}
-
-function parseTextList(textValue: string): string[] {
-  return textValue
-    .split(/[\n,，]/)
-    .map((itemText) => itemText.trim())
-    .filter((itemText, itemIndex, itemTexts) => itemText !== "" && itemTexts.indexOf(itemText) === itemIndex);
 }
 
 function formatCurrentDate(): string {
@@ -411,7 +543,7 @@ function escapeHTML(rawText: string): string {
         <span>HonePress</span>
       </a>
       <div class="topbar-actions">
-        <button type="button" @click="cycleAdminTheme">主题：{{ adminThemeLabel }}</button>
+        <button type="button" @click="cycleAdminTheme">{{ adminThemeLabel }}</button>
       </div>
     </header>
 
@@ -462,7 +594,7 @@ function escapeHTML(rawText: string): string {
           <section v-if="isEditorOpen" class="editor-panel">
             <header class="editor-header">
               <div>
-                <p class="eyebrow">{{ editorMode === "create" ? "新建文章" : editorForm.id }}</p>
+                <p class="eyebrow">{{ editorMode === "create" ? "新建文章" : "编辑文章" }}</p>
                 <h2>{{ editorForm.title }}</h2>
               </div>
               <div class="actions">
@@ -480,7 +612,14 @@ function escapeHTML(rawText: string): string {
                 <span>标题</span>
                 <input v-model="editorForm.title" type="text" />
               </label>
-
+              <label>
+                <span>Emoji</span>
+                <select v-model="editorForm.icon">
+                  <option v-for="emojiOption in emojiOptions" :key="emojiOption.label" :value="emojiOption.value">
+                    {{ emojiOption.label }}
+                  </option>
+                </select>
+              </label>
               <label>
                 <span>固定链接</span>
                 <input v-model="editorForm.url" type="text" />
@@ -500,21 +639,42 @@ function escapeHTML(rawText: string): string {
                 <span>别名</span>
                 <textarea v-model="aliasesText" rows="3"></textarea>
               </label>
-              <label class="wide">
+              <label class="wide tag-editor-field">
                 <span>标签</span>
-                <textarea v-model="tagsText" rows="2"></textarea>
+                <div class="tag-editor">
+                  <span v-for="(tag, tagIndex) in editorForm.tags" :key="tag" class="tag-chip">
+                    {{ tag }}
+                    <button type="button" :aria-label="`删除标签 ${tag}`" @click="removeTag(tagIndex)">×</button>
+                  </span>
+                  <input v-model="tagDraft" type="text" placeholder="输入标签后回车" @keydown="handleTagKeydown"
+                    @blur="addTagFromDraft" />
+                </div>
               </label>
               <div class="switches">
                 <label><input v-model="editorForm.draft" type="checkbox" /> 草稿</label>
-                <label><input v-model="editorForm.comments" type="checkbox" /> 评论</label>
               </div>
             </section>
 
             <section class="workspace">
-              <label class="markdown-editor">
-                <span>Markdown</span>
-                <textarea v-model="editorForm.body" spellcheck="false" @keydown="handleMarkdownKeydown"></textarea>
-              </label>
+              <section class="markdown-editor">
+                <div class="markdown-editor-head">
+                  <span>Markdown</span>
+                  <div class="markdown-toolbar" aria-label="Markdown 工具栏">
+                    <button type="button" title="加粗 Ctrl+B" @click="applyMarkdownAction('bold')">B</button>
+                    <button type="button" title="斜体 Ctrl+I" @click="applyMarkdownAction('italic')">I</button>
+                    <button type="button" title="标题" @click="applyMarkdownAction('heading')">H</button>
+                    <button type="button" title="引用" @click="applyMarkdownAction('quote')">&gt;</button>
+                    <button type="button" title="行内代码" @click="applyMarkdownAction('code')">`</button>
+                    <button type="button" title="代码块" @click="applyMarkdownAction('codeblock')">{ }</button>
+                    <button type="button" title="链接 Ctrl+K" @click="applyMarkdownAction('link')">链</button>
+                    <button type="button" title="图片" @click="applyMarkdownAction('image')">图</button>
+                    <button type="button" title="无序列表" @click="applyMarkdownAction('ul')">-</button>
+                    <button type="button" title="有序列表" @click="applyMarkdownAction('ol')">1.</button>
+                  </div>
+                </div>
+                <textarea ref="markdownTextarea" v-model="editorForm.body" spellcheck="false"
+                  @keydown="handleMarkdownKeydown"></textarea>
+              </section>
               <div class="preview">
                 <div class="preview-header">
                   <span>预览</span>

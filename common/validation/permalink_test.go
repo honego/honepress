@@ -34,3 +34,13 @@ func TestNormalizePermalink(t *testing.T) {
 		})
 	}
 }
+
+func TestMarkdownFileNameFromTitleAllowsChineseTitle(t *testing.T) {
+	markdownFileName, err := MarkdownFileNameFromTitle("记录生活")
+	if err != nil {
+		t.Fatalf("不期望返回错误：%v", err)
+	}
+	if markdownFileName != "记录生活.md" {
+		t.Fatalf("文件名不一致：got %s want 记录生活.md", markdownFileName)
+	}
+}
