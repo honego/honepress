@@ -3,10 +3,32 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{.Post.Title}} - {{.SiteTitle}}</title>
-    <meta name="description" content="{{.Post.Description}}" />
-    <link rel="canonical" href="{{.CanonicalPath}}" />
-    {{if .FaviconHref}}
+    <title>{{.SEOTitle}}</title>
+    {{if .SEODescription}}
+    <meta name="description" content="{{.SEODescription}}" />
+    {{end}}
+    <link rel="canonical" href="{{.CanonicalURL}}" />
+    <meta property="og:type" content="{{.SEOType}}" />
+    <meta property="og:title" content="{{.SEOTitle}}" />
+    {{if .SEODescription}}
+    <meta property="og:description" content="{{.SEODescription}}" />
+    {{end}}
+    <meta property="og:url" content="{{.CanonicalURL}}" />
+    <meta property="og:site_name" content="{{.SiteTitle}}" />
+    {{if .SEOImage}}
+    <meta property="og:image" content="{{.SEOImage}}" />
+    {{end}}
+    <meta name="twitter:card" content="{{if .SEOImage}}summary_large_image{{else}}summary{{end}}" />
+    <meta name="twitter:title" content="{{.SEOTitle}}" />
+    {{if .SEODescription}}
+    <meta name="twitter:description" content="{{.SEODescription}}" />
+    {{end}} {{if .SEOImage}}
+    <meta name="twitter:image" content="{{.SEOImage}}" />
+    {{end}} {{if .StructuredData}}
+    <script type="application/ld+json">
+      {{.StructuredData}}
+    </script>
+    {{end}} {{if .FaviconHref}}
     <link rel="icon" href="{{.FaviconHref}}" />
     {{end}}
     <link rel="stylesheet" href="/style.css" />

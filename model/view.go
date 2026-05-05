@@ -26,6 +26,12 @@ type SiteViewData struct {
 	ThemeDefault    string
 	Font            string
 	CanonicalPath   string
+	CanonicalURL    template.URL
+	SEOTitle        string
+	SEODescription  string
+	SEOType         string
+	SEOImage        template.URL
+	StructuredData  template.JS
 	HomePath        string
 	BlogPath        string
 	RSSPath         string
@@ -45,6 +51,12 @@ type PostViewData struct {
 	ThemeDefault    string
 	Font            string
 	CanonicalPath   string
+	CanonicalURL    template.URL
+	SEOTitle        string
+	SEODescription  string
+	SEOType         string
+	SEOImage        template.URL
+	StructuredData  template.JS
 	HomePath        string
 	BlogPath        string
 	RSSPath         string

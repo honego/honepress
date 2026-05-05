@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	htmlTemplate "html/template"
 	"log"
@@ -268,6 +269,12 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		ThemeDefault:    blogService.options.ThemeDefault,
 		Font:            blogService.options.Font,
 		CanonicalPath:   "/",
+		CanonicalURL:    seoPublicURL(blogService.options, "/"),
+		SEOTitle:        homeSEOTitle(blogService.options.Title, blogService.options.Description),
+		SEODescription:  seoDescription(blogService.options.Title, blogService.options.Description),
+		SEOType:         "website",
+		SEOImage:        seoImageURL(blogService.options, blogService.options.SiteIconURL),
+		StructuredData:  siteStructuredData(blogService.options),
 		HomePath:        "/",
 		BlogPath:        archivePath,
 		RSSPath:         "/rss.xml",
@@ -282,6 +289,11 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		return err
 	}
 	siteViewData.CanonicalPath = archivePath
+	siteViewData.CanonicalURL = seoPublicURL(blogService.options, archivePath)
+	siteViewData.SEOTitle = pageSEOTitle(labels.AllPosts, blogService.options.Title)
+	siteViewData.SEODescription = seoDescription(blogService.options.Title, blogService.options.Description)
+	siteViewData.SEOType = "website"
+	siteViewData.StructuredData = archiveStructuredData(blogService.options, posts)
 	if err := templateRenderer.RenderBlog(filepath.Join(blogService.options.PublicDir, "archive.html"), siteViewData); err != nil {
 		return err
 	}
@@ -305,6 +317,12 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 				ThemeDefault:    blogService.options.ThemeDefault,
 				Font:            blogService.options.Font,
 				CanonicalPath:   "/" + currentPost.URL,
+				CanonicalURL:    seoPublicURL(blogService.options, "/"+currentPost.URL),
+				SEOTitle:        pageSEOTitle(currentPost.Title, blogService.options.Title),
+				SEODescription:  seoDescription(currentPost.Title, currentPost.Description),
+				SEOType:         "article",
+				SEOImage:        seoImageURL(blogService.options, blogService.options.SiteIconURL),
+				StructuredData:  postStructuredData(blogService.options, currentPost),
 				HomePath:        "/",
 				BlogPath:        archivePath,
 				RSSPath:         "/rss.xml",
@@ -435,6 +453,132 @@ func (blogService *BlogService) commentHTML() htmlTemplate.HTML {
 	htmlBuilder.WriteString(`></section>`)
 
 	return htmlTemplate.HTML(htmlBuilder.String())
+}
+
+func siteName(title string) string {
+	trimmedTitle := strings.TrimSpace(title)
+	if trimmedTitle == "" {
+		return "HonePress"
+	}
+	return trimmedTitle
+}
+
+func homeSEOTitle(siteTitle string, siteDescription string) string {
+	name := siteName(siteTitle)
+	description := strings.TrimSpace(siteDescription)
+	if description == "" {
+		return name
+	}
+	return name + " - " + description
+}
+
+func pageSEOTitle(pageTitle string, siteTitle string) string {
+	trimmedPageTitle := strings.TrimSpace(pageTitle)
+	name := siteName(siteTitle)
+	if trimmedPageTitle == "" || trimmedPageTitle == name {
+		return name
+	}
+	return trimmedPageTitle + " - " + name
+}
+
+func seoDescription(primary string, fallback string) string {
+	if trimmedFallback := strings.TrimSpace(fallback); trimmedFallback != "" {
+		return trimmedFallback
+	}
+	return strings.TrimSpace(primary)
+}
+
+func seoPublicURL(options option.Options, publicPath string) htmlTemplate.URL {
+	return htmlTemplate.URL(options.AbsoluteURL(publicPath))
+}
+
+func seoImageURL(options option.Options, imageURL string) htmlTemplate.URL {
+	trimmedImageURL := strings.TrimSpace(imageURL)
+	if trimmedImageURL == "" || strings.HasPrefix(trimmedImageURL, "data:") {
+		return ""
+	}
+	return htmlTemplate.URL(options.AbsoluteURL(trimmedImageURL))
+}
+
+func structuredData(document map[string]interface{}) htmlTemplate.JS {
+	encodedDocument, err := json.Marshal(document)
+	if err != nil {
+		return ""
+	}
+	return htmlTemplate.JS(encodedDocument)
+}
+
+func addPublisher(document map[string]interface{}, options option.Options) {
+	publisher := map[string]interface{}{
+		"@type": "Organization",
+		"name":  siteName(options.Title),
+	}
+	if logoURL := seoImageURL(options, options.SiteIconURL); logoURL != "" {
+		publisher["logo"] = map[string]interface{}{
+			"@type": "ImageObject",
+			"url":   string(logoURL),
+		}
+	}
+	document["publisher"] = publisher
+}
+
+func siteStructuredData(options option.Options) htmlTemplate.JS {
+	document := map[string]interface{}{
+		"@context":    "https://schema.org",
+		"@type":       "Blog",
+		"name":        siteName(options.Title),
+		"description": seoDescription(options.Title, options.Description),
+		"url":         options.AbsoluteURL("/"),
+	}
+	addPublisher(document, options)
+	return structuredData(document)
+}
+
+func archiveStructuredData(options option.Options, posts []model.Post) htmlTemplate.JS {
+	items := make([]map[string]interface{}, 0, len(posts))
+	for postIndex, currentPost := range posts {
+		items = append(items, map[string]interface{}{
+			"@type":    "ListItem",
+			"position": postIndex + 1,
+			"name":     currentPost.Title,
+			"url":      options.AbsoluteURL("/" + currentPost.URL),
+		})
+	}
+	document := map[string]interface{}{
+		"@context":    "https://schema.org",
+		"@type":       "CollectionPage",
+		"name":        pageSEOTitle("Archive", options.Title),
+		"description": seoDescription(options.Title, options.Description),
+		"url":         options.AbsoluteURL("/archive.html"),
+		"mainEntity": map[string]interface{}{
+			"@type":           "ItemList",
+			"itemListElement": items,
+		},
+	}
+	return structuredData(document)
+}
+
+func postStructuredData(options option.Options, post model.Post) htmlTemplate.JS {
+	postURL := options.AbsoluteURL("/" + post.URL)
+	document := map[string]interface{}{
+		"@context":         "https://schema.org",
+		"@type":            "BlogPosting",
+		"headline":         post.Title,
+		"description":      seoDescription(post.Title, post.Description),
+		"datePublished":    post.PublishedAt.Format(time.RFC3339),
+		"dateModified":     post.PublishedAt.Format(time.RFC3339),
+		"url":              postURL,
+		"mainEntityOfPage": map[string]interface{}{"@type": "WebPage", "@id": postURL},
+		"author":           map[string]interface{}{"@type": "Person", "name": siteName(options.Title)},
+	}
+	if len(post.Tags) > 0 {
+		document["keywords"] = strings.Join(post.Tags, ", ")
+	}
+	if imageURL := seoImageURL(options, options.SiteIconURL); imageURL != "" {
+		document["image"] = string(imageURL)
+	}
+	addPublisher(document, options)
+	return structuredData(document)
 }
 
 func filterPublishedPosts(posts []model.Post) []model.Post {
