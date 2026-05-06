@@ -1,7 +1,9 @@
 package httpserver
 
 import (
+	"crypto/rand"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,15 +23,17 @@ import (
 
 // HTTP 服务
 type Server struct {
-	options     option.Options
-	blogService *service.BlogService
+	options           option.Options
+	blogService       *service.BlogService
+	adminSessionToken string
 }
 
 // 创建 HTTP 服务实例
 func New(options option.Options, blogService *service.BlogService) *Server {
 	return &Server{
-		options:     options,
-		blogService: blogService,
+		options:           options,
+		blogService:       blogService,
+		adminSessionToken: newAdminSessionToken(),
 	}
 }
 
@@ -42,8 +46,11 @@ func (server *Server) routes() http.Handler {
 	router := chi.NewRouter()
 	router.Use(securityHeaders)
 
+	router.Post("/api/login", server.handleLogin)
+	router.Post("/api/logout", server.handleLogout)
+
 	router.Route("/api", func(apiRouter chi.Router) {
-		apiRouter.Use(server.basicAuth)
+		apiRouter.Use(server.adminAuth)
 		apiRouter.NotFound(func(responseWriter http.ResponseWriter, _ *http.Request) {
 			server.writeError(responseWriter, http.StatusNotFound, "接口不存在")
 		})
@@ -58,7 +65,6 @@ func (server *Server) routes() http.Handler {
 		apiRouter.Delete("/posts/{postID}", server.handleDeletePost)
 	})
 	router.Group(func(adminRouter chi.Router) {
-		adminRouter.Use(server.basicAuth)
 		adminRouter.Get("/admin", server.redirectAdmin)
 		adminRouter.Get("/admin/*", server.serveAdmin)
 	})
@@ -67,24 +73,67 @@ func (server *Server) routes() http.Handler {
 	return router
 }
 
-func (server *Server) basicAuth(nextHandler http.Handler) http.Handler {
+const adminSessionCookieName = "honepress_admin_session"
+
+func (server *Server) adminAuth(nextHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
-		if server.options.AdminPassword == "" {
+		if server.options.AdminPassword == "" || server.hasValidAdminSession(request) || server.hasValidBasicAuth(request) {
 			nextHandler.ServeHTTP(responseWriter, request)
 			return
 		}
 
-		username, password, hasCredentials := request.BasicAuth()
-		usernameMatches := subtle.ConstantTimeCompare([]byte(username), []byte(server.options.AdminUsername)) == 1
-		passwordMatches := subtle.ConstantTimeCompare([]byte(password), []byte(server.options.AdminPassword)) == 1
-		if !hasCredentials || !usernameMatches || !passwordMatches {
-			responseWriter.Header().Set("WWW-Authenticate", `Basic realm="honepress admin"`)
-			http.Error(responseWriter, "需要后台认证", http.StatusUnauthorized)
-			return
-		}
-
-		nextHandler.ServeHTTP(responseWriter, request)
+		server.writeError(responseWriter, http.StatusUnauthorized, "请先登录后台。")
 	})
+}
+
+func (server *Server) hasValidBasicAuth(request *http.Request) bool {
+	username, password, hasCredentials := request.BasicAuth()
+	if !hasCredentials {
+		return false
+	}
+	usernameMatches := subtle.ConstantTimeCompare([]byte(username), []byte(server.options.AdminUsername)) == 1
+	passwordMatches := subtle.ConstantTimeCompare([]byte(password), []byte(server.options.AdminPassword)) == 1
+	return usernameMatches && passwordMatches
+}
+
+func (server *Server) hasValidAdminSession(request *http.Request) bool {
+	adminSessionCookie, err := request.Cookie(adminSessionCookieName)
+	if err != nil || server.adminSessionToken == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(adminSessionCookie.Value), []byte(server.adminSessionToken)) == 1
+}
+
+func (server *Server) setAdminSessionCookie(responseWriter http.ResponseWriter, request *http.Request) {
+	http.SetCookie(responseWriter, &http.Cookie{
+		Name:     adminSessionCookieName,
+		Value:    server.adminSessionToken,
+		Path:     "/",
+		MaxAge:   7 * 24 * 60 * 60,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   request.TLS != nil,
+	})
+}
+
+func clearAdminSessionCookie(responseWriter http.ResponseWriter, request *http.Request) {
+	http.SetCookie(responseWriter, &http.Cookie{
+		Name:     adminSessionCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   request.TLS != nil,
+	})
+}
+
+func newAdminSessionToken() string {
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		panic(fmt.Sprintf("生成后台会话令牌失败：%v", err))
+	}
+	return base64.RawURLEncoding.EncodeToString(tokenBytes)
 }
 
 func securityHeaders(nextHandler http.Handler) http.Handler {
@@ -147,6 +196,34 @@ func (server *Server) servePublic(responseWriter http.ResponseWriter, request *h
 
 func (server *Server) handleHealth(responseWriter http.ResponseWriter, _ *http.Request) {
 	server.writeJSON(responseWriter, http.StatusOK, healthResponse{Status: "ok"})
+}
+
+func (server *Server) handleLogin(responseWriter http.ResponseWriter, request *http.Request) {
+	if server.options.AdminPassword == "" {
+		server.setAdminSessionCookie(responseWriter, request)
+		server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "后台已进入免密码模式。"})
+		return
+	}
+
+	var loginRequest adminLoginRequest
+	if err := server.decodeJSON(request, &loginRequest); err != nil {
+		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
+		return
+	}
+	usernameMatches := subtle.ConstantTimeCompare([]byte(loginRequest.Username), []byte(server.options.AdminUsername)) == 1
+	passwordMatches := subtle.ConstantTimeCompare([]byte(loginRequest.Password), []byte(server.options.AdminPassword)) == 1
+	if !usernameMatches || !passwordMatches {
+		server.writeError(responseWriter, http.StatusUnauthorized, "账号或密码不正确。")
+		return
+	}
+
+	server.setAdminSessionCookie(responseWriter, request)
+	server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "登录成功。"})
+}
+
+func (server *Server) handleLogout(responseWriter http.ResponseWriter, request *http.Request) {
+	clearAdminSessionCookie(responseWriter, request)
+	server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "已退出后台。"})
 }
 
 func (server *Server) handleListPosts(responseWriter http.ResponseWriter, _ *http.Request) {
@@ -261,6 +338,11 @@ func (server *Server) writeJSON(responseWriter http.ResponseWriter, statusCode i
 
 func (server *Server) writeError(responseWriter http.ResponseWriter, statusCode int, errorMessage string) {
 	server.writeJSON(responseWriter, statusCode, model.APIErrorResponse{Error: errorMessage})
+}
+
+type adminLoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type healthResponse struct {

@@ -1,52 +1,56 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import {
+  UnauthorizedError,
+  checkAdminSession,
   createPost,
   deletePost,
   fetchPost,
   fetchPosts,
   fetchSettings,
+  loginAdmin,
+  logoutAdmin,
   previewMarkdown,
   updatePost,
   updateSettings,
 } from "./api/post";
 import type { PostDetail, PostSummary, SavePostRequest, SiteSettings } from "./types/post";
 
+type AdminView = "dashboard" | "posts" | "editor" | "settings";
 type EditorMode = "create" | "edit";
-type AdminSection = "posts" | "settings";
 type AdminThemeMode = "auto" | "light" | "dark";
 type LucideWindow = Window & {
   lucide?: {
     createIcons: (options?: { nameAttr?: string }) => void;
   };
 };
-type MarkdownAction = "bold" | "italic" | "heading" | "quote" | "code" | "codeblock" | "link" | "image" | "ul" | "ol";
+
+const MarkdownWorkspace = defineAsyncComponent(() => import("./components/MarkdownWorkspace.vue"));
 
 const themeStorageKey = "honepress-theme";
 const themeModes: AdminThemeMode[] = ["auto", "light", "dark"];
 const themeLabels: Record<AdminThemeMode, string> = {
-  auto: "主题：自动",
-  light: "主题：亮色",
-  dark: "主题：暗色",
+  auto: "跟随系统",
+  light: "明亮主题",
+  dark: "暗色主题",
 };
 const emojiOptions = [
   { value: "", label: "默认网站 icon" },
   { value: "☘️", label: "☘️ 日常" },
   { value: "🌱", label: "🌱 记录" },
   { value: "✨", label: "✨ 灵感" },
-  { value: "📝", label: "📝 笔记" },
+  { value: "📑", label: "📑 笔记" },
   { value: "💡", label: "💡 想法" },
   { value: "🚀", label: "🚀 项目" },
   { value: "📌", label: "📌 摘录" },
   { value: "🌙", label: "🌙 夜读" },
-  { value: "🧩", label: "🧩 技术" },
+  { value: "🧠", label: "🧠 技术" },
 ];
 
-const activeSection = ref<AdminSection>("posts");
+const activeView = ref<AdminView>("dashboard");
 const posts = ref<PostSummary[]>([]);
 const editorMode = ref<EditorMode>("create");
-const isEditorOpen = ref(false);
 const editorForm = ref<PostDetail>(createEmptyPost());
 const aliasesText = ref("");
 const tagDraft = ref("");
@@ -55,49 +59,124 @@ const statusMessage = ref("");
 const errorMessage = ref("");
 const isSaving = ref(false);
 const isPreviewLoading = ref(false);
+const isBootstrapping = ref(true);
+const isAuthenticated = ref(false);
+const isLoggingIn = ref(false);
+const isDeleteDialogOpen = ref(false);
 const adminTheme = ref<AdminThemeMode>(readStoredTheme());
 const siteSettings = ref<SiteSettings>(createEmptySiteSettings());
-const markdownTextarea = ref<HTMLTextAreaElement | null>(null);
+const loginForm = ref({ username: "admin", password: "" });
+const loginError = ref("");
 
 let previewTimerID: number | undefined;
 
-const selectedPostID = computed(() => (isEditorOpen.value && editorMode.value === "edit" ? editorForm.value.id : ""));
-const canEditExistingPost = computed(() => isEditorOpen.value && editorMode.value === "edit" && selectedPostID.value !== "");
-const adminThemeLabel = computed(() => themeLabels[adminTheme.value]);
-const pageTitle = computed(() => (activeSection.value === "posts" ? "文章" : "设置"));
+const publishedPosts = computed(() => posts.value.filter((post) => !post.draft));
+const draftPosts = computed(() => posts.value.filter((post) => post.draft));
+const recentPosts = computed(() => posts.value.slice(0, 5));
+const canEditExistingPost = computed(() => editorMode.value === "edit" && editorForm.value.id !== "");
+const adminThemeLabel = computed(() => `主题：${themeLabels[adminTheme.value]}`);
+const editorTitle = computed(() => editorForm.value.title.trim() || "未命名文章");
+const pageTitle = computed(() => {
+  if (activeView.value === "dashboard") return "首页";
+  if (activeView.value === "posts") return "文章列表";
+  if (activeView.value === "settings") return "站点配置";
+  return editorMode.value === "create" ? "新建文章" : "编辑文章";
+});
+const pageDescription = computed(() => {
+  if (activeView.value === "dashboard") return "轻量、安静、专注写作的 HonePress 后台。";
+  if (activeView.value === "posts") return "管理已发布文章和草稿。";
+  if (activeView.value === "settings") return "写入 config.yaml 的站点基础配置。";
+  return "左侧编写 Markdown，右侧维护文章元信息。";
+});
 
 onMounted(() => {
   applyTheme(adminTheme.value);
   initializeIcons();
   window.addEventListener("load", initializeIcons);
   window.addEventListener("keydown", handleGlobalKeydown);
-  void loadPosts();
-  void loadSettings();
+  void bootstrapAdmin();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("load", initializeIcons);
   window.removeEventListener("keydown", handleGlobalKeydown);
-  if (previewTimerID !== undefined) {
-    window.clearTimeout(previewTimerID);
-  }
+  if (previewTimerID !== undefined) window.clearTimeout(previewTimerID);
 });
+
+watch(
+  () => [activeView.value, isAuthenticated.value, isDeleteDialogOpen.value, statusMessage.value, errorMessage.value],
+  () => void nextTick(initializeIcons),
+);
 
 watch(
   () => editorForm.value.body,
   () => {
-    if (isEditorOpen.value) {
-      schedulePreview();
-    }
+    if (activeView.value === "editor") schedulePreview();
   },
 );
+async function bootstrapAdmin(): Promise<void> {
+  isBootstrapping.value = true;
+  errorMessage.value = "";
+  try {
+    await checkAdminSession();
+    isAuthenticated.value = true;
+    await loadInitialData();
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      isAuthenticated.value = false;
+      loginError.value = "";
+    } else {
+      isAuthenticated.value = true;
+      errorMessage.value = readError(error);
+    }
+  } finally {
+    isBootstrapping.value = false;
+    void nextTick(initializeIcons);
+  }
+}
+
+async function loadInitialData(): Promise<void> {
+  const [loadedPosts, loadedSettings] = await Promise.all([fetchPosts(), fetchSettings()]);
+  posts.value = loadedPosts;
+  siteSettings.value = loadedSettings;
+}
+
+async function handleLogin(): Promise<void> {
+  isLoggingIn.value = true;
+  loginError.value = "";
+  try {
+    const loginResponse = await loginAdmin(loginForm.value.username.trim(), loginForm.value.password);
+    isAuthenticated.value = true;
+    statusMessage.value = loginResponse.message;
+    loginForm.value.password = "";
+    await loadInitialData();
+    activeView.value = "dashboard";
+  } catch (error) {
+    loginError.value = readError(error);
+  } finally {
+    isLoggingIn.value = false;
+    void nextTick(initializeIcons);
+  }
+}
+
+async function handleLogout(): Promise<void> {
+  try {
+    await logoutAdmin();
+  } finally {
+    isAuthenticated.value = false;
+    activeView.value = "dashboard";
+    statusMessage.value = "";
+    errorMessage.value = "";
+    posts.value = [];
+  }
+}
 
 async function loadPosts(): Promise<void> {
   errorMessage.value = "";
   try {
     posts.value = await fetchPosts();
   } catch (error) {
-    errorMessage.value = readError(error);
+    handleRequestError(error);
   }
 }
 
@@ -106,54 +185,49 @@ async function loadSettings(): Promise<void> {
   try {
     siteSettings.value = await fetchSettings();
   } catch (error) {
-    errorMessage.value = readError(error);
+    handleRequestError(error);
   }
 }
 
-function switchSection(nextSection: AdminSection): void {
-  activeSection.value = nextSection;
+function switchView(nextView: AdminView): void {
+  activeView.value = nextView;
   errorMessage.value = "";
   statusMessage.value = "";
-  if (nextSection === "settings") {
-    void loadSettings();
-  } else if (isEditorOpen.value) {
-    schedulePreview();
-  }
+  if (nextView === "settings") void loadSettings();
+  if (nextView === "posts" || nextView === "dashboard") void loadPosts();
+  if (nextView === "editor") schedulePreview();
 }
 
-async function selectPost(postID: string): Promise<void> {
-  activeSection.value = "posts";
+async function openEditorForPost(postID: string): Promise<void> {
   errorMessage.value = "";
   try {
     const loadedPost = await fetchPost(postID);
     editorMode.value = "edit";
-    isEditorOpen.value = true;
     editorForm.value = normalizePostDetail(loadedPost);
     aliasesText.value = loadedPost.aliases.join("\n");
     tagDraft.value = "";
+    activeView.value = "editor";
     statusMessage.value = `已打开：${loadedPost.title}`;
     schedulePreview();
   } catch (error) {
-    errorMessage.value = readError(error);
+    handleRequestError(error);
   }
 }
 
-function createNewPost(): void {
-  activeSection.value = "posts";
+function startNewPost(): void {
   editorMode.value = "create";
-  isEditorOpen.value = true;
   editorForm.value = createEmptyPost();
   aliasesText.value = "";
   tagDraft.value = "";
-  statusMessage.value = "正在新建文章。";
+  previewHTML.value = "";
   errorMessage.value = "";
+  statusMessage.value = "正在新建文章。";
+  activeView.value = "editor";
   schedulePreview();
 }
 
 async function saveCurrentPost(): Promise<void> {
-  if (!isEditorOpen.value) {
-    return;
-  }
+  if (activeView.value !== "editor") return;
   addTagFromDraft();
   isSaving.value = true;
   errorMessage.value = "";
@@ -164,37 +238,37 @@ async function saveCurrentPost(): Promise<void> {
         ? await updatePost(editorForm.value.id, savePostRequest)
         : await createPost(savePostRequest);
     editorMode.value = "edit";
-    isEditorOpen.value = true;
     editorForm.value = normalizePostDetail(postDetailResponse.post);
     aliasesText.value = postDetailResponse.post.aliases.join("\n");
     tagDraft.value = "";
     statusMessage.value = postDetailResponse.message ?? "文章已保存。";
     await loadPosts();
   } catch (error) {
-    errorMessage.value = readError(error);
+    handleRequestError(error);
   } finally {
     isSaving.value = false;
   }
 }
 
-async function deleteCurrentPost(): Promise<void> {
-  if (!canEditExistingPost.value) {
-    return;
-  }
-  const shouldDelete = window.confirm(`确定删除 ${editorForm.value.title} 吗？`);
-  if (!shouldDelete) {
-    return;
-  }
+function requestDeleteCurrentPost(): void {
+  if (!canEditExistingPost.value) return;
+  isDeleteDialogOpen.value = true;
+}
 
+async function confirmDeleteCurrentPost(): Promise<void> {
+  if (!canEditExistingPost.value) return;
   isSaving.value = true;
   errorMessage.value = "";
   try {
     const messageResponse = await deletePost(editorForm.value.id);
     statusMessage.value = messageResponse.message;
-    closeEditor();
+    isDeleteDialogOpen.value = false;
+    activeView.value = "posts";
+    editorMode.value = "create";
+    editorForm.value = createEmptyPost();
     await loadPosts();
   } catch (error) {
-    errorMessage.value = readError(error);
+    handleRequestError(error);
   } finally {
     isSaving.value = false;
   }
@@ -209,26 +283,18 @@ async function saveSettings(): Promise<void> {
     statusMessage.value = settingsResponse.message ?? "站点设置已保存。";
     await loadPosts();
   } catch (error) {
-    errorMessage.value = readError(error);
+    handleRequestError(error);
   } finally {
     isSaving.value = false;
   }
 }
-
-
 function schedulePreview(): void {
-  if (previewTimerID !== undefined) {
-    window.clearTimeout(previewTimerID);
-  }
-  previewTimerID = window.setTimeout(() => {
-    void refreshPreview();
-  }, 300);
+  if (previewTimerID !== undefined) window.clearTimeout(previewTimerID);
+  previewTimerID = window.setTimeout(() => void refreshPreview(), 300);
 }
 
 async function refreshPreview(): Promise<void> {
-  if (!isEditorOpen.value) {
-    return;
-  }
+  if (activeView.value !== "editor") return;
   isPreviewLoading.value = true;
   try {
     previewHTML.value = await previewMarkdown(editorForm.value.body);
@@ -237,102 +303,6 @@ async function refreshPreview(): Promise<void> {
   } finally {
     isPreviewLoading.value = false;
   }
-}
-
-async function handleMarkdownKeydown(event: KeyboardEvent): Promise<void> {
-  const shortcutKey = event.key.toLowerCase();
-  if ((event.ctrlKey || event.metaKey) && shortcutKey === "b") {
-    event.preventDefault();
-    await applyMarkdownAction("bold");
-    return;
-  }
-  if ((event.ctrlKey || event.metaKey) && shortcutKey === "i") {
-    event.preventDefault();
-    await applyMarkdownAction("italic");
-    return;
-  }
-  if ((event.ctrlKey || event.metaKey) && shortcutKey === "k") {
-    event.preventDefault();
-    await applyMarkdownAction("link");
-    return;
-  }
-  if (event.key !== "Tab") {
-    return;
-  }
-  event.preventDefault();
-  const textareaElement = event.currentTarget as HTMLTextAreaElement;
-  const selectionStart = textareaElement.selectionStart;
-  const selectionEnd = textareaElement.selectionEnd;
-  const beforeSelection = editorForm.value.body.slice(0, selectionStart);
-  const afterSelection = editorForm.value.body.slice(selectionEnd);
-  editorForm.value.body = `${beforeSelection}  ${afterSelection}`;
-  await nextTick();
-  textareaElement.selectionStart = selectionStart + 2;
-  textareaElement.selectionEnd = selectionStart + 2;
-}
-
-async function applyMarkdownAction(action: MarkdownAction): Promise<void> {
-  const textareaElement = markdownTextarea.value;
-  if (textareaElement === null) {
-    return;
-  }
-  const selectionStart = textareaElement.selectionStart;
-  const selectionEnd = textareaElement.selectionEnd;
-  const selectedText = editorForm.value.body.slice(selectionStart, selectionEnd);
-  let replacementText = selectedText;
-  let nextSelectionStart = selectionStart;
-  let nextSelectionEnd = selectionEnd;
-
-  if (action === "bold") {
-    replacementText = `**${selectedText || "加粗文字"}**`;
-    nextSelectionStart = selectionStart + 2;
-    nextSelectionEnd = selectionStart + replacementText.length - 2;
-  } else if (action === "italic") {
-    replacementText = `*${selectedText || "斜体文字"}*`;
-    nextSelectionStart = selectionStart + 1;
-    nextSelectionEnd = selectionStart + replacementText.length - 1;
-  } else if (action === "code") {
-    replacementText = `\`${selectedText || "code"}\``;
-    nextSelectionStart = selectionStart + 1;
-    nextSelectionEnd = selectionStart + replacementText.length - 1;
-  } else if (action === "codeblock") {
-    replacementText = `\`\`\`shell\n${selectedText || "echo hello"}\n\`\`\``;
-    nextSelectionStart = selectionStart + 9;
-    nextSelectionEnd = selectionStart + replacementText.length - 4;
-  } else if (action === "link") {
-    replacementText = `[${selectedText || "链接文字"}](https://example.com)`;
-    nextSelectionStart = selectionStart + 1;
-    nextSelectionEnd = selectionStart + (selectedText || "链接文字").length + 1;
-  } else if (action === "image") {
-    replacementText = `![${selectedText || "图片描述"}](https://example.com/image.png)`;
-    nextSelectionStart = selectionStart + 2;
-    nextSelectionEnd = selectionStart + (selectedText || "图片描述").length + 2;
-  } else if (action === "heading") {
-    replacementText = prefixSelectedLines(selectedText || "小标题", "## ");
-    nextSelectionEnd = selectionStart + replacementText.length;
-  } else if (action === "quote") {
-    replacementText = prefixSelectedLines(selectedText || "引用内容", "> ");
-    nextSelectionEnd = selectionStart + replacementText.length;
-  } else if (action === "ul") {
-    replacementText = prefixSelectedLines(selectedText || "列表项", "- ");
-    nextSelectionEnd = selectionStart + replacementText.length;
-  } else if (action === "ol") {
-    replacementText = prefixSelectedLines(selectedText || "列表项", "1. ");
-    nextSelectionEnd = selectionStart + replacementText.length;
-  }
-
-  editorForm.value.body = `${editorForm.value.body.slice(0, selectionStart)}${replacementText}${editorForm.value.body.slice(selectionEnd)}`;
-  await nextTick();
-  textareaElement.focus();
-  textareaElement.selectionStart = nextSelectionStart;
-  textareaElement.selectionEnd = nextSelectionEnd;
-}
-
-function prefixSelectedLines(text: string, prefix: string): string {
-  return text
-    .split("\n")
-    .map((lineText) => `${prefix}${lineText}`)
-    .join("\n");
 }
 
 function handleTagKeydown(event: KeyboardEvent): void {
@@ -357,9 +327,7 @@ function addTagFromDraft(): void {
 
 function addTag(tagText: string): void {
   const normalizedTag = tagText.trim();
-  if (normalizedTag === "" || editorForm.value.tags.includes(normalizedTag)) {
-    return;
-  }
+  if (normalizedTag === "" || editorForm.value.tags.includes(normalizedTag)) return;
   editorForm.value.tags = [...editorForm.value.tags, normalizedTag];
 }
 
@@ -369,22 +337,17 @@ function removeTag(tagIndex: number): void {
 
 function handleGlobalKeydown(event: KeyboardEvent): void {
   const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
-  if (!isSaveShortcut) {
-    return;
-  }
+  if (!isSaveShortcut || !isAuthenticated.value) return;
   event.preventDefault();
-  if (activeSection.value === "settings") {
+  if (activeView.value === "settings") {
     void saveSettings();
     return;
   }
-  if (!isEditorOpen.value) {
-    return;
-  }
-  void saveCurrentPost();
+  if (activeView.value === "editor") void saveCurrentPost();
 }
 
 function cycleAdminTheme(): void {
-  const nextTheme = nextThemeMode(readStoredTheme());
+  const nextTheme = nextThemeMode(adminTheme.value);
   adminTheme.value = nextTheme;
   saveTheme(nextTheme);
   applyTheme(nextTheme);
@@ -402,16 +365,13 @@ function applyTheme(themeMode: AdminThemeMode): void {
 
 function nextThemeMode(themeMode: AdminThemeMode): AdminThemeMode {
   const currentThemeIndex = themeModes.indexOf(themeMode);
-  const nextThemeIndex = (currentThemeIndex + 1) % themeModes.length;
-  return themeModes[nextThemeIndex];
+  return themeModes[(currentThemeIndex + 1) % themeModes.length];
 }
 
 function readStoredTheme(): AdminThemeMode {
   try {
     const storedTheme = window.localStorage.getItem(themeStorageKey);
-    if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "auto") {
-      return storedTheme;
-    }
+    if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "auto") return storedTheme;
   } catch {
     return readDocumentDefaultTheme();
   }
@@ -428,9 +388,7 @@ function saveTheme(themeMode: AdminThemeMode): void {
 
 function readDocumentDefaultTheme(): AdminThemeMode {
   const defaultTheme = document.documentElement.dataset.theme;
-  if (defaultTheme === "light" || defaultTheme === "dark" || defaultTheme === "auto") {
-    return defaultTheme;
-  }
+  if (defaultTheme === "light" || defaultTheme === "dark" || defaultTheme === "auto") return defaultTheme;
   return "auto";
 }
 
@@ -452,19 +410,6 @@ function buildSavePostRequest(): SavePostRequest {
     tags: editorForm.value.tags,
     body: editorForm.value.body,
   };
-}
-
-function closeEditor(): void {
-  isEditorOpen.value = false;
-  editorMode.value = "create";
-  editorForm.value = createEmptyPost();
-  aliasesText.value = "";
-  tagDraft.value = "";
-  previewHTML.value = "";
-  if (previewTimerID !== undefined) {
-    window.clearTimeout(previewTimerID);
-    previewTimerID = undefined;
-  }
 }
 
 function createEmptyPost(): PostDetail {
@@ -525,10 +470,17 @@ function formatCurrentDate(): string {
   return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
-function readError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
+function handleRequestError(error: unknown): void {
+  if (error instanceof UnauthorizedError) {
+    isAuthenticated.value = false;
+    loginError.value = "登录状态已失效，请重新登录。";
+    return;
   }
+  errorMessage.value = readError(error);
+}
+
+function readError(error: unknown): string {
+  if (error instanceof Error) return error.message;
   return "发生未知错误。";
 }
 
@@ -541,92 +493,287 @@ function escapeHTML(rawText: string): string {
     .replaceAll("'", "&#039;");
 }
 </script>
-
 <template>
-  <div class="admin-shell">
-    <header class="topbar">
-      <a class="topbar-brand" href="/" target="_blank">
-        <span class="brand-mark">b</span>
+  <div v-if="isBootstrapping" class="boot-screen">
+    <div class="boot-card">
+      <span class="loader-dot"></span>
+      <p>正在进入 HonePress 后台</p>
+    </div>
+  </div>
+
+  <main v-else-if="!isAuthenticated" class="login-page">
+    <section class="login-card card">
+      <div class="login-brand">
+        <span class="brand-avatar">H</span>
+        <div>
+          <p class="eyebrow">HonePress</p>
+          <h1>登录后台</h1>
+        </div>
+      </div>
+      <p class="login-copy">继续管理文章、草稿和站点配置。</p>
+      <form class="login-form" @submit.prevent="handleLogin">
+        <label class="form-field">
+          <span>用户名</span>
+          <input v-model="loginForm.username" autocomplete="username" type="text" />
+        </label>
+        <label class="form-field">
+          <span>密码</span>
+          <input v-model="loginForm.password" autocomplete="current-password" type="password" />
+        </label>
+        <p v-if="loginError" class="form-error">{{ loginError }}</p>
+        <button class="button button-primary" type="submit" :disabled="isLoggingIn">
+          <i data-lucide="log-in" aria-hidden="true"></i>
+          {{ isLoggingIn ? "正在登录" : "登录" }}
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <div v-else class="admin-app">
+    <aside class="app-sidebar">
+      <a class="sidebar-brand" href="/" target="_blank" rel="noreferrer">
+        <span class="brand-avatar">H</span>
         <span>HonePress</span>
       </a>
-      <div class="topbar-actions">
-        <button type="button" class="theme-toggle icon-button" data-theme-toggle :aria-label="adminThemeLabel"
-          :title="adminThemeLabel" @click="cycleAdminTheme">
-          <i class="nav-icon theme-icon theme-icon-sun" data-lucide="sun" aria-hidden="true"></i>
-          <i class="nav-icon theme-icon theme-icon-moon" data-lucide="moon" aria-hidden="true"></i>
+
+      <nav class="sidebar-nav" aria-label="后台导航">
+        <button type="button" class="nav-item" :class="{ active: activeView === 'dashboard' }"
+          @click="switchView('dashboard')">
+          <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+          <span>首页</span>
+        </button>
+        <button type="button" class="nav-item" :class="{ active: activeView === 'posts' }" @click="switchView('posts')">
+          <i data-lucide="file-text" aria-hidden="true"></i>
+          <span>文章列表</span>
+        </button>
+        <button type="button" class="nav-item" :class="{ active: activeView === 'editor' && editorMode === 'create' }"
+          @click="startNewPost">
+          <i data-lucide="square-pen" aria-hidden="true"></i>
+          <span>新建文章</span>
+        </button>
+        <button type="button" class="nav-item" :class="{ active: activeView === 'settings' }"
+          @click="switchView('settings')">
+          <i data-lucide="settings" aria-hidden="true"></i>
+          <span>站点配置</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button type="button" class="button button-ghost compact" :title="adminThemeLabel" @click="cycleAdminTheme">
+          <i class="theme-icon theme-icon-sun" data-lucide="sun" aria-hidden="true"></i>
+          <i class="theme-icon theme-icon-moon" data-lucide="moon" aria-hidden="true"></i>
+          <span>{{ themeLabels[adminTheme] }}</span>
         </button>
       </div>
-    </header>
+    </aside>
 
-    <div class="admin-layout">
-      <aside class="sidebar">
-        <nav class="menu" aria-label="后台导航">
-          <button type="button" class="menu-item" :class="{ active: activeSection === 'posts' }"
-            @click="switchSection('posts')">
-            <span class="menu-icon">文</span>
-            <span>文章</span>
+    <main class="app-main">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">HonePress</p>
+          <h1>{{ pageTitle }}</h1>
+          <p>{{ pageDescription }}</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="button button-outline" @click="handleLogout">
+            <i data-lucide="log-out" aria-hidden="true"></i>
+            退出
           </button>
-          <button type="button" class="menu-item" :class="{ active: activeSection === 'settings' }"
-            @click="switchSection('settings')">
-            <span class="menu-icon">设</span>
-            <span>设置</span>
+          <button v-if="activeView !== 'editor'" type="button" class="button button-primary" @click="startNewPost">
+            <i data-lucide="plus" aria-hidden="true"></i>
+            新建文章
           </button>
-        </nav>
-      </aside>
+          <button v-else type="button" class="button button-primary" :disabled="isSaving" @click="saveCurrentPost">
+            <i data-lucide="save" aria-hidden="true"></i>
+            {{ isSaving ? "正在保存" : "保存文章" }}
+          </button>
+        </div>
+      </header>
 
-      <main class="main">
-        <header class="page-header">
-          <div>
-            <p class="eyebrow">HonePress</p>
-            <h1>{{ pageTitle }}</h1>
-          </div>
-          <button v-if="activeSection === 'posts'" type="button" @click="createNewPost">新建文章</button>
-        </header>
+      <div v-if="statusMessage || errorMessage" class="toast" :class="{ error: errorMessage }" role="status">
+        <i :data-lucide="errorMessage ? 'circle-alert' : 'circle-check'" aria-hidden="true"></i>
+        <span>{{ errorMessage || statusMessage }}</span>
+      </div>
 
-        <p v-if="statusMessage" class="status">{{ statusMessage }}</p>
-        <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+      <section v-if="activeView === 'dashboard'" class="dashboard-grid">
+        <article class="metric-card card">
+          <span class="metric-icon"><i data-lucide="file-text" aria-hidden="true"></i></span>
+          <p>全部文章</p>
+          <strong>{{ posts.length }}</strong>
+        </article>
+        <article class="metric-card card">
+          <span class="metric-icon"><i data-lucide="send" aria-hidden="true"></i></span>
+          <p>已发布</p>
+          <strong>{{ publishedPosts.length }}</strong>
+        </article>
+        <article class="metric-card card">
+          <span class="metric-icon"><i data-lucide="file-clock" aria-hidden="true"></i></span>
+          <p>草稿</p>
+          <strong>{{ draftPosts.length }}</strong>
+        </article>
 
-        <section v-if="activeSection === 'posts'" class="posts-view">
-          <aside class="post-list-panel">
-            <div class="panel-heading">
-              <h2>文章列表</h2>
-              <span>{{ posts.length }}</span>
+        <section class="card dashboard-panel recent-panel">
+          <div class="card-heading">
+            <div>
+              <h2>最近文章</h2>
+              <p>继续写作或查看刚发布的内容。</p>
             </div>
-            <div class="post-list">
-              <button v-for="post in posts" :key="post.id" type="button" class="post-row"
-                :class="{ active: post.id === selectedPostID }" @click="selectPost(post.id)">
-                <span>{{ post.title }}</span>
+            <button class="button button-outline" type="button" @click="switchView('posts')">查看全部</button>
+          </div>
+          <div class="simple-list">
+            <button v-for="post in recentPosts" :key="post.id" type="button" class="simple-list-row"
+              @click="openEditorForPost(post.id)">
+              <span>
+                <strong>{{ post.title }}</strong>
                 <small>{{ post.date }}</small>
-                <em>{{ post.draft ? "草稿" : "已发布" }}</em>
+              </span>
+              <span class="badge" :class="post.draft ? 'badge-muted' : 'badge-success'">
+                {{ post.draft ? "草稿" : "已发布" }}
+              </span>
+            </button>
+            <p v-if="recentPosts.length === 0" class="empty-state">还没有文章，先写第一篇吧。</p>
+          </div>
+        </section>
+
+        <section class="card dashboard-panel quick-panel">
+          <div class="card-heading">
+            <div>
+              <h2>快捷入口</h2>
+              <p>博客后台只保留写作需要的能力。</p>
+            </div>
+          </div>
+          <div class="quick-actions">
+            <button type="button" class="quick-action" @click="startNewPost">
+              <i data-lucide="square-pen" aria-hidden="true"></i>
+              <span>写新文章</span>
+            </button>
+            <button type="button" class="quick-action" @click="switchView('settings')">
+              <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
+              <span>站点配置</span>
+            </button>
+          </div>
+        </section>
+      </section>
+      <section v-else-if="activeView === 'posts'" class="card table-card">
+        <div class="card-heading">
+          <div>
+            <h2>文章列表</h2>
+            <p>{{ posts.length }} 篇文章，{{ draftPosts.length }} 篇草稿。</p>
+          </div>
+          <button class="button button-primary" type="button" @click="startNewPost">
+            <i data-lucide="plus" aria-hidden="true"></i>
+            新建文章
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>标题</th>
+                <th>状态</th>
+                <th>发布时间</th>
+                <th>固定链接</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="post in posts" :key="post.id">
+                <td>
+                  <button type="button" class="title-button" @click="openEditorForPost(post.id)">{{ post.title
+                  }}</button>
+                  <p>{{ post.description || "没有摘要" }}</p>
+                </td>
+                <td>
+                  <span class="badge" :class="post.draft ? 'badge-muted' : 'badge-success'">
+                    {{ post.draft ? "草稿" : "已发布" }}
+                  </span>
+                </td>
+                <td>{{ post.date }}</td>
+                <td><code>{{ post.url }}</code></td>
+                <td class="table-actions">
+                  <button class="button button-ghost icon-only" type="button" title="编辑"
+                    @click="openEditorForPost(post.id)">
+                    <i data-lucide="pencil" aria-hidden="true"></i>
+                  </button>
+                  <a v-if="!post.draft" class="button button-ghost icon-only" :href="`/${post.url}`" target="_blank"
+                    rel="noreferrer" title="查看">
+                    <i data-lucide="external-link" aria-hidden="true"></i>
+                  </a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-if="posts.length === 0" class="empty-state">还没有文章，点击右上角新建文章。</p>
+        </div>
+      </section>
+
+      <section v-else-if="activeView === 'editor'" class="editor-layout">
+        <section class="editor-main card">
+          <div class="card-heading editor-heading">
+            <div>
+              <p class="eyebrow">{{ editorMode === "create" ? "新建文章" : "编辑文章" }}</p>
+              <h2>{{ editorTitle }}</h2>
+            </div>
+            <div class="editor-actions">
+              <a v-if="canEditExistingPost && !editorForm.draft" class="button button-outline"
+                :href="`/${editorForm.url}`" target="_blank" rel="noreferrer">
+                <i data-lucide="external-link" aria-hidden="true"></i>
+                查看
+              </a>
+              <button type="button" class="button button-outline" :disabled="!canEditExistingPost || isSaving"
+                @click="requestDeleteCurrentPost">
+                <i data-lucide="trash-2" aria-hidden="true"></i>
+                删除
               </button>
             </div>
-          </aside>
+          </div>
+          <Suspense>
+            <MarkdownWorkspace v-model="editorForm.body" :preview-html="previewHTML"
+              :is-preview-loading="isPreviewLoading" />
+            <template #fallback>
+              <div class="editor-loading">正在加载 Markdown 编辑器</div>
+            </template>
+          </Suspense>
+        </section>
 
-          <section v-if="isEditorOpen" class="editor-panel">
-            <header class="editor-header">
-              <div>
-                <p class="eyebrow">{{ editorMode === "create" ? "新建文章" : "编辑文章" }}</p>
-                <h2>{{ editorForm.title }}</h2>
-              </div>
-              <div class="actions">
-                <a v-if="canEditExistingPost && !editorForm.draft" :href="`/${editorForm.url}`" target="_blank">查看</a>
-                <button type="button" :disabled="isSaving" @click="saveCurrentPost">保存</button>
-                <button type="button" :disabled="!canEditExistingPost || isSaving" class="danger"
-                  @click="deleteCurrentPost">
-                  删除
-                </button>
-              </div>
-            </header>
-
-            <section class="form-grid">
-              <section class="settings-section wide">
-                <h3>文章设置</h3>
-              </section>
-              <label>
+        <aside class="meta-column">
+          <section class="card meta-card">
+            <div class="card-heading compact-heading">
+              <h2>文章设置</h2>
+            </div>
+            <div class="form-stack">
+              <label class="form-field">
                 <span>标题</span>
                 <input v-model="editorForm.title" type="text" />
               </label>
-              <label>
+              <label class="form-field">
+                <span>发布时间</span>
+                <div class="input-button-row">
+                  <input v-model="editorForm.date" type="text" />
+                  <button type="button" class="button button-outline" @click="setPostDateToNow">生成</button>
+                </div>
+              </label>
+              <label class="form-field">
+                <span>固定链接</span>
+                <input v-model="editorForm.url" type="text" />
+              </label>
+              <label class="form-field">
+                <span>摘要</span>
+                <textarea v-model="editorForm.description" rows="3"></textarea>
+              </label>
+              <label class="switch-field">
+                <input v-model="editorForm.draft" type="checkbox" />
+                <span>保存为草稿</span>
+              </label>
+            </div>
+          </section>
+
+          <section class="card meta-card">
+            <div class="card-heading compact-heading">
+              <h2>补充信息</h2>
+            </div>
+            <div class="form-stack">
+              <label class="form-field">
                 <span>Emoji</span>
                 <select v-model="editorForm.icon">
                   <option v-for="emojiOption in emojiOptions" :key="emojiOption.label" :value="emojiOption.value">
@@ -634,140 +781,130 @@ function escapeHTML(rawText: string): string {
                   </option>
                 </select>
               </label>
-              <label>
-                <span>固定链接</span>
-                <input v-model="editorForm.url" type="text" />
-              </label>
-              <label>
-                <span>发布时间</span>
-                <div class="inline-input-row">
-                  <input v-model="editorForm.date" type="text" />
-                  <button type="button" @click="setPostDateToNow">生成</button>
-                </div>
-              </label>
-              <label>
-                <span>摘要</span>
-                <input v-model="editorForm.description" type="text" />
-              </label>
-              <label class="tag-editor-field">
+              <label class="form-field">
                 <span>标签</span>
                 <div class="tag-editor">
                   <span v-for="(tag, tagIndex) in editorForm.tags" :key="tag" class="tag-chip">
                     {{ tag }}
-                    <button type="button" :aria-label="`删除标签 ${tag}`" @click="removeTag(tagIndex)">×</button>
+                    <button type="button" :aria-label="`删除标签 ${tag}`" @click="removeTag(tagIndex)">
+                      <i data-lucide="x" aria-hidden="true"></i>
+                    </button>
                   </span>
                   <input v-model="tagDraft" type="text" placeholder="输入标签后回车" @keydown="handleTagKeydown"
                     @blur="addTagFromDraft" />
                 </div>
               </label>
-              <label class="wide">
-                <span>别名</span>
-                <textarea v-model="aliasesText" rows="1"></textarea>
+              <label class="form-field">
+                <span>别名链接</span>
+                <textarea v-model="aliasesText" rows="2" placeholder="每行一个别名链接"></textarea>
               </label>
-              <div class="switches">
-                <label><input v-model="editorForm.draft" type="checkbox" /> 草稿</label>
-              </div>
-              <section class="settings-section wide">
-                <h3>SEO 设置</h3>
-              </section>
-              <label>
+            </div>
+          </section>
+
+          <section class="card meta-card">
+            <div class="card-heading compact-heading">
+              <h2>SEO 设置</h2>
+            </div>
+            <div class="form-stack">
+              <label class="form-field">
                 <span>SEO 标题</span>
                 <input v-model="editorForm.seoTitle" type="text" placeholder="留空则使用文章标题" />
               </label>
-              <label>
+              <label class="form-field">
                 <span>SEO 描述</span>
-                <textarea v-model="editorForm.seoDescription" rows="1" placeholder="留空则使用文章摘要"></textarea>
+                <textarea v-model="editorForm.seoDescription" rows="3" placeholder="留空则使用文章摘要"></textarea>
               </label>
-            </section>
-
-            <section class="workspace">
-              <section class="markdown-editor">
-                <div class="markdown-editor-head">
-                  <span>Markdown</span>
-                </div>
-                <textarea ref="markdownTextarea" v-model="editorForm.body" spellcheck="false"
-                  @keydown="handleMarkdownKeydown"></textarea>
-              </section>
-              <div class="preview">
-                <div class="preview-header">
-                  <span>预览</span>
-                  <small>{{ isPreviewLoading ? "更新中" : "已同步" }}</small>
-                </div>
-                <article class="preview-body" v-html="previewHTML"></article>
-              </div>
-            </section>
-          </section>
-          <section v-else class="editor-blank" aria-hidden="true"></section>
-        </section>
-
-        <section v-else class="settings-view">
-          <section class="settings-card">
-            <header class="card-header">
-              <div>
-                <h2>站点设置</h2>
-              </div>
-              <button type="button" :disabled="isSaving" @click="saveSettings">保存设置</button>
-            </header>
-
-            <div class="form-grid settings-grid">
-              <section class="settings-section wide">
-                <h3>基础信息</h3>
-              </section>
-              <label>
-                <span>站点标题</span>
-                <input v-model="siteSettings.title" type="text" />
-              </label>
-              <label>
-                <span>站点描述</span>
-                <input v-model="siteSettings.description" type="text" />
-              </label>
-              <label>
-                <span>默认主题</span>
-                <select v-model="siteSettings.themeDefault">
-                  <option value="auto">自动</option>
-                  <option value="light">明亮</option>
-                  <option value="dark">暗色</option>
-                </select>
-              </label>
-              <label>
-                <span>字体</span>
-                <select v-model="siteSettings.font">
-                  <option value="default">默认字体</option>
-                  <option value="douyin-sans">抖音美好体</option>
-                </select>
-              </label>
-              <label>
-                <span>网站 icon</span>
-                <input v-model="siteSettings.iconUrl" type="text" />
-              </label>
-              <section class="settings-section wide">
-                <h3>评论设置</h3>
-              </section>
-              <div class="switches wide">
-                <label><input v-model="siteSettings.commentEnabled" type="checkbox" /> 开启 giscus 评论</label>
-              </div>
-              <template v-if="siteSettings.commentEnabled">
-                <label>
-                  <span>GitHub 仓库</span>
-                  <input v-model="siteSettings.giscusRepo" type="text" placeholder="owner/repo" />
-                </label>
-                <label>
-                  <span>仓库 ID</span>
-                  <input v-model="siteSettings.giscusRepoId" type="text" />
-                </label>
-                <label>
-                  <span>讨论分类</span>
-                  <input v-model="siteSettings.giscusCategory" type="text" />
-                </label>
-                <label>
-                  <span>分类 ID</span>
-                  <input v-model="siteSettings.giscusCategoryId" type="text" />
-                </label>
-              </template>
             </div>
           </section>
+        </aside>
+      </section>
+      <section v-else class="settings-layout">
+        <section class="card settings-card">
+          <div class="card-heading">
+            <div>
+              <h2>基础信息</h2>
+              <p>这些配置会写入 config.yaml。</p>
+            </div>
+            <button type="button" class="button button-primary" :disabled="isSaving" @click="saveSettings">
+              <i data-lucide="save" aria-hidden="true"></i>
+              {{ isSaving ? "正在保存" : "保存设置" }}
+            </button>
+          </div>
+          <div class="settings-grid">
+            <label class="form-field">
+              <span>站点标题</span>
+              <input v-model="siteSettings.title" type="text" />
+            </label>
+            <label class="form-field">
+              <span>站点描述</span>
+              <input v-model="siteSettings.description" type="text" />
+            </label>
+            <label class="form-field">
+              <span>默认主题</span>
+              <select v-model="siteSettings.themeDefault">
+                <option value="auto">自动</option>
+                <option value="light">明亮</option>
+                <option value="dark">暗色</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>字体</span>
+              <select v-model="siteSettings.font">
+                <option value="default">默认字体</option>
+                <option value="douyin-sans">抖音美好体</option>
+              </select>
+            </label>
+            <label class="form-field wide-field">
+              <span>网站 icon URL</span>
+              <input v-model="siteSettings.iconUrl" type="text" placeholder="https://example.com/favicon.png" />
+            </label>
+          </div>
         </section>
-      </main>
+
+        <section class="card settings-card">
+          <div class="card-heading compact-heading">
+            <h2>评论设置</h2>
+          </div>
+          <div class="settings-grid">
+            <label class="switch-field wide-field">
+              <input v-model="siteSettings.commentEnabled" type="checkbox" />
+              <span>开启 giscus 评论</span>
+            </label>
+            <template v-if="siteSettings.commentEnabled">
+              <label class="form-field">
+                <span>GitHub 仓库</span>
+                <input v-model="siteSettings.giscusRepo" type="text" placeholder="owner/repo" />
+              </label>
+              <label class="form-field">
+                <span>仓库 ID</span>
+                <input v-model="siteSettings.giscusRepoId" type="text" />
+              </label>
+              <label class="form-field">
+                <span>讨论分类</span>
+                <input v-model="siteSettings.giscusCategory" type="text" />
+              </label>
+              <label class="form-field">
+                <span>分类 ID</span>
+                <input v-model="siteSettings.giscusCategoryId" type="text" />
+              </label>
+            </template>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div v-if="isDeleteDialogOpen" class="dialog-layer" role="dialog" aria-modal="true"
+      aria-labelledby="delete-dialog-title">
+      <section class="dialog-card card">
+        <div class="dialog-icon"><i data-lucide="trash-2" aria-hidden="true"></i></div>
+        <h2 id="delete-dialog-title">删除文章</h2>
+        <p>确定删除「{{ editorTitle }}」吗？这个操作会同步更新静态站点。</p>
+        <div class="dialog-actions">
+          <button type="button" class="button button-outline" @click="isDeleteDialogOpen = false">取消</button>
+          <button type="button" class="button button-danger" :disabled="isSaving"
+            @click="confirmDeleteCurrentPost">删除</button>
+        </div>
+      </section>
     </div>
   </div>
 </template>
