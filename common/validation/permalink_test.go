@@ -29,7 +29,7 @@ func TestNormalizePermalink(t *testing.T) {
 				t.Fatalf("不期望返回错误：%v", err)
 			}
 			if normalizedPermalink != testCase.expectedPermalink {
-				t.Fatalf("固定链接不一致：got %s want %s", normalizedPermalink, testCase.expectedPermalink)
+				t.Fatalf("固定链接不一致：实际 %s，期望 %s", normalizedPermalink, testCase.expectedPermalink)
 			}
 		})
 	}
@@ -41,6 +41,6 @@ func TestMarkdownFileNameFromTitleAllowsChineseTitle(t *testing.T) {
 		t.Fatalf("不期望返回错误：%v", err)
 	}
 	if markdownFileName != "记录生活.md" {
-		t.Fatalf("文件名不一致：got %s want 记录生活.md", markdownFileName)
+		t.Fatalf("文件名不一致：实际 %s，期望 记录生活.md", markdownFileName)
 	}
 }

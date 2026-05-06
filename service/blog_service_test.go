@@ -32,7 +32,7 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 		t.Fatalf("读取文章 HTML 失败：%v", err)
 	}
 	if strings.Contains(string(postHTMLContent), "title:") {
-		t.Fatalf("文章 HTML 不应包含 Front Matter")
+		t.Fatalf("文章 HTML 不应包含文章元信息")
 	}
 	if !strings.Contains(string(postHTMLContent), `data-font="default"`) {
 		t.Fatalf("文章 HTML 缺少默认字体标记")
@@ -165,7 +165,7 @@ func TestRenderAllWritesGiscusPlaceholder(t *testing.T) {
 	}
 
 	if err := os.MkdirAll(testOptions.PostsDir, 0755); err != nil {
-		t.Fatalf("create posts directory failed: %v", err)
+		t.Fatalf("创建文章目录失败：%v", err)
 	}
 	postContent := `---
 title: "Giscus Post"
@@ -179,17 +179,17 @@ aliases: []
 
 Comment body.`
 	if err := os.WriteFile(filepath.Join(testOptions.PostsDir, "giscus.md"), []byte(postContent), 0644); err != nil {
-		t.Fatalf("write post failed: %v", err)
+		t.Fatalf("写入文章失败：%v", err)
 	}
 
 	blogService := NewBlogService(testOptions)
 	if err := blogService.RenderAll(); err != nil {
-		t.Fatalf("render failed: %v", err)
+		t.Fatalf("渲染失败：%v", err)
 	}
 
 	postHTMLContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "giscus.html"))
 	if err != nil {
-		t.Fatalf("read post html failed: %v", err)
+		t.Fatalf("读取文章 HTML 失败：%v", err)
 	}
 	postHTML := string(postHTMLContent)
 	requiredFragments := []string{
@@ -201,25 +201,25 @@ Comment body.`
 	}
 	for _, requiredFragment := range requiredFragments {
 		if !strings.Contains(postHTML, requiredFragment) {
-			t.Fatalf("post html missing giscus fragment %q", requiredFragment)
+			t.Fatalf("文章 HTML 缺少 giscus 片段 %q", requiredFragment)
 		}
 	}
 	if strings.Contains(postHTML, "https://giscus.app/client.js") {
-		t.Fatalf("post html should not render the giscus script directly")
+		t.Fatalf("文章 HTML 不应直接渲染 giscus 脚本")
 	}
 	if !strings.Contains(postHTML, `rel="icon" href="data:image/svg`) {
-		t.Fatalf("post html should render the front matter icon as a favicon")
+		t.Fatalf("文章 HTML 应将文章元信息 icon 渲染为 favicon")
 	}
 	if strings.Contains(postHTML, "post-icon") {
-		t.Fatalf("post icon should not be rendered in the title")
+		t.Fatalf("文章 icon 不应渲染到标题中")
 	}
 
 	themeScriptContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "theme.js"))
 	if err != nil {
-		t.Fatalf("read theme script failed: %v", err)
+		t.Fatalf("读取主题脚本失败：%v", err)
 	}
 	if !strings.Contains(string(themeScriptContent), "https://giscus.app/client.js") {
-		t.Fatalf("theme script should load the giscus client")
+		t.Fatalf("主题脚本应加载 giscus 客户端")
 	}
 }
 
@@ -237,7 +237,7 @@ func TestRenderAllUsesPostSEOFields(t *testing.T) {
 	}
 
 	if err := os.MkdirAll(testOptions.PostsDir, 0755); err != nil {
-		t.Fatalf("create posts directory failed: %v", err)
+		t.Fatalf("创建文章目录失败：%v", err)
 	}
 
 	postContent := `---
@@ -254,17 +254,17 @@ tags: []
 
 Post body.`
 	if err := os.WriteFile(filepath.Join(testOptions.PostsDir, "seo.md"), []byte(postContent), 0644); err != nil {
-		t.Fatalf("write post failed: %v", err)
+		t.Fatalf("写入文章失败：%v", err)
 	}
 
 	blogService := NewBlogService(testOptions)
 	if err := blogService.RenderAll(); err != nil {
-		t.Fatalf("render failed: %v", err)
+		t.Fatalf("渲染失败：%v", err)
 	}
 
 	postHTMLContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "seo-post.html"))
 	if err != nil {
-		t.Fatalf("read post html failed: %v", err)
+		t.Fatalf("读取文章 HTML 失败：%v", err)
 	}
 	postHTML := string(postHTMLContent)
 	requiredFragments := []string{
@@ -280,7 +280,7 @@ Post body.`
 	}
 	for _, requiredFragment := range requiredFragments {
 		if !strings.Contains(postHTML, requiredFragment) {
-			t.Fatalf("post html missing SEO fragment %q", requiredFragment)
+			t.Fatalf("文章 HTML 缺少 SEO 片段 %q", requiredFragment)
 		}
 	}
 }

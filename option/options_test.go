@@ -15,7 +15,7 @@ func TestResolveConfigPathPriority(t *testing.T) {
 		t.Fatalf("解析 --config 失败：%v", err)
 	}
 	if configPath != "long.yaml" {
-		t.Fatalf("配置路径不一致：got %s want long.yaml", configPath)
+		t.Fatalf("配置路径不一致：实际 %s，期望 long.yaml", configPath)
 	}
 
 	configPath, err = ResolveConfigPath([]string{"-c", "short.yaml", "--config", "long.yaml"})
@@ -23,7 +23,7 @@ func TestResolveConfigPathPriority(t *testing.T) {
 		t.Fatalf("解析 -c 失败：%v", err)
 	}
 	if configPath != "short.yaml" {
-		t.Fatalf("配置路径不一致：got %s want short.yaml", configPath)
+		t.Fatalf("配置路径不一致：实际 %s，期望 short.yaml", configPath)
 	}
 
 	configPath, err = ResolveConfigPath([]string{})
@@ -31,7 +31,7 @@ func TestResolveConfigPathPriority(t *testing.T) {
 		t.Fatalf("解析 HONEPRESS_CONFIG 失败：%v", err)
 	}
 	if configPath != "env.yaml" {
-		t.Fatalf("配置路径不一致：got %s want env.yaml", configPath)
+		t.Fatalf("配置路径不一致：实际 %s，期望 env.yaml", configPath)
 	}
 }
 
@@ -45,7 +45,7 @@ func TestLoadGeneratesDefaultConfig(t *testing.T) {
 		t.Fatalf("站点标题不一致：%s", loadedOptions.Title)
 	}
 	if loadedOptions.Font != "default" {
-		t.Fatalf("默认字体不一致：got %s want default", loadedOptions.Font)
+		t.Fatalf("默认字体不一致：实际 %s，期望 default", loadedOptions.Font)
 	}
 	if _, err := os.Stat(configPath); err != nil {
 		t.Fatalf("配置文件没有生成：%v", err)

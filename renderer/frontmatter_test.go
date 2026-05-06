@@ -7,24 +7,24 @@ func TestParsePostDocumentStripsFrontMatter(t *testing.T) {
 
 	frontMatter, bodyMarkdownContent, err := ParsePostDocument("1.md", markdownContent)
 	if err != nil {
-		t.Fatalf("parse failed: %v", err)
+		t.Fatalf("解析失败：%v", err)
 	}
 	if frontMatter.Title != "Title" {
-		t.Fatalf("title mismatch: %s", frontMatter.Title)
+		t.Fatalf("标题不一致：%s", frontMatter.Title)
 	}
 	if frontMatter.Icon != ":sparkles:" {
-		t.Fatalf("icon mismatch: %s", frontMatter.Icon)
+		t.Fatalf("icon 不一致：%s", frontMatter.Icon)
 	}
 	if len(frontMatter.Tags) != 2 || frontMatter.Tags[0] != "Go" || frontMatter.Tags[1] != "Blog" {
-		t.Fatalf("tags mismatch: %v", frontMatter.Tags)
+		t.Fatalf("标签不一致：%v", frontMatter.Tags)
 	}
 	if frontMatter.SEOTitle != "Custom SEO Title" {
-		t.Fatalf("seo title mismatch: %s", frontMatter.SEOTitle)
+		t.Fatalf("SEO 标题不一致：%s", frontMatter.SEOTitle)
 	}
 	if frontMatter.SEODescription != "Custom SEO Description" {
-		t.Fatalf("seo description mismatch: %s", frontMatter.SEODescription)
+		t.Fatalf("SEO 描述不一致：%s", frontMatter.SEODescription)
 	}
 	if bodyMarkdownContent != "Body content" {
-		t.Fatalf("front matter was not stripped: %q", bodyMarkdownContent)
+		t.Fatalf("文章元信息没有被移除：%q", bodyMarkdownContent)
 	}
 }
