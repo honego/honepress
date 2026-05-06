@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { nextTick, ref } from "vue";
+import { nextTick, onMounted, ref } from "vue";
 
 type MarkdownAction = "bold" | "italic" | "link";
+type LucideWindow = Window & {
+  lucide?: {
+    createIcons: (options?: { nameAttr?: string }) => void;
+  };
+};
 
 const props = defineProps<{
   modelValue: string;
@@ -14,6 +19,10 @@ const emit = defineEmits<{
 }>();
 
 const textareaElement = ref<HTMLTextAreaElement | null>(null);
+
+onMounted(() => {
+  (window as LucideWindow).lucide?.createIcons({ nameAttr: "data-lucide" });
+});
 
 function handleInput(event: Event): void {
   emit("update:modelValue", (event.currentTarget as HTMLTextAreaElement).value);
@@ -92,9 +101,21 @@ async function applyMarkdownAction(action: MarkdownAction): Promise<void> {
           <h3>Markdown</h3>
           <p>支持 Ctrl+B / Ctrl+I / Ctrl+K 和 Tab 缩进</p>
         </div>
+        <div class="markdown-toolbar" aria-label="Markdown 快捷工具">
+          <button type="button" class="toolbar-button" title="加粗" @click="applyMarkdownAction('bold')">
+            <i data-lucide="bold" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="toolbar-button" title="斜体" @click="applyMarkdownAction('italic')">
+            <i data-lucide="italic" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="toolbar-button" title="链接" @click="applyMarkdownAction('link')">
+            <i data-lucide="link" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
-      <textarea ref="textareaElement" class="markdown-textarea" :value="modelValue" spellcheck="false"
-        @input="handleInput" @keydown="handleKeydown"></textarea>
+      <textarea ref="textareaElement" class="markdown-textarea" :value="modelValue"
+        placeholder="在这里写下文章正文，支持标准 Markdown 语法。" spellcheck="false" @input="handleInput"
+        @keydown="handleKeydown"></textarea>
     </section>
 
     <section class="editor-surface preview-surface">

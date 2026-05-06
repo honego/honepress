@@ -85,7 +85,7 @@ const pageTitle = computed(() => {
 const pageDescription = computed(() => {
   if (activeView.value === "dashboard") return "轻量、安静、专注写作的 HonePress 后台。";
   if (activeView.value === "posts") return "管理已发布文章和草稿。";
-  if (activeView.value === "settings") return "写入 config.yaml 的站点基础配置。";
+  if (activeView.value === "settings") return "站点基础配置。";
   return "左侧编写 Markdown，右侧维护文章元信息。";
 });
 
@@ -514,11 +514,11 @@ function escapeHTML(rawText: string): string {
       <form class="login-form" @submit.prevent="handleLogin">
         <label class="form-field">
           <span>用户名</span>
-          <input v-model="loginForm.username" autocomplete="username" type="text" />
+          <input v-model="loginForm.username" autocomplete="username" placeholder="请输入后台用户名" type="text" />
         </label>
         <label class="form-field">
           <span>密码</span>
-          <input v-model="loginForm.password" autocomplete="current-password" type="password" />
+          <input v-model="loginForm.password" autocomplete="current-password" placeholder="请输入后台密码" type="password" />
         </label>
         <p v-if="loginError" class="form-error">{{ loginError }}</p>
         <button class="button button-primary" type="submit" :disabled="isLoggingIn">
@@ -744,22 +744,22 @@ function escapeHTML(rawText: string): string {
             <div class="form-stack">
               <label class="form-field">
                 <span>标题</span>
-                <input v-model="editorForm.title" type="text" />
+                <input v-model="editorForm.title" type="text" placeholder="输入文章标题" />
               </label>
               <label class="form-field">
                 <span>发布时间</span>
                 <div class="input-button-row">
-                  <input v-model="editorForm.date" type="text" />
+                  <input v-model="editorForm.date" type="text" placeholder="YYYY-MM-DD HH:mm:ss" />
                   <button type="button" class="button button-outline" @click="setPostDateToNow">生成</button>
                 </div>
               </label>
               <label class="form-field">
                 <span>固定链接</span>
-                <input v-model="editorForm.url" type="text" />
+                <input v-model="editorForm.url" type="text" placeholder="example-post.html" />
               </label>
               <label class="form-field">
                 <span>摘要</span>
-                <textarea v-model="editorForm.description" rows="3"></textarea>
+                <textarea v-model="editorForm.description" rows="3" placeholder="用于首页、归档和 SEO 的简短摘要"></textarea>
               </label>
               <label class="switch-field">
                 <input v-model="editorForm.draft" type="checkbox" />
@@ -833,11 +833,11 @@ function escapeHTML(rawText: string): string {
           <div class="settings-grid">
             <label class="form-field">
               <span>站点标题</span>
-              <input v-model="siteSettings.title" type="text" />
+              <input v-model="siteSettings.title" type="text" placeholder="请输入站点标题" />
             </label>
             <label class="form-field">
               <span>站点描述</span>
-              <input v-model="siteSettings.description" type="text" />
+              <input v-model="siteSettings.description" type="text" placeholder="请输入一句简短的站点描述" />
             </label>
             <label class="form-field">
               <span>默认主题</span>
@@ -856,7 +856,8 @@ function escapeHTML(rawText: string): string {
             </label>
             <label class="form-field wide-field">
               <span>网站 icon URL</span>
-              <input v-model="siteSettings.iconUrl" type="text" placeholder="https://example.com/favicon.png" />
+              <input v-model="siteSettings.iconUrl" type="text"
+                placeholder="填写网站 Icon URL，例如 https://example.com/favicon.png" />
             </label>
           </div>
         </section>
