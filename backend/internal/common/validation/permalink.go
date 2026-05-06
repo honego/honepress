@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/honeok/honepress/backend/internal/constant"
+	"github.com/honeok/honepress/internal/constant"
 )
 
 var publicHTMLFileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*\.html$`)

@@ -14,8 +14,8 @@ import {
   previewMarkdown,
   updatePost,
   updateSettings,
-} from "./api/post";
-import type { PostDetail, PostSummary, SavePostRequest, SiteSettings } from "./types/post";
+} from "./api/posts";
+import type { PostDetail, PostSummary, SavePostRequest, SiteSettings } from "./types/posts";
 
 type AdminView = "dashboard" | "posts" | "editor" | "settings";
 type EditorMode = "create" | "edit";

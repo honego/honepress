@@ -6,7 +6,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/honeok/honepress/backend/internal/model"
+	"github.com/honeok/honepress/internal/model"
 )
 
 type postFrontMatterYAML struct {

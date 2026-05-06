@@ -12,8 +12,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/honeok/honepress/backend/internal/constant"
-	"github.com/honeok/honepress/backend/internal/model"
+	"github.com/honeok/honepress/internal/constant"
+	"github.com/honeok/honepress/internal/model"
 )
 
 // config.yaml 结构
@@ -230,7 +230,7 @@ func OptionsFromConfig(configPath string, config Config) Options {
 		AssetsDir:     filepath.Join(dataDirectory, "assets"),
 		AdminDistDir:  filepath.Join("dist", "admin"),
 		ThemeDistDir:  filepath.Join("dist", "theme"),
-		TemplateDir:   filepath.Join("backend", "template"),
+		TemplateDir:   filepath.Join("backend", "templates"),
 		AdminUsername: config.Admin.Username,
 		AdminPassword: config.Admin.Password,
 		Comment: CommentOptions{

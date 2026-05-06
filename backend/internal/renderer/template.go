@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/gorilla/feeds"
-	"github.com/honeok/honepress/backend/internal/common/filesystem"
-	"github.com/honeok/honepress/backend/internal/model"
-	"github.com/honeok/honepress/backend/internal/option"
+	"github.com/honeok/honepress/internal/common/filesystem"
+	"github.com/honeok/honepress/internal/model"
+	"github.com/honeok/honepress/internal/option"
 )
 
 // 静态站点文件渲染器

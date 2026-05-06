@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/honeok/honepress/backend/internal/option"
+	"github.com/honeok/honepress/internal/option"
 )
 
 func withTestRuntimeFiles(t *testing.T, dataDirectoryPath string, testOptions option.Options) option.Options {
@@ -23,7 +23,7 @@ func withTestRuntimeFiles(t *testing.T, dataDirectoryPath string, testOptions op
 		t.Fatalf("写入测试 favicon 失败：%v", err)
 	}
 
-	templateDir, err := filepath.Abs(filepath.Join("..", "..", "template"))
+	templateDir, err := filepath.Abs(filepath.Join("..", "..", "templates"))
 	if err != nil {
 		t.Fatalf("解析测试模板目录失败：%v", err)
 	}

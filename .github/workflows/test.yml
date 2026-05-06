@@ -30,9 +30,11 @@ jobs:
       - name: "Setup Go"
         uses: actions/setup-go@v6
         with:
-          go-version-file: "go.mod"
+          go-version-file: "backend/go.mod"
           check-latest: true
           cache: true
+          cache-dependency-path: backend/go.sum
 
       - name: "Run test"
+        working-directory: backend
         run: go test -timeout 1h -v ./...

@@ -15,10 +15,10 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/honeok/honepress/backend/internal/constant"
-	"github.com/honeok/honepress/backend/internal/model"
-	"github.com/honeok/honepress/backend/internal/option"
-	"github.com/honeok/honepress/backend/internal/service"
+	"github.com/honeok/honepress/internal/constant"
+	"github.com/honeok/honepress/internal/model"
+	"github.com/honeok/honepress/internal/option"
+	"github.com/honeok/honepress/internal/service"
 )
 
 // HTTP 服务

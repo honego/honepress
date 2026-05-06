@@ -21,27 +21,26 @@ COPY frontend/theme/ ./
 RUN npm run build
 
 FROM golang:1.26-alpine AS build-backend
-WORKDIR /src
+WORKDIR /src/backend
 ENV CGO_ENABLED=0
-COPY go.mod go.sum ./
+COPY backend/go.mod backend/go.sum ./
 RUN go mod download
-COPY . ./
-COPY --from=build-admin /src/dist/admin ./dist/admin
-COPY --from=build-theme /src/dist/theme ./dist/theme
+COPY backend/ ./
 RUN go build -v -trimpath -ldflags="-s -w" \
-    -o /go/bin/app ./backend/cmd/honepress
+    -o /go/bin/honepress .
 
 FROM alpine:3.23.4
 LABEL org.opencontainers.image.authors="honeok <i@honeok.com>"
 WORKDIR /app
-COPY --from=build-backend /go/bin/app /app/app
-COPY --from=build-backend /src/config.example.yaml /app/config.example.yaml
-COPY --from=build-backend /src/dist /app/dist
-COPY --from=build-backend /src/backend/template /app/backend/template
+COPY --from=build-backend /go/bin/honepress /app/honepress
+COPY config.example.yaml /app/config.example.yaml
+COPY --from=build-admin /src/dist/admin /app/dist/admin
+COPY --from=build-theme /src/dist/theme /app/dist/theme
+COPY --from=build-backend /src/backend/templates /app/backend/templates
 RUN set -ex \
     && apk add --no-cache --update curl ca-certificates tzdata \
     && mkdir -p /app/data/content/posts /app/data/public
 VOLUME /app/data
 EXPOSE 8080
 ENV TZ=Asia/Shanghai
-ENTRYPOINT ["./app", "-c", "config.yaml"]
+ENTRYPOINT ["/app/honepress", "-c", "/app/config.yaml"]

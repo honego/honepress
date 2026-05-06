@@ -14,11 +14,11 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/honeok/honepress/backend/internal/common/filesystem"
-	"github.com/honeok/honepress/backend/internal/common/validation"
-	"github.com/honeok/honepress/backend/internal/model"
-	"github.com/honeok/honepress/backend/internal/option"
-	"github.com/honeok/honepress/backend/internal/renderer"
+	"github.com/honeok/honepress/internal/common/filesystem"
+	"github.com/honeok/honepress/internal/common/validation"
+	"github.com/honeok/honepress/internal/model"
+	"github.com/honeok/honepress/internal/option"
+	"github.com/honeok/honepress/internal/renderer"
 )
 
 // 博客业务
@@ -60,7 +60,7 @@ func normalizeRuntimeOptions(options option.Options) option.Options {
 		options.ThemeDistDir = filepath.Join("dist", "theme")
 	}
 	if strings.TrimSpace(options.TemplateDir) == "" {
-		options.TemplateDir = filepath.Join("backend", "template")
+		options.TemplateDir = filepath.Join("backend", "templates")
 	}
 	if strings.TrimSpace(options.ThemeDefault) == "" {
 		options.ThemeDefault = "auto"

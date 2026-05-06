@@ -8,7 +8,7 @@ import type {
   SavePostRequest,
   SettingsResponse,
   SiteSettings,
-} from "../types/post";
+} from "../types/posts";
 
 const jsonHeaders: HeadersInit = {
   "Content-Type": "application/json",

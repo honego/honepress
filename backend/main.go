@@ -4,9 +4,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/honeok/honepress/backend/internal/adapter/httpserver"
-	"github.com/honeok/honepress/backend/internal/option"
-	"github.com/honeok/honepress/backend/internal/service"
+	"github.com/honeok/honepress/internal/adapter/httpserver"
+	"github.com/honeok/honepress/internal/option"
+	"github.com/honeok/honepress/internal/service"
 )
 
 func main() {

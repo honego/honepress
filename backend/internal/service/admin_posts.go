@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/honeok/honepress/backend/internal/common/filesystem"
-	"github.com/honeok/honepress/backend/internal/common/validation"
-	"github.com/honeok/honepress/backend/internal/model"
-	"github.com/honeok/honepress/backend/internal/renderer"
+	"github.com/honeok/honepress/internal/common/filesystem"
+	"github.com/honeok/honepress/internal/common/validation"
+	"github.com/honeok/honepress/internal/model"
+	"github.com/honeok/honepress/internal/renderer"
 )
 
 // 后台文章列表

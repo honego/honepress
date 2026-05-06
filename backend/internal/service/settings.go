@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/honeok/honepress/backend/internal/model"
-	"github.com/honeok/honepress/backend/internal/option"
+	"github.com/honeok/honepress/internal/model"
+	"github.com/honeok/honepress/internal/option"
 )
 
 func (blogService *BlogService) GetSiteSettings() model.SiteSettings {

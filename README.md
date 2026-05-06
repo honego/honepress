@@ -2,7 +2,7 @@
 
 HonePress 是一个用 Go 和 Vue 3 / TypeScript 编写的轻量博客程序。Go 负责 Markdown 渲染、静态 HTML、RSS、sitemap、API 和静态文件服务；前端分为后台管理界面和前台主题脚本。
 
-项目现在按 `backend`、`frontend`、`dist`、`data` 拆分：Go module 仍然保留在仓库根目录，运行时从文件系统读取前端构建产物，不依赖 Go embed。
+项目现在按 `backend`、`frontend`、`dist`、`data` 拆分：Go module 位于 `backend` 目录，运行时从文件系统读取前端构建产物，不依赖 Go embed。
 
 ## 功能特性
 
@@ -16,7 +16,9 @@ HonePress 是一个用 Go 和 Vue 3 / TypeScript 编写的轻量博客程序。G
 
 ```text
 backend/
-  cmd/honepress/main.go
+  go.mod
+  go.sum
+  main.go
   internal/
     adapter/httpserver/
     common/
@@ -25,7 +27,7 @@ backend/
     option/
     renderer/
     service/
-  template/
+  templates/
 frontend/
   public/
     favicon.ico
@@ -44,7 +46,7 @@ data/
 
 说明：
 
-- `backend/template` 是运行时渲染静态站点所需的模板和前台 CSS。
+- `backend/templates` 是运行时渲染静态站点所需的模板和前台 CSS。
 - `frontend/admin` 是后台 Vue 3 + Vite 源码，构建产物输出到 `dist/admin`。
 - `frontend/theme` 是前台主题脚本源码，构建产物输出到 `dist/theme`。
 - `frontend/public` 是项目默认 favicon/logo 的唯一维护位置，admin 和 theme 构建时共用。
@@ -72,7 +74,8 @@ npm run build
 Go 构建命令：
 
 ```bash
-go build -trimpath -ldflags="-s -w" -o /out/honepress ./backend/cmd/honepress
+cd backend
+go build -trimpath -ldflags="-s -w" -o /out/honepress .
 ```
 
 手动运行：
@@ -85,10 +88,10 @@ go build -trimpath -ldflags="-s -w" -o /out/honepress ./backend/cmd/honepress
 
 - `dist/admin/index.html`
 - `dist/theme/theme.js`
-- `backend/template/index.html`
-- `backend/template/blog.html`
-- `backend/template/post.html`
-- `backend/template/style.css`
+- `backend/templates/index.html`
+- `backend/templates/blog.html`
+- `backend/templates/post.html`
+- `backend/templates/style.css`
 
 如果缺少构建产物或模板，会输出清晰的中文错误并停止启动。
 
@@ -131,7 +134,7 @@ Docker 内部启动命令保持不变：
   honepress
   config.yaml
   config.example.yaml
-  backend/template/
+  backend/templates/
   dist/
     admin/
     theme/
