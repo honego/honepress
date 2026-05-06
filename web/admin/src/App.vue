@@ -680,7 +680,7 @@ function escapeHTML(rawText: string): string {
               <tr v-for="post in posts" :key="post.id">
                 <td>
                   <button type="button" class="title-button" @click="openEditorForPost(post.id)">{{ post.title
-                  }}</button>
+                    }}</button>
                   <p>{{ post.description || "没有摘要" }}</p>
                 </td>
                 <td>
@@ -823,7 +823,6 @@ function escapeHTML(rawText: string): string {
           <div class="card-heading">
             <div>
               <h2>基础信息</h2>
-              <p>这些配置会写入 config.yaml。</p>
             </div>
             <button type="button" class="button button-primary" :disabled="isSaving" @click="saveSettings">
               <i data-lucide="save" aria-hidden="true"></i>
