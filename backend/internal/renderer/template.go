@@ -11,19 +11,19 @@ import (
 	"time"
 
 	"github.com/gorilla/feeds"
-	"github.com/honeok/honepress/internal/common/filesystem"
+	"github.com/honeok/honepress/internal/config"
+	"github.com/honeok/honepress/internal/filesystem"
 	"github.com/honeok/honepress/internal/model"
-	"github.com/honeok/honepress/internal/option"
 )
 
 // 静态站点文件渲染器
 type TemplateRenderer struct {
 	templates *htmlTemplate.Template
-	options   option.Options
+	options   config.Options
 }
 
 // 创建模板渲染器
-func NewTemplateRenderer(options option.Options) (*TemplateRenderer, error) {
+func NewTemplateRenderer(options config.Options) (*TemplateRenderer, error) {
 	parsedTemplates, err := htmlTemplate.ParseFiles(
 		filepath.Join(options.TemplateDir, "index.html"),
 		filepath.Join(options.TemplateDir, "blog.html"),

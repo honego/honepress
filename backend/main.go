@@ -4,18 +4,18 @@ import (
 	"log"
 	"os"
 
-	"github.com/honeok/honepress/internal/adapter/httpserver"
-	"github.com/honeok/honepress/internal/option"
+	"github.com/honeok/honepress/internal/config"
+	"github.com/honeok/honepress/internal/server"
 	"github.com/honeok/honepress/internal/service"
 )
 
 func main() {
-	configPath, err := option.ResolveConfigPath(os.Args[1:])
+	configPath, err := config.ResolveConfigPath(os.Args[1:])
 	if err != nil {
 		log.Fatalf("解析配置路径失败：%v", err)
 	}
 
-	loadedOptions, err := option.Load(configPath)
+	loadedOptions, err := config.Load(configPath)
 	if err != nil {
 		log.Fatalf("加载配置失败：%v", err)
 	}
@@ -28,7 +28,7 @@ func main() {
 		log.Fatalf("启动渲染失败：%v", err)
 	}
 
-	httpServer := httpserver.New(loadedOptions, blogService)
+	httpServer := server.New(loadedOptions, blogService)
 	if err := httpServer.ListenAndServe(); err != nil {
 		log.Fatalf("HTTP 服务停止：%v", err)
 	}

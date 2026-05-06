@@ -20,11 +20,12 @@ backend/
   go.sum
   main.go
   internal/
-    adapter/httpserver/
-    common/
-    constant/
+    server/
+    filesystem/
+    validation/
+    core/
     model/
-    option/
+    config/
     renderer/
     service/
   templates/

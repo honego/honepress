@@ -1,4 +1,4 @@
-package constant
+package core
 
 const ProjectName = "honepress"
 

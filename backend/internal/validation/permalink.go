@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/honeok/honepress/internal/constant"
+	"github.com/honeok/honepress/internal/core"
 )
 
 var publicHTMLFileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*\.html$`)
@@ -35,7 +35,7 @@ func NormalizePermalink(rawPermalink string) (string, error) {
 	if !publicHTMLFileNamePattern.MatchString(trimmedPermalink) {
 		return "", fmt.Errorf("固定链接只能使用 ASCII 字母、数字、短横线和下划线：%s", rawPermalink)
 	}
-	if _, isReservedFileName := constant.ReservedPublicFileNames[trimmedPermalink]; isReservedFileName {
+	if _, isReservedFileName := core.ReservedPublicFileNames[trimmedPermalink]; isReservedFileName {
 		return "", fmt.Errorf("固定链接不能使用保留文件名：%s", trimmedPermalink)
 	}
 

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/honeok/honepress/internal/option"
+	"github.com/honeok/honepress/internal/config"
 )
 
-func withTestRuntimeFiles(t *testing.T, dataDirectoryPath string, testOptions option.Options) option.Options {
+func withTestRuntimeFiles(t *testing.T, dataDirectoryPath string, testOptions config.Options) config.Options {
 	t.Helper()
 
 	themeDistDir := filepath.Join(dataDirectoryPath, "theme-dist")
@@ -35,7 +35,7 @@ func withTestRuntimeFiles(t *testing.T, dataDirectoryPath string, testOptions op
 func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
-	testOptions := option.Options{
+	testOptions := config.Options{
 		Title:       "honepress",
 		Description: "测试博客",
 		DataDir:     dataDirectoryPath,
@@ -84,7 +84,7 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 func TestRenderAllSkipsDraftPosts(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
-	testOptions := option.Options{
+	testOptions := config.Options{
 		Title:       "honepress",
 		Description: "测试博客",
 		DataDir:     dataDirectoryPath,
@@ -174,14 +174,14 @@ aliases: []
 func TestRenderAllWritesGiscusPlaceholder(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
-	testOptions := option.Options{
+	testOptions := config.Options{
 		Title:       "honepress",
 		Description: "test blog",
 		DataDir:     dataDirectoryPath,
 		ContentDir:  filepath.Join(dataDirectoryPath, "content"),
 		PostsDir:    filepath.Join(dataDirectoryPath, "content", "posts"),
 		PublicDir:   filepath.Join(dataDirectoryPath, "public"),
-		Comment: option.CommentOptions{
+		Comment: config.CommentOptions{
 			Enabled:          true,
 			GiscusRepo:       "owner/repo",
 			GiscusRepoID:     "repo-id",
@@ -254,7 +254,7 @@ Comment body.`
 func TestRenderAllUsesPostSEOFields(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
-	testOptions := option.Options{
+	testOptions := config.Options{
 		Title:       "HonePress",
 		Description: "site description",
 		DataDir:     dataDirectoryPath,

@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/honeok/honepress/internal/config"
 	"github.com/honeok/honepress/internal/model"
-	"github.com/honeok/honepress/internal/option"
 )
 
 func (blogService *BlogService) GetSiteSettings() model.SiteSettings {
 	blogService.renderMutex.Lock()
 	defer blogService.renderMutex.Unlock()
 
-	return option.SiteSettingsFromOptions(blogService.options)
+	return config.SiteSettingsFromOptions(blogService.options)
 }
 
 // 更新后台站点设置
@@ -24,12 +24,12 @@ func (blogService *BlogService) UpdateSiteSettings(siteSettings model.SiteSettin
 		return err
 	}
 
-	updatedConfig := option.ApplySiteSettings(blogService.options.Config, siteSettings)
-	if err := option.WriteConfig(blogService.options.ConfigPath, updatedConfig); err != nil {
+	updatedConfig := config.ApplySiteSettings(blogService.options.Config, siteSettings)
+	if err := config.WriteConfig(blogService.options.ConfigPath, updatedConfig); err != nil {
 		return err
 	}
 
-	blogService.options = option.OptionsFromConfig(blogService.options.ConfigPath, updatedConfig)
+	blogService.options = config.OptionsFromConfig(blogService.options.ConfigPath, updatedConfig)
 
 	if err := blogService.renderAllWithoutLock(); err != nil {
 		return err

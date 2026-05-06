@@ -1,4 +1,4 @@
-package httpserver
+package server
 
 import (
 	"crypto/rand"
@@ -15,21 +15,21 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/honeok/honepress/internal/constant"
+	"github.com/honeok/honepress/internal/config"
+	"github.com/honeok/honepress/internal/core"
 	"github.com/honeok/honepress/internal/model"
-	"github.com/honeok/honepress/internal/option"
 	"github.com/honeok/honepress/internal/service"
 )
 
 // HTTP 服务
 type Server struct {
-	options           option.Options
+	options           config.Options
 	blogService       *service.BlogService
 	adminSessionToken string
 }
 
 // 创建 HTTP 服务实例
-func New(options option.Options, blogService *service.BlogService) *Server {
+func New(options config.Options, blogService *service.BlogService) *Server {
 	return &Server{
 		options:           options,
 		blogService:       blogService,
@@ -39,7 +39,7 @@ func New(options option.Options, blogService *service.BlogService) *Server {
 
 // 启动 HTTP 服务
 func (server *Server) ListenAndServe() error {
-	return http.ListenAndServe(constant.DefaultAddress, server.routes())
+	return http.ListenAndServe(core.DefaultAddress, server.routes())
 }
 
 func (server *Server) routes() http.Handler {

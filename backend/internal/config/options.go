@@ -1,4 +1,4 @@
-package option
+package config
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/honeok/honepress/internal/constant"
+	"github.com/honeok/honepress/internal/core"
 	"github.com/honeok/honepress/internal/model"
 )
 
@@ -96,7 +96,7 @@ type CommentOptions struct {
 
 // 解析配置文件路径
 func ResolveConfigPath(arguments []string) (string, error) {
-	flagSet := flag.NewFlagSet(constant.ProjectName, flag.ContinueOnError)
+	flagSet := flag.NewFlagSet(core.ProjectName, flag.ContinueOnError)
 	flagSet.SetOutput(os.Stderr)
 	shortConfigPath := flagSet.String("c", "", "配置文件路径")
 	longConfigPath := flagSet.String("config", "", "配置文件路径")

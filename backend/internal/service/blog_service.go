@@ -14,22 +14,22 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/honeok/honepress/internal/common/filesystem"
-	"github.com/honeok/honepress/internal/common/validation"
+	"github.com/honeok/honepress/internal/config"
+	"github.com/honeok/honepress/internal/filesystem"
 	"github.com/honeok/honepress/internal/model"
-	"github.com/honeok/honepress/internal/option"
 	"github.com/honeok/honepress/internal/renderer"
+	"github.com/honeok/honepress/internal/validation"
 )
 
 // 博客业务
 type BlogService struct {
-	options          option.Options
+	options          config.Options
 	markdownRenderer *renderer.MarkdownRenderer
 	renderMutex      sync.Mutex
 }
 
 // 创建博客服务
-func NewBlogService(options option.Options) *BlogService {
+func NewBlogService(options config.Options) *BlogService {
 	options = normalizeRuntimeOptions(options)
 	return &BlogService{
 		options:          options,
@@ -37,7 +37,7 @@ func NewBlogService(options option.Options) *BlogService {
 	}
 }
 
-func normalizeRuntimeOptions(options option.Options) option.Options {
+func normalizeRuntimeOptions(options config.Options) config.Options {
 	if strings.TrimSpace(options.DataDir) == "" {
 		options.DataDir = "data"
 	}
@@ -512,11 +512,11 @@ func seoDescription(primary string, fallback string) string {
 	return strings.TrimSpace(primary)
 }
 
-func seoPublicURL(options option.Options, publicPath string) htmlTemplate.URL {
+func seoPublicURL(options config.Options, publicPath string) htmlTemplate.URL {
 	return htmlTemplate.URL(options.AbsoluteURL(publicPath))
 }
 
-func seoImageURL(options option.Options, imageURL string) htmlTemplate.URL {
+func seoImageURL(options config.Options, imageURL string) htmlTemplate.URL {
 	trimmedImageURL := strings.TrimSpace(imageURL)
 	if trimmedImageURL == "" || strings.HasPrefix(trimmedImageURL, "data:") {
 		return ""
@@ -546,7 +546,7 @@ func structuredData(document map[string]interface{}) htmlTemplate.JS {
 	return htmlTemplate.JS(encodedDocument)
 }
 
-func addPublisher(document map[string]interface{}, options option.Options) {
+func addPublisher(document map[string]interface{}, options config.Options) {
 	publisher := map[string]interface{}{
 		"@type": "Organization",
 		"name":  siteName(options.Title),
@@ -560,7 +560,7 @@ func addPublisher(document map[string]interface{}, options option.Options) {
 	document["publisher"] = publisher
 }
 
-func siteStructuredData(options option.Options) htmlTemplate.JS {
+func siteStructuredData(options config.Options) htmlTemplate.JS {
 	document := map[string]interface{}{
 		"@context":    "https://schema.org",
 		"@type":       "Blog",
@@ -572,7 +572,7 @@ func siteStructuredData(options option.Options) htmlTemplate.JS {
 	return structuredData(document)
 }
 
-func archiveStructuredData(options option.Options, posts []model.Post) htmlTemplate.JS {
+func archiveStructuredData(options config.Options, posts []model.Post) htmlTemplate.JS {
 	items := make([]map[string]interface{}, 0, len(posts))
 	for postIndex, currentPost := range posts {
 		items = append(items, map[string]interface{}{
@@ -596,7 +596,7 @@ func archiveStructuredData(options option.Options, posts []model.Post) htmlTempl
 	return structuredData(document)
 }
 
-func postStructuredData(options option.Options, post model.Post) htmlTemplate.JS {
+func postStructuredData(options config.Options, post model.Post) htmlTemplate.JS {
 	postURL := options.AbsoluteURL("/" + post.URL)
 	document := map[string]interface{}{
 		"@context":         "https://schema.org",
