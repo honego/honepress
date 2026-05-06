@@ -35,12 +35,10 @@ go.work.sum
 node_modules/
 
 # Generated frontend assets
-web/admin/dist/*
-!web/admin/dist/
-!web/admin/dist/index.html
-web/theme/dist/*
-!web/theme/dist/
-!web/theme/dist/theme.js
+dist/
+frontend/admin/dist/
+frontend/theme/dist/
 
 # Generated public site
-data/public/
+data/public/*
+!data/public/.gitkeep

@@ -30,3 +30,33 @@ updates:
       gomod:
         patterns:
           - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/frontend/admin"
+    schedule:
+      interval: "daily"
+      time: "00:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      admin-npm:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/frontend/theme"
+    schedule:
+      interval: "daily"
+      time: "00:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      theme-npm:
+        patterns:
+          - "*"

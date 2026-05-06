@@ -6,11 +6,12 @@
 .idea/
 
 node_modules/
-web/admin/node_modules/
-web/theme/node_modules/
+frontend/admin/node_modules/
+frontend/theme/node_modules/
 
-web/admin/dist/
-web/theme/dist/
+frontend/admin/dist/
+frontend/theme/dist/
+dist/
 
 data/
 config.yaml
