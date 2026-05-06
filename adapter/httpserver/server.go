@@ -35,7 +35,6 @@ func New(options option.Options, blogService *service.BlogService) *Server {
 
 // 启动 HTTP 服务
 func (server *Server) ListenAndServe() error {
-	log.Printf("博客服务正在监听：%s", constant.DefaultAddress)
 	return http.ListenAndServe(constant.DefaultAddress, server.routes())
 }
 
