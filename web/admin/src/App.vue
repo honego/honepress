@@ -10,7 +10,6 @@ import {
   previewMarkdown,
   updatePost,
   updateSettings,
-  uploadSiteIcon,
 } from "./api/post";
 import type { PostDetail, PostSummary, SavePostRequest, SiteSettings } from "./types/post";
 
@@ -58,7 +57,6 @@ const isSaving = ref(false);
 const isPreviewLoading = ref(false);
 const adminTheme = ref<AdminThemeMode>(readStoredTheme());
 const siteSettings = ref<SiteSettings>(createEmptySiteSettings());
-const siteIconFileInput = ref<HTMLInputElement | null>(null);
 const markdownTextarea = ref<HTMLTextAreaElement | null>(null);
 
 let previewTimerID: number | undefined;
@@ -217,30 +215,6 @@ async function saveSettings(): Promise<void> {
   }
 }
 
-function chooseSiteIcon(): void {
-  siteIconFileInput.value?.click();
-}
-
-async function handleSiteIconUpload(event: Event): Promise<void> {
-  const inputElement = event.currentTarget as HTMLInputElement;
-  const iconFile = inputElement.files?.[0];
-  if (iconFile === undefined) {
-    return;
-  }
-
-  isSaving.value = true;
-  errorMessage.value = "";
-  try {
-    const settingsResponse = await uploadSiteIcon(iconFile);
-    siteSettings.value = settingsResponse.settings;
-    statusMessage.value = settingsResponse.message ?? "网站 icon 已上传。";
-  } catch (error) {
-    errorMessage.value = readError(error);
-  } finally {
-    inputElement.value = "";
-    isSaving.value = false;
-  }
-}
 
 function schedulePreview(): void {
   if (previewTimerID !== undefined) {
@@ -762,18 +736,9 @@ function escapeHTML(rawText: string): string {
                   <option value="douyin-sans">抖音美好体</option>
                 </select>
               </label>
-              <label class="site-icon-field">
+              <label>
                 <span>网站 icon</span>
-                <div class="site-icon-row">
-                  <span class="site-icon-preview">
-                    <img v-if="siteSettings.iconUrl" :src="siteSettings.iconUrl" alt="" />
-                    <span v-else>b</span>
-                  </span>
-                  <input v-model="siteSettings.iconUrl" type="text" />
-                  <button type="button" :disabled="isSaving" @click="chooseSiteIcon">上传</button>
-                  <input ref="siteIconFileInput" class="visually-hidden" type="file"
-                    accept=".ico,.png,.jpg,.jpeg,.webp,.svg,image/*" @change="handleSiteIconUpload" />
-                </div>
+                <input v-model="siteSettings.iconUrl" type="text" />
               </label>
               <section class="settings-section wide">
                 <h3>评论设置</h3>

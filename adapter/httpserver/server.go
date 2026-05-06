@@ -54,7 +54,6 @@ func (server *Server) routes() http.Handler {
 		apiRouter.Post("/preview", server.handlePreview)
 		apiRouter.Get("/settings", server.handleGetSettings)
 		apiRouter.Put("/settings", server.handleUpdateSettings)
-		apiRouter.Post("/settings/icon", server.handleUploadSiteIcon)
 		apiRouter.Get("/posts/{postID}", server.handleGetPost)
 		apiRouter.Put("/posts/{postID}", server.handleUpdatePost)
 		apiRouter.Delete("/posts/{postID}", server.handleDeletePost)
@@ -209,28 +208,6 @@ func (server *Server) handleUpdateSettings(responseWriter http.ResponseWriter, r
 	server.writeJSON(responseWriter, http.StatusOK, settingsResponse{
 		Settings: server.blogService.GetSiteSettings(),
 		Message:  "站点设置已保存，站点已自动更新。",
-	})
-}
-
-func (server *Server) handleUploadSiteIcon(responseWriter http.ResponseWriter, request *http.Request) {
-	if err := request.ParseMultipartForm(2 * 1024 * 1024); err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, fmt.Sprintf("解析上传文件失败：%v", err))
-		return
-	}
-	uploadedFile, fileHeader, err := request.FormFile("icon")
-	if err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, "请选择要上传的图标文件")
-		return
-	}
-	_ = uploadedFile.Close()
-	siteSettings, err := server.blogService.UploadSiteIcon(fileHeader)
-	if err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
-	}
-	server.writeJSON(responseWriter, http.StatusOK, settingsResponse{
-		Settings: siteSettings,
-		Message:  "网站 icon 已上传，站点已自动更新。",
 	})
 }
 
