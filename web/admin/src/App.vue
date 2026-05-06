@@ -639,7 +639,6 @@ function escapeHTML(rawText: string): string {
           <div class="card-heading">
             <div>
               <h2>快捷入口</h2>
-              <p>博客后台只保留写作需要的能力。</p>
             </div>
           </div>
           <div class="quick-actions">
@@ -680,7 +679,7 @@ function escapeHTML(rawText: string): string {
               <tr v-for="post in posts" :key="post.id">
                 <td>
                   <button type="button" class="title-button" @click="openEditorForPost(post.id)">{{ post.title
-                    }}</button>
+                  }}</button>
                   <p>{{ post.description || "没有摘要" }}</p>
                 </td>
                 <td>
