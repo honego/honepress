@@ -680,7 +680,7 @@ function escapeHTML(rawText: string): string {
                 <td>
                   <button type="button" class="title-button" @click="openEditorForPost(post.id)">{{ post.title
                   }}</button>
-                  <p>{{ post.description || "没有摘要" }}</p>
+                  <p>{{ post.description || "没有文章摘要" }}</p>
                 </td>
                 <td>
                   <span class="badge" :class="post.draft ? 'badge-muted' : 'badge-success'">
