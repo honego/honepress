@@ -405,7 +405,7 @@ svg,
   padding: 0 10px;
   border: 0;
   border-radius: 6px;
-  color: var(--muted-foreground);
+  color: var(--foreground);
   background: transparent;
   cursor: pointer;
   font-size: 14px;
@@ -437,7 +437,7 @@ svg,
   min-height: 34px;
   padding: 0 10px;
   border-radius: 6px;
-  color: var(--muted-foreground);
+  color: var(--foreground);
   font-weight: 500;
 }
 
