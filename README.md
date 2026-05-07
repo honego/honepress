@@ -9,7 +9,7 @@ HonePress 是一个用 Go 和 Vue 3 / TypeScript 编写的轻量博客程序。G
 - Markdown 文件外置存储，启动和保存后自动生成静态页面。
 - 固定链接由 Front Matter 的 `url` 字段决定，标题变更不会影响链接。`icon` 可给文章页生成 emoji favicon。
 - 自动生成 `/rss.xml`、`/sitemap.xml`。
-- 后台提供文章列表、新建、编辑、删除、保存、预览、站点 icon、评论配置和站点设置；发布后自动生成公开页面，草稿不生成公开页面。
+- 后台提供文章列表、新建、编辑、删除、保存、预览、站点 Icon、评论配置和站点设置；发布后自动生成公开页面，草稿不生成公开页面。
 - 支持 Basic Auth、giscus 全局评论开关、auto/light/dark 主题和 Markdown emoji 短码。
 
 ## 目录结构
@@ -30,10 +30,7 @@ backend/
     service/
 frontend/
   public/
-    favicon.ico
-    favicon.svg
-    apple-touch-icon.png
-    logo.svg
+    honepress-black.svg
   admin/
   theme/
     templates/
@@ -158,12 +155,9 @@ Docker 内部启动命令保持不变：
 
 项目默认 favicon/logo 维护在 `frontend/public`：
 
-- `frontend/public/favicon.ico`
-- `frontend/public/favicon.svg`
-- `frontend/public/apple-touch-icon.png`
-- `frontend/public/logo.svg`
+- `frontend/public/honepress-black.svg`
 
-后台“网站 Icon”是运行时站点配置，会写入 `config.yaml` 或运行时资源目录。渲染页面时优先使用配置中的网站 icon；没有配置时回退到 `/favicon.svg`。
+后台“网站 Icon”是运行时站点配置，会写入 `config.yaml` 或运行时资源目录。渲染页面时优先使用配置中的网站 Icon；没有配置时回退到 `/honepress-black.svg`。
 
 ## Markdown 文章格式
 
@@ -185,7 +179,7 @@ tags:
 欢迎使用 HonePress 。这是您的第一篇文章，编辑或删除它，然后开始写作吧！
 ```
 
-Front Matter 只给程序读取，不会出现在渲染后的正文中。站点 icon 是全站默认 favicon；单篇文章的 `icon` 会生成该文章自己的 emoji favicon，没有设置时回退到站点 icon 或默认 `/favicon.svg`。
+Front Matter 只给程序读取，不会出现在渲染后的正文中。站点 Icon 是全站默认 favicon；单篇文章的 `icon` 会生成该文章自己的 emoji favicon，没有设置时回退到站点 Icon 或默认 `/honepress-black.svg`。
 
 ## 固定链接说明
 
@@ -205,7 +199,7 @@ RSS 自动生成到 `/rss.xml`。sitemap 自动生成到 `/sitemap.xml`。草稿
 
 ## 后台说明
 
-后台路径保持 `/admin/`，API 路径保持 `/api/`。Markdown 预览调用 Go 后端 `/api/preview`，不会在前端使用 Markdown 渲染库。后台的“站点设置”区域可以修改站点标题、描述、网站 icon、字体、giscus 评论配置和默认主题，保存后会写回配置并自动更新静态页面。
+后台路径保持 `/admin/`，API 路径保持 `/api/`。Markdown 预览调用 Go 后端 `/api/preview`，不会在前端使用 Markdown 渲染库。后台的“站点设置”区域可以修改站点标题、描述、网站 Icon、字体、giscus 评论配置和默认主题，保存后会写回配置并自动更新静态页面。
 
 ## 备份建议
 
