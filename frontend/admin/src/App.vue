@@ -870,7 +870,7 @@ function escapeHTML(rawText: string): string {
               </select>
             </label>
             <label class="form-field wide-field">
-              <span>网站 icon URL</span>
+              <span>网站 Icon</span>
               <input v-model="siteSettings.iconUrl" type="text"
                 placeholder="填写网站 Icon URL，例如 https://example.com/favicon.png" />
             </label>
