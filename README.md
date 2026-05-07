@@ -157,7 +157,7 @@ Docker 内部启动命令保持不变：
 
 - `frontend/public/honepress-black.svg`
 
-后台“网站 Icon”是运行时站点配置，会写入 `config.yaml` 或运行时资源目录。渲染页面时优先使用配置中的网站 Icon；没有配置时回退到 `/honepress-black.svg`。
+后台“网站 icon”是运行时站点配置，会写入 `config.yaml` 或运行时资源目录。渲染页面时优先使用配置中的网站 icon；没有配置时回退到 `/honepress-black.svg`。
 
 ## Markdown 文章格式
 

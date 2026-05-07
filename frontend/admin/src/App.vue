@@ -240,6 +240,7 @@ async function saveCurrentPost(): Promise<void> {
     tagDraft.value = "";
     statusMessage.value = savedPostMessage(postDetailResponse.post);
     await loadPosts();
+    activeView.value = "posts";
   } catch (error) {
     handleRequestError(error);
   } finally {
@@ -503,7 +504,7 @@ function userMessageFromBackendError(errorText: string): string {
   if (normalizedError.includes("markdown file name")) return "文章文件名不正确。";
   if (normalizedError.includes("default theme")) return "默认主题只能是自动、明亮或暗色。";
   if (normalizedError.includes("site font")) return "站点字体配置不正确。";
-  if (normalizedError.includes("site icon")) return "网站 Icon 只支持 http(s) 链接或 / 开头的站内路径。";
+  if (normalizedError.includes("site icon")) return "网站 icon 只支持 http(s) 链接或 / 开头的站内路径。";
   if (normalizedError.includes("admin username is required")) return "设置后台密码时需要填写用户名。";
   if (normalizedError.includes("admin username")) return "后台用户名不能包含空格。";
   if (normalizedError.includes("read post") || normalizedError.includes("read posts")) return "读取文章失败。";
@@ -596,17 +597,17 @@ function escapeHTML(rawText: string): string {
           <p>{{ pageDescription }}</p>
         </div>
         <div class="header-actions">
-          <button type="button" class="button button-outline" @click="handleLogout">
-            <i data-lucide="log-out" aria-hidden="true"></i>
-            退出
-          </button>
-          <button v-if="activeView !== 'editor'" type="button" class="button button-primary" @click="startNewPost">
-            <i data-lucide="plus" aria-hidden="true"></i>
-            新建文章
-          </button>
+          <a v-if="activeView !== 'editor'" class="button button-primary" href="/">
+            <i data-lucide="house" aria-hidden="true"></i>
+            返回主页
+          </a>
           <button v-else type="button" class="button button-primary" :disabled="isSaving" @click="saveCurrentPost">
             <i data-lucide="save" aria-hidden="true"></i>
             {{ isSaving ? "正在保存" : "保存文章" }}
+          </button>
+          <button type="button" class="button button-outline" @click="handleLogout">
+            <i data-lucide="log-out" aria-hidden="true"></i>
+            退出
           </button>
         </div>
       </header>
@@ -874,9 +875,9 @@ function escapeHTML(rawText: string): string {
               </select>
             </label>
             <label class="form-field wide-field">
-              <span>网站 Icon</span>
+              <span>网站 icon</span>
               <input v-model="siteSettings.iconUrl" type="text"
-                placeholder="填写网站 Icon，例如 https://example.com/favicon.png" />
+                placeholder="填写网站 icon，例如 https://example.com/favicon.png" />
             </label>
           </div>
         </section>
