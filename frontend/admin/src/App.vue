@@ -59,7 +59,6 @@ const statusMessage = ref("");
 const errorMessage = ref("");
 const isSaving = ref(false);
 const isPreviewLoading = ref(false);
-const isBootstrapping = ref(true);
 const isAuthenticated = ref(false);
 const isLoggingIn = ref(false);
 const isDeleteDialogOpen = ref(false);
@@ -115,7 +114,6 @@ watch(
   },
 );
 async function bootstrapAdmin(): Promise<void> {
-  isBootstrapping.value = true;
   errorMessage.value = "";
   try {
     await checkAdminSession();
@@ -130,7 +128,6 @@ async function bootstrapAdmin(): Promise<void> {
       errorMessage.value = readError(error);
     }
   } finally {
-    isBootstrapping.value = false;
     void nextTick(initializeIcons);
   }
 }
@@ -521,14 +518,7 @@ function escapeHTML(rawText: string): string {
 }
 </script>
 <template>
-  <div v-if="isBootstrapping" class="boot-screen">
-    <div class="boot-card">
-      <span class="loader-dot"></span>
-      <p>正在进入 HonePress 后台</p>
-    </div>
-  </div>
-
-  <main v-else-if="!isAuthenticated" class="login-page">
+  <main v-if="!isAuthenticated" class="login-page">
     <section class="login-card card">
       <div class="login-brand">
         <img class="brand-logo" src="/honepress-black.svg" alt="" />
@@ -706,7 +696,7 @@ function escapeHTML(rawText: string): string {
               <tr v-for="post in posts" :key="post.id">
                 <td>
                   <button type="button" class="title-button" @click="openEditorForPost(post.id)">{{ post.title
-                  }}</button>
+                    }}</button>
                   <p>{{ post.description || "没有文章摘要" }}</p>
                 </td>
                 <td>
@@ -813,7 +803,7 @@ function escapeHTML(rawText: string): string {
                   <span v-for="(tag, tagIndex) in editorForm.tags" :key="tag" class="tag-chip">
                     {{ tag }}
                     <button type="button" :aria-label="`删除标签 ${tag}`" @click="removeTag(tagIndex)">
-                      <i data-lucide="x" aria-hidden="true"></i>
+                      <span aria-hidden="true">×</span>
                     </button>
                   </span>
                   <input v-model="tagDraft" type="text" placeholder="输入标签后回车" @keydown="handleTagKeydown"
