@@ -547,7 +547,7 @@ function escapeHTML(rawText: string): string {
           <h1>登录后台</h1>
         </div>
       </div>
-      <p class="login-copy">继续管理文章、草稿和站点配置。</p>
+      <p class="login-copy">管理文章、草稿和站点配置。</p>
       <form class="login-form" @submit.prevent="handleLogin">
         <label class="form-field">
           <span>用户名</span>
@@ -716,7 +716,7 @@ function escapeHTML(rawText: string): string {
               <tr v-for="post in posts" :key="post.id">
                 <td>
                   <button type="button" class="title-button" @click="openEditorForPost(post.id)">{{ post.title
-                  }}</button>
+                    }}</button>
                   <p>{{ post.description || "没有文章摘要" }}</p>
                 </td>
                 <td>
