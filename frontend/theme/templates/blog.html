@@ -31,10 +31,8 @@
     {{end}} {{if .FaviconHref}}
     <link rel="icon" href="{{.FaviconHref}}" />
     {{else}}
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/honepress-black.svg" type="image/svg+xml" />
     {{end}}
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="alternate" type="application/rss+xml" title="{{.SiteTitle}}" href="{{.RSSPath}}" />
     {{range .ThemeStylePaths}}
     <link rel="stylesheet" href="{{.}}" />

@@ -531,7 +531,7 @@ function escapeHTML(rawText: string): string {
   <main v-else-if="!isAuthenticated" class="login-page">
     <section class="login-card card">
       <div class="login-brand">
-        <span class="brand-avatar">H</span>
+        <img class="brand-logo" src="/honepress-black.svg" alt="" />
         <div>
           <p class="eyebrow">HonePress</p>
           <h1>登录后台</h1>
@@ -559,7 +559,7 @@ function escapeHTML(rawText: string): string {
   <div v-else class="admin-app">
     <aside class="app-sidebar">
       <a class="sidebar-brand" href="/" target="_blank" rel="noreferrer">
-        <span class="brand-avatar">H</span>
+        <img class="brand-logo" src="/honepress-black.svg" alt="" />
         <span>HonePress</span>
       </a>
 
