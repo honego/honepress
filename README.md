@@ -88,11 +88,11 @@ go build -trimpath -ldflags="-s -w" -o /out/honepress .
 启动时会检查：
 
 - `dist/admin/index.html`
-- `dist/theme/theme.js`
+- `dist/theme/.vite/manifest.json` 和 `dist/theme/assets/*`
 - `frontend/theme/templates/index.html`
 - `frontend/theme/templates/blog.html`
 - `frontend/theme/templates/post.html`
-- `frontend/theme/templates/style.css`
+- `frontend/theme/src/style.css`
 
 如果缺少构建产物或模板，会输出清晰的中文错误并停止启动。
 
@@ -201,7 +201,7 @@ RSS 自动生成到 `/rss.xml`。sitemap 自动生成到 `/sitemap.xml`。草稿
 
 ## 明暗主题说明
 
-前台主题源码位于 `frontend/theme/src/theme.ts`，构建后生成 `dist/theme/theme.js`，运行时会复制到 `data/public/theme.js`。主题状态保存在 `localStorage` 的 `honepress-theme`，支持 `auto`、`light`、`dark`。
+前台主题源码位于 `frontend/theme/src/theme.ts` 和 `frontend/theme/src/style.css`，构建后生成 `dist/theme/assets/*.js`、`dist/theme/assets/*.css` 以及 `dist/theme/.vite/manifest.json`。运行时会读取 manifest，并把资源复制到 `data/public/assets/`。主题状态保存在 `localStorage` 的 `honepress-theme`，支持 `auto`、`light`、`dark`。
 
 ## 后台说明
 

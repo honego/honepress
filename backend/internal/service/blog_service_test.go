@@ -13,11 +13,23 @@ func withTestRuntimeFiles(t *testing.T, dataDirectoryPath string, testOptions co
 	t.Helper()
 
 	themeDistDir := filepath.Join(dataDirectoryPath, "theme-dist")
-	if err := os.MkdirAll(themeDistDir, 0755); err != nil {
-		t.Fatalf("create test theme dist directory failed: %v", err)
+	themeAssetsDir := filepath.Join(themeDistDir, "assets")
+	themeManifestDir := filepath.Join(themeDistDir, ".vite")
+	if err := os.MkdirAll(themeAssetsDir, 0755); err != nil {
+		t.Fatalf("create test theme assets directory failed: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(themeDistDir, "theme.js"), []byte("https://giscus.app/client.js"), 0644); err != nil {
+	if err := os.MkdirAll(themeManifestDir, 0755); err != nil {
+		t.Fatalf("create test theme manifest directory failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeAssetsDir, "theme.test.js"), []byte("https://giscus.app/client.js"), 0644); err != nil {
 		t.Fatalf("write test theme script failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeAssetsDir, "theme.test.css"), []byte("body{margin:0}"), 0644); err != nil {
+		t.Fatalf("write test theme stylesheet failed: %v", err)
+	}
+	manifestContent := []byte(`{"src/theme.ts":{"file":"assets/theme.test.js","css":["assets/theme.test.css"],"isEntry":true,"name":"theme","src":"src/theme.ts"}}`)
+	if err := os.WriteFile(filepath.Join(themeManifestDir, "manifest.json"), manifestContent, 0644); err != nil {
+		t.Fatalf("write test theme manifest failed: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(themeDistDir, "favicon.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`), 0644); err != nil {
 		t.Fatalf("write test favicon failed: %v", err)
@@ -71,8 +83,8 @@ func TestRenderAllGeneratesStaticFiles(t *testing.T) {
 		filepath.Join(testOptions.PublicDir, "blog.html"),
 		filepath.Join(testOptions.PublicDir, "rss.xml"),
 		filepath.Join(testOptions.PublicDir, "sitemap.xml"),
-		filepath.Join(testOptions.PublicDir, "style.css"),
-		filepath.Join(testOptions.PublicDir, "theme.js"),
+		filepath.Join(testOptions.PublicDir, "assets", "theme.test.css"),
+		filepath.Join(testOptions.PublicDir, "assets", "theme.test.js"),
 	}
 	for _, requiredGeneratedFile := range requiredGeneratedFiles {
 		if _, err := os.Stat(requiredGeneratedFile); err != nil {
@@ -242,7 +254,7 @@ Comment body.`
 		t.Fatalf("post icon must not render inside the title")
 	}
 
-	themeScriptContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "theme.js"))
+	themeScriptContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "assets", "theme.test.js"))
 	if err != nil {
 		t.Fatalf("read theme script failed: %v", err)
 	}

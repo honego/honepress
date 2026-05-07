@@ -1,3 +1,5 @@
+import "./style.css";
+
 type ThemeMode = "auto" | "light" | "dark";
 
 type LucideWindow = Window & {

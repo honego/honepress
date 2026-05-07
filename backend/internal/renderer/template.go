@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	htmlTemplate "html/template"
@@ -39,6 +40,93 @@ func NewTemplateRenderer(options config.Options) (*TemplateRenderer, error) {
 	}, nil
 }
 
+// 前台主题构建产物
+type ThemeAssets struct {
+	ScriptPath htmlTemplate.URL
+	StylePaths []htmlTemplate.URL
+}
+
+type viteManifestEntry struct {
+	File    string   `json:"file"`
+	CSS     []string `json:"css"`
+	IsEntry bool     `json:"isEntry"`
+	Name    string   `json:"name"`
+	Src     string   `json:"src"`
+}
+
+func ResolveThemeAssets(themeDistDir string) (ThemeAssets, error) {
+	manifestContent, manifestPath, err := readViteManifest(themeDistDir)
+	if err != nil {
+		return ThemeAssets{}, err
+	}
+
+	var manifestEntries map[string]viteManifestEntry
+	if err := json.Unmarshal(manifestContent, &manifestEntries); err != nil {
+		return ThemeAssets{}, fmt.Errorf("decode Vite manifest at %s: %w", manifestPath, err)
+	}
+
+	themeEntry, err := findThemeManifestEntry(manifestEntries)
+	if err != nil {
+		return ThemeAssets{}, fmt.Errorf("resolve theme assets from %s: %w", manifestPath, err)
+	}
+
+	themeAssets := ThemeAssets{
+		ScriptPath: publicAssetPath(themeEntry.File),
+		StylePaths: make([]htmlTemplate.URL, 0, len(themeEntry.CSS)),
+	}
+	for _, stylesheetPath := range themeEntry.CSS {
+		themeAssets.StylePaths = append(themeAssets.StylePaths, publicAssetPath(stylesheetPath))
+	}
+	return themeAssets, nil
+}
+
+func readViteManifest(themeDistDir string) ([]byte, string, error) {
+	manifestPaths := []string{
+		filepath.Join(themeDistDir, ".vite", "manifest.json"),
+		filepath.Join(themeDistDir, "manifest.json"),
+	}
+	for _, manifestPath := range manifestPaths {
+		manifestContent, err := os.ReadFile(manifestPath)
+		if err == nil {
+			return manifestContent, manifestPath, nil
+		}
+		if !os.IsNotExist(err) {
+			return nil, "", fmt.Errorf("read Vite manifest at %s: %w", manifestPath, err)
+		}
+	}
+	return nil, "", fmt.Errorf("Vite manifest does not exist in %s; build frontend/theme first", themeDistDir)
+}
+
+func findThemeManifestEntry(manifestEntries map[string]viteManifestEntry) (viteManifestEntry, error) {
+	if themeEntry, exists := manifestEntries["src/theme.ts"]; exists && strings.TrimSpace(themeEntry.File) != "" {
+		return themeEntry, nil
+	}
+	for manifestKey, manifestEntry := range manifestEntries {
+		normalizedKey := filepath.ToSlash(manifestKey)
+		normalizedSource := filepath.ToSlash(manifestEntry.Src)
+		if strings.TrimSpace(manifestEntry.File) == "" {
+			continue
+		}
+		if manifestEntry.Name == "theme" || strings.HasSuffix(normalizedKey, "src/theme.ts") || strings.HasSuffix(normalizedSource, "src/theme.ts") {
+			return manifestEntry, nil
+		}
+	}
+	for _, manifestEntry := range manifestEntries {
+		if manifestEntry.IsEntry && strings.TrimSpace(manifestEntry.File) != "" {
+			return manifestEntry, nil
+		}
+	}
+	return viteManifestEntry{}, fmt.Errorf("theme entry not found")
+}
+
+func publicAssetPath(assetPath string) htmlTemplate.URL {
+	trimmedAssetPath := strings.TrimPrefix(filepath.ToSlash(strings.TrimSpace(assetPath)), "/")
+	if trimmedAssetPath == "" {
+		return ""
+	}
+	return htmlTemplate.URL("/" + trimmedAssetPath)
+}
+
 // 渲染首页
 func (templateRenderer *TemplateRenderer) RenderIndex(targetFilePath string, siteViewData model.SiteViewData) error {
 	return templateRenderer.executeHTMLTemplate("index.html", targetFilePath, siteViewData)
@@ -57,7 +145,7 @@ func (templateRenderer *TemplateRenderer) RenderPost(targetFilePath string, post
 // 写入别名跳转页
 func (templateRenderer *TemplateRenderer) RenderRedirect(targetFilePath string, targetPublicPath string) error {
 	absoluteTargetURL := templateRenderer.options.AbsoluteURL(targetPublicPath)
-	redirectHTML := "<!doctype html>\n<html lang=\"zh-CN\" data-theme=\"auto\">\n<head>\n<meta charset=\"utf-8\">\n<meta http-equiv=\"refresh\" content=\"0; url=" + htmlTemplate.HTMLEscapeString(targetPublicPath) + "\">\n<link rel=\"canonical\" href=\"" + htmlTemplate.HTMLEscapeString(absoluteTargetURL) + "\">\n<title>页面已移动</title>\n</head>\n<body>\n<p>页面已移动：<a href=\"" + htmlTemplate.HTMLEscapeString(targetPublicPath) + "\">继续访问</a></p>\n</body>\n</html>\n"
+	redirectHTML := "<!doctype html>\n<html lang=\"zh-CN\" data-theme=\"auto\">\n<head>\n<meta charset=\"utf-8\">\n<meta http-equiv=\"refresh\" content=\"0; url=" + htmlTemplate.HTMLEscapeString(targetPublicPath) + "\">\n<link rel=\"canonical\" href=\"" + htmlTemplate.HTMLEscapeString(absoluteTargetURL) + "\">\n<title>Page moved</title>\n</head>\n<body>\n<p>Page moved: <a href=\"" + htmlTemplate.HTMLEscapeString(targetPublicPath) + "\">continue</a></p>\n</body>\n</html>\n"
 	return filesystem.WriteFileCreatingDirectory(targetFilePath, []byte(redirectHTML), 0644)
 }
 
@@ -110,16 +198,6 @@ func (templateRenderer *TemplateRenderer) RenderSitemap(targetFilePath string, p
 		return fmt.Errorf("generate sitemap: %w", err)
 	}
 	return filesystem.WriteFileCreatingDirectory(targetFilePath, append([]byte(xml.Header), xmlContent...), 0644)
-}
-
-// 复制前台样式
-func (templateRenderer *TemplateRenderer) CopyStyle() error {
-	styleContent, err := os.ReadFile(filepath.Join(templateRenderer.options.TemplateDir, "style.css"))
-	if err != nil {
-		return fmt.Errorf("read theme stylesheet: %w", err)
-	}
-	targetStylePath := filepath.Join(templateRenderer.options.PublicDir, "style.css")
-	return filesystem.WriteFileCreatingDirectory(targetStylePath, styleContent, 0644)
 }
 
 func (templateRenderer *TemplateRenderer) executeHTMLTemplate(templateName string, targetFilePath string, templateData interface{}) error {

@@ -324,12 +324,11 @@ func (options Options) ValidateRuntimeFiles() error {
 	}
 
 	requiredFiles := map[string]string{
-		"admin entry file": filepath.Join(options.AdminDistDir, "index.html"),
-		"theme script":     filepath.Join(options.ThemeDistDir, "theme.js"),
-		"index template":   filepath.Join(options.TemplateDir, "index.html"),
-		"archive template": filepath.Join(options.TemplateDir, "blog.html"),
-		"post template":    filepath.Join(options.TemplateDir, "post.html"),
-		"theme stylesheet": filepath.Join(options.TemplateDir, "style.css"),
+		"admin entry file":     filepath.Join(options.AdminDistDir, "index.html"),
+		"theme asset manifest": filepath.Join(options.ThemeDistDir, ".vite", "manifest.json"),
+		"index template":       filepath.Join(options.TemplateDir, "index.html"),
+		"archive template":     filepath.Join(options.TemplateDir, "blog.html"),
+		"post template":        filepath.Join(options.TemplateDir, "post.html"),
 	}
 	for fileName, filePath := range requiredFiles {
 		fileInfo, err := os.Stat(filePath)

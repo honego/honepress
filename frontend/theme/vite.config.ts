@@ -7,11 +7,17 @@ export default defineConfig({
   build: {
     outDir: "../../dist/theme",
     emptyOutDir: true,
-    lib: {
-      entry: resolve(__dirname, "src/theme.ts"),
-      name: "BlogTheme",
-      formats: ["iife"],
-      fileName: () => "theme.js",
+    manifest: true,
+    assetsDir: "assets",
+    rollupOptions: {
+      input: {
+        theme: resolve(__dirname, "src/theme.ts"),
+      },
+      output: {
+        entryFileNames: "assets/[name].[hash].js",
+        chunkFileNames: "assets/[name].[hash].js",
+        assetFileNames: "assets/[name].[hash][extname]",
+      },
     },
   },
 });

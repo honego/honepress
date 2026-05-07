@@ -170,10 +170,11 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 	if err != nil {
 		return err
 	}
-
-	if err := templateRenderer.CopyStyle(); err != nil {
+	themeAssets, err := renderer.ResolveThemeAssets(blogService.options.ThemeDistDir)
+	if err != nil {
 		return err
 	}
+
 	if err := blogService.copyAssets(); err != nil {
 		return err
 	}
@@ -181,7 +182,7 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 		return err
 	}
 
-	if err := blogService.renderSite(templateRenderer, publishedPosts); err != nil {
+	if err := blogService.renderSite(templateRenderer, themeAssets, publishedPosts); err != nil {
 		return err
 	}
 
@@ -269,7 +270,7 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 	return posts, nil
 }
 
-func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRenderer, posts []model.Post) error {
+func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRenderer, themeAssets renderer.ThemeAssets, posts []model.Post) error {
 	postSummaries := postsToSummaries(posts)
 	archivePath := "/archive.html"
 	siteViewData := model.SiteViewData{
@@ -279,6 +280,8 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		FaviconHref:     faviconHref(blogService.options.SiteIconURL),
 		ThemeDefault:    blogService.options.ThemeDefault,
 		Font:            blogService.options.Font,
+		ThemeScriptPath: themeAssets.ScriptPath,
+		ThemeStylePaths: themeAssets.StylePaths,
 		CanonicalPath:   "/",
 		CanonicalURL:    seoPublicURL(blogService.options, "/"),
 		SEOTitle:        homeSEOTitle(blogService.options.Title, blogService.options.Description),
@@ -326,6 +329,8 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 				FaviconHref:     postFaviconHref(currentPost.Icon, blogService.options.SiteIconURL),
 				ThemeDefault:    blogService.options.ThemeDefault,
 				Font:            blogService.options.Font,
+				ThemeScriptPath: themeAssets.ScriptPath,
+				ThemeStylePaths: themeAssets.StylePaths,
 				CanonicalPath:   "/" + currentPost.URL,
 				CanonicalURL:    seoPublicURL(blogService.options, "/"+currentPost.URL),
 				SEOTitle:        postSEOTitle(currentPost, blogService.options.Title),
@@ -405,12 +410,19 @@ func (blogService *BlogService) copyThemeDist() error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if directoryEntry.IsDir() {
-			return nil
-		}
 		relativePath, err := filepath.Rel(blogService.options.ThemeDistDir, sourcePath)
 		if err != nil {
 			return fmt.Errorf("resolve theme asset path: %w", err)
+		}
+		normalizedRelativePath := filepath.ToSlash(relativePath)
+		if directoryEntry.IsDir() {
+			if normalizedRelativePath == ".vite" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasPrefix(normalizedRelativePath, ".vite/") {
+			return nil
 		}
 		targetPath := filepath.Join(blogService.options.PublicDir, relativePath)
 		return filesystem.CopyFile(sourcePath, targetPath)

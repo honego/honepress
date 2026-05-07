@@ -10,6 +10,8 @@ type SiteViewData struct {
 	FaviconHref     template.URL
 	ThemeDefault    string
 	Font            string
+	ThemeScriptPath template.URL
+	ThemeStylePaths []template.URL
 	CanonicalPath   string
 	CanonicalURL    template.URL
 	SEOTitle        string
@@ -34,6 +36,8 @@ type PostViewData struct {
 	FaviconHref     template.URL
 	ThemeDefault    string
 	Font            string
+	ThemeScriptPath template.URL
+	ThemeStylePaths []template.URL
 	CanonicalPath   string
 	CanonicalURL    template.URL
 	SEOTitle        string

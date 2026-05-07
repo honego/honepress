@@ -36,9 +36,13 @@
     {{end}}
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="alternate" type="application/rss+xml" title="{{.SiteTitle}}" href="{{.RSSPath}}" />
-    <link rel="stylesheet" href="/style.css" />
+    {{range .ThemeStylePaths}}
+    <link rel="stylesheet" href="{{.}}" />
+    {{end}}
     <script src="https://fastly.jsdelivr.net/npm/lucide@1.14.0/dist/umd/lucide.min.js" defer></script>
-    <script src="/theme.js" defer></script>
+    {{if .ThemeScriptPath}}
+    <script type="module" src="{{.ThemeScriptPath}}"></script>
+    {{end}}
   </head>
   <body>
     <header class="site-header">
