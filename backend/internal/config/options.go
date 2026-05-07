@@ -98,10 +98,10 @@ type CommentOptions struct {
 func ResolveConfigPath(arguments []string) (string, error) {
 	flagSet := flag.NewFlagSet(core.ProjectName, flag.ContinueOnError)
 	flagSet.SetOutput(os.Stderr)
-	shortConfigPath := flagSet.String("c", "", "配置文件路径")
-	longConfigPath := flagSet.String("config", "", "配置文件路径")
+	shortConfigPath := flagSet.String("c", "", "config file path")
+	longConfigPath := flagSet.String("config", "", "config file path")
 	if err := flagSet.Parse(arguments); err != nil {
-		return "", fmt.Errorf("解析启动参数失败：%w", err)
+		return "", fmt.Errorf("parse startup arguments: %w", err)
 	}
 	if strings.TrimSpace(*shortConfigPath) != "" {
 		return *shortConfigPath, nil
@@ -119,7 +119,7 @@ func ResolveConfigPath(arguments []string) (string, error) {
 func Load(configPath string) (Options, error) {
 	absoluteConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
-		return Options{}, fmt.Errorf("解析配置文件路径失败：%w", err)
+		return Options{}, fmt.Errorf("resolve config path %s: %w", configPath, err)
 	}
 
 	if _, err := os.Stat(absoluteConfigPath); errors.Is(err, os.ErrNotExist) {
@@ -127,28 +127,28 @@ func Load(configPath string) (Options, error) {
 		if err := WriteConfig(absoluteConfigPath, defaultConfig); err != nil {
 			return Options{}, err
 		}
-		log.Printf("配置文件不存在，已生成默认配置：%s", absoluteConfigPath)
+		log.Printf("generated default config at %s", absoluteConfigPath)
 	} else if err != nil {
-		return Options{}, fmt.Errorf("检查配置文件失败：%s：%w", absoluteConfigPath, err)
+		return Options{}, fmt.Errorf("stat config at %s: %w", absoluteConfigPath, err)
 	}
 
 	configFileContent, err := os.ReadFile(absoluteConfigPath)
 	if err != nil {
-		return Options{}, fmt.Errorf("读取配置文件失败：%s：%w", absoluteConfigPath, err)
+		return Options{}, fmt.Errorf("read config at %s: %w", absoluteConfigPath, err)
 	}
 
 	loadedConfig := DefaultConfig()
 	if err := yaml.Unmarshal(configFileContent, &loadedConfig); err != nil {
-		return Options{}, fmt.Errorf("解析配置文件失败：%s：%w", absoluteConfigPath, err)
+		return Options{}, fmt.Errorf("decode config at %s: %w", absoluteConfigPath, err)
 	}
 	NormalizeConfig(&loadedConfig)
 
 	loadedOptions := OptionsFromConfig(absoluteConfigPath, loadedConfig)
 	if loadedOptions.AdminPassword == "" {
-		log.Println("警告：未设置后台密码，后台接口将不安全。")
+		log.Println("warning: admin password is not set; admin API is insecure")
 	}
 	if loadedOptions.Comment.Enabled && !loadedOptions.Comment.HasRequiredGiscusConfig() {
-		log.Println("警告：giscus 配置不完整，文章页不会输出评论容器。")
+		log.Println("warning: giscus config is incomplete; comments will not be rendered")
 	}
 
 	return loadedOptions, nil
@@ -190,20 +190,20 @@ func WriteConfig(configPath string, config Config) error {
 	NormalizeConfig(&config)
 	configDirectoryPath := filepath.Dir(configPath)
 	if err := os.MkdirAll(configDirectoryPath, 0755); err != nil {
-		return fmt.Errorf("创建配置目录失败：%s：%w", configDirectoryPath, err)
+		return fmt.Errorf("create config directory at %s: %w", configDirectoryPath, err)
 	}
 	var configFileBuffer bytes.Buffer
 	configEncoder := yaml.NewEncoder(&configFileBuffer)
 	configEncoder.SetIndent(2)
 	if err := configEncoder.Encode(config); err != nil {
-		return fmt.Errorf("生成配置文件失败：%w", err)
+		return fmt.Errorf("encode config: %w", err)
 	}
 	if err := configEncoder.Close(); err != nil {
-		return fmt.Errorf("关闭配置文件编码器失败：%w", err)
+		return fmt.Errorf("close config encoder: %w", err)
 	}
 	configFileContent := configFileBuffer.Bytes()
 	if err := os.WriteFile(configPath, configFileContent, 0644); err != nil {
-		return fmt.Errorf("写入配置文件失败：%s：%w", configPath, err)
+		return fmt.Errorf("write config at %s: %w", configPath, err)
 	}
 	return nil
 }
@@ -230,7 +230,7 @@ func OptionsFromConfig(configPath string, config Config) Options {
 		AssetsDir:     filepath.Join(dataDirectory, "assets"),
 		AdminDistDir:  filepath.Join("dist", "admin"),
 		ThemeDistDir:  filepath.Join("dist", "theme"),
-		TemplateDir:   filepath.Join("backend", "templates"),
+		TemplateDir:   filepath.Join("frontend", "theme", "templates"),
 		AdminUsername: config.Admin.Username,
 		AdminPassword: config.Admin.Password,
 		Comment: CommentOptions{
@@ -303,44 +303,44 @@ func (commentOptions CommentOptions) HasRequiredGiscusConfig() bool {
 // 生成公开链接
 func (options Options) ValidateRuntimeFiles() error {
 	requiredDirectories := map[string]string{
-		"后台构建目录":   options.AdminDistDir,
-		"前台主题构建目录": options.ThemeDistDir,
-		"前台模板目录":   options.TemplateDir,
+		"admin dist directory": options.AdminDistDir,
+		"theme dist directory": options.ThemeDistDir,
+		"template directory":   options.TemplateDir,
 	}
 	for directoryName, directoryPath := range requiredDirectories {
 		if strings.TrimSpace(directoryPath) == "" {
-			return fmt.Errorf("%s未配置", directoryName)
+			return fmt.Errorf("%s is not configured", directoryName)
 		}
 		directoryInfo, err := os.Stat(directoryPath)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("%s不存在：%s，请先构建前端并保留运行时模板", directoryName, directoryPath)
+				return fmt.Errorf("%s does not exist at %s; build frontend assets and keep runtime templates", directoryName, directoryPath)
 			}
-			return fmt.Errorf("检查%s失败：%s：%w", directoryName, directoryPath, err)
+			return fmt.Errorf("check %s at %s: %w", directoryName, directoryPath, err)
 		}
 		if !directoryInfo.IsDir() {
-			return fmt.Errorf("%s不是目录：%s", directoryName, directoryPath)
+			return fmt.Errorf("%s is not a directory: %s", directoryName, directoryPath)
 		}
 	}
 
 	requiredFiles := map[string]string{
-		"后台入口文件": filepath.Join(options.AdminDistDir, "index.html"),
-		"前台主题脚本": filepath.Join(options.ThemeDistDir, "theme.js"),
-		"首页模板":   filepath.Join(options.TemplateDir, "index.html"),
-		"归档模板":   filepath.Join(options.TemplateDir, "blog.html"),
-		"文章模板":   filepath.Join(options.TemplateDir, "post.html"),
-		"前台样式":   filepath.Join(options.TemplateDir, "style.css"),
+		"admin entry file": filepath.Join(options.AdminDistDir, "index.html"),
+		"theme script":     filepath.Join(options.ThemeDistDir, "theme.js"),
+		"index template":   filepath.Join(options.TemplateDir, "index.html"),
+		"archive template": filepath.Join(options.TemplateDir, "blog.html"),
+		"post template":    filepath.Join(options.TemplateDir, "post.html"),
+		"theme stylesheet": filepath.Join(options.TemplateDir, "style.css"),
 	}
 	for fileName, filePath := range requiredFiles {
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("%s不存在：%s", fileName, filePath)
+				return fmt.Errorf("%s does not exist at %s", fileName, filePath)
 			}
-			return fmt.Errorf("检查%s失败：%s：%w", fileName, filePath, err)
+			return fmt.Errorf("check %s at %s: %w", fileName, filePath, err)
 		}
 		if fileInfo.IsDir() {
-			return fmt.Errorf("%s不是文件：%s", fileName, filePath)
+			return fmt.Errorf("%s is not a file: %s", fileName, filePath)
 		}
 	}
 	return nil

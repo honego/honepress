@@ -12,26 +12,26 @@ func TestResolveConfigPathPriority(t *testing.T) {
 
 	configPath, err := ResolveConfigPath([]string{"--config", "long.yaml"})
 	if err != nil {
-		t.Fatalf("解析 --config 失败：%v", err)
+		t.Fatalf("parse --config failed: %v", err)
 	}
 	if configPath != "long.yaml" {
-		t.Fatalf("配置路径不一致：实际 %s，期望 long.yaml", configPath)
+		t.Fatalf("config path mismatch: got %s, want long.yaml", configPath)
 	}
 
 	configPath, err = ResolveConfigPath([]string{"-c", "short.yaml", "--config", "long.yaml"})
 	if err != nil {
-		t.Fatalf("解析 -c 失败：%v", err)
+		t.Fatalf("parse -c failed: %v", err)
 	}
 	if configPath != "short.yaml" {
-		t.Fatalf("配置路径不一致：实际 %s，期望 short.yaml", configPath)
+		t.Fatalf("config path mismatch: got %s, want short.yaml", configPath)
 	}
 
 	configPath, err = ResolveConfigPath([]string{})
 	if err != nil {
-		t.Fatalf("解析 HONEPRESS_CONFIG 失败：%v", err)
+		t.Fatalf("parse HONEPRESS_CONFIG failed: %v", err)
 	}
 	if configPath != "env.yaml" {
-		t.Fatalf("配置路径不一致：实际 %s，期望 env.yaml", configPath)
+		t.Fatalf("config path mismatch: got %s, want env.yaml", configPath)
 	}
 }
 
@@ -39,32 +39,32 @@ func TestLoadGeneratesDefaultConfig(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "config.yaml")
 	loadedOptions, err := Load(configPath)
 	if err != nil {
-		t.Fatalf("加载默认配置失败：%v", err)
+		t.Fatalf("load default config failed: %v", err)
 	}
 	if loadedOptions.Title != "" {
-		t.Fatalf("站点标题不一致：%s", loadedOptions.Title)
+		t.Fatalf("site title mismatch: %s", loadedOptions.Title)
 	}
 	if loadedOptions.Font != "default" {
-		t.Fatalf("默认字体不一致：实际 %s，期望 default", loadedOptions.Font)
+		t.Fatalf("default font mismatch: got %s, want default", loadedOptions.Font)
 	}
 	if _, err := os.Stat(configPath); err != nil {
-		t.Fatalf("配置文件没有生成：%v", err)
+		t.Fatalf("config file was not generated: %v", err)
 	}
 	configFileContent, err := os.ReadFile(configPath)
 	if err != nil {
-		t.Fatalf("读取配置文件失败：%v", err)
+		t.Fatalf("read config file failed: %v", err)
 	}
 	generatedConfig := string(configFileContent)
 	if strings.Contains(generatedConfig, "server:") {
-		t.Fatalf("默认配置不应包含可修改的 server.listen")
+		t.Fatalf("default config must not include mutable server.listen")
 	}
 	if strings.Contains(generatedConfig, "provider:") {
-		t.Fatalf("默认配置不应包含固定的评论 provider")
+		t.Fatalf("default config must not include fixed comment provider")
 	}
 	giscusAdvancedKeys := []string{"mapping:", "strict:", "reactionsEnabled:", "emitMetadata:", "inputPosition:", "lang:"}
 	for _, giscusAdvancedKey := range giscusAdvancedKeys {
 		if strings.Contains(generatedConfig, giscusAdvancedKey) {
-			t.Fatalf("默认配置不应包含 giscus 高级项 %s", giscusAdvancedKey)
+			t.Fatalf("default config must not include advanced giscus key %s", giscusAdvancedKey)
 		}
 	}
 }

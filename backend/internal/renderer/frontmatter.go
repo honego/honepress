@@ -25,12 +25,12 @@ type postFrontMatterYAML struct {
 func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.PostFrontMatter, string, error) {
 	frontMatterContent, bodyMarkdownContent, hasFrontMatter := splitFrontMatter(markdownContent)
 	if !hasFrontMatter {
-		return model.PostFrontMatter{}, "", fmt.Errorf("缺少文章元信息：%s", sourceFileName)
+		return model.PostFrontMatter{}, "", fmt.Errorf("missing post front matter in %s", sourceFileName)
 	}
 
 	var decodedFrontMatter postFrontMatterYAML
 	if err := yaml.Unmarshal([]byte(frontMatterContent), &decodedFrontMatter); err != nil {
-		return model.PostFrontMatter{}, "", fmt.Errorf("解析文章元信息失败：%s：%w", sourceFileName, err)
+		return model.PostFrontMatter{}, "", fmt.Errorf("decode post front matter in %s: %w", sourceFileName, err)
 	}
 
 	parsedFrontMatter := model.PostFrontMatter{
@@ -63,7 +63,7 @@ func BuildPostDocument(frontMatter model.PostFrontMatter, bodyMarkdownContent st
 		Tags:           frontMatter.Tags,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("生成文章元信息失败：%w", err)
+		return nil, fmt.Errorf("encode post front matter: %w", err)
 	}
 
 	normalizedBodyMarkdownContent := strings.TrimLeft(bodyMarkdownContent, "\r\n")

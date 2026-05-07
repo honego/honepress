@@ -30,7 +30,7 @@ func NewTemplateRenderer(options config.Options) (*TemplateRenderer, error) {
 		filepath.Join(options.TemplateDir, "post.html"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("解析模板失败：%w", err)
+		return nil, fmt.Errorf("parse templates: %w", err)
 	}
 
 	return &TemplateRenderer{
@@ -86,7 +86,7 @@ func (templateRenderer *TemplateRenderer) RenderRSS(targetFilePath string, chann
 
 	xmlContent, err := feeds.ToXML(rssFeed)
 	if err != nil {
-		return fmt.Errorf("生成 RSS 失败：%w", err)
+		return fmt.Errorf("generate RSS: %w", err)
 	}
 	return filesystem.WriteFileCreatingDirectory(targetFilePath, []byte(xmlContent), 0644)
 }
@@ -107,7 +107,7 @@ func (templateRenderer *TemplateRenderer) RenderSitemap(targetFilePath string, p
 
 	xmlContent, err := xml.MarshalIndent(sitemapDocument, "", "  ")
 	if err != nil {
-		return fmt.Errorf("生成 sitemap 失败：%w", err)
+		return fmt.Errorf("generate sitemap: %w", err)
 	}
 	return filesystem.WriteFileCreatingDirectory(targetFilePath, append([]byte(xml.Header), xmlContent...), 0644)
 }
@@ -116,7 +116,7 @@ func (templateRenderer *TemplateRenderer) RenderSitemap(targetFilePath string, p
 func (templateRenderer *TemplateRenderer) CopyStyle() error {
 	styleContent, err := os.ReadFile(filepath.Join(templateRenderer.options.TemplateDir, "style.css"))
 	if err != nil {
-		return fmt.Errorf("读取前台样式失败：%w", err)
+		return fmt.Errorf("read theme stylesheet: %w", err)
 	}
 	targetStylePath := filepath.Join(templateRenderer.options.PublicDir, "style.css")
 	return filesystem.WriteFileCreatingDirectory(targetStylePath, styleContent, 0644)
@@ -125,7 +125,7 @@ func (templateRenderer *TemplateRenderer) CopyStyle() error {
 func (templateRenderer *TemplateRenderer) executeHTMLTemplate(templateName string, targetFilePath string, templateData interface{}) error {
 	var renderedHTMLBuffer bytes.Buffer
 	if err := templateRenderer.templates.ExecuteTemplate(&renderedHTMLBuffer, templateName, templateData); err != nil {
-		return fmt.Errorf("执行模板失败：%s：%w", templateName, err)
+		return fmt.Errorf("execute template %s: %w", templateName, err)
 	}
 	return filesystem.WriteFileCreatingDirectory(targetFilePath, renderedHTMLBuffer.Bytes(), 0644)
 }

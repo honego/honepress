@@ -2,21 +2,6 @@ package model
 
 import "html/template"
 
-// 模板固定文案
-type TemplateLabels struct {
-	Home             string
-	Blog             string
-	RSS              string
-	Sitemap          string
-	AllPosts         string
-	ReadMore         string
-	PublishedAt      string
-	NoPosts          string
-	BackToList       string
-	Footer           string
-	ThemeButtonLabel string
-}
-
 // 站点模板数据
 type SiteViewData struct {
 	SiteTitle       string
@@ -36,7 +21,6 @@ type SiteViewData struct {
 	BlogPath        string
 	RSSPath         string
 	SitemapPath     string
-	Labels          TemplateLabels
 	Posts           []PostSummary
 	PostCount       int
 	WordCount       int
@@ -61,7 +45,6 @@ type PostViewData struct {
 	BlogPath        string
 	RSSPath         string
 	SitemapPath     string
-	Labels          TemplateLabels
 	Post            Post
 	CommentHTML     template.HTML
 }

@@ -48,16 +48,16 @@
           <span>{{.SiteTitle}}</span>
         </a>
         <div class="nav-links">
-          <a class="icon-link" href="{{.HomePath}}" aria-label="{{.Labels.Home}}" title="{{.Labels.Home}}">
+          <a class="icon-link" href="{{.HomePath}}" aria-label="首页" title="首页">
             <i class="nav-icon" data-lucide="house" aria-hidden="true"></i>
           </a>
-          <a href="{{.BlogPath}}">{{.Labels.Blog}}</a>
+          <a href="{{.BlogPath}}">归档</a>
           <button
             type="button"
             class="theme-toggle icon-button"
             data-theme-toggle
-            aria-label="{{.Labels.ThemeButtonLabel}}"
-            title="{{.Labels.ThemeButtonLabel}}"
+            aria-label="切换主题"
+            title="切换主题"
           >
             <i class="nav-icon theme-icon theme-icon-sun" data-lucide="sun" aria-hidden="true"></i>
             <i class="nav-icon theme-icon theme-icon-moon" data-lucide="moon" aria-hidden="true"></i>
@@ -82,24 +82,19 @@
           <p>{{.Description}}</p>
         </article>
         {{else}}
-        <p class="empty">{{.Labels.NoPosts}}</p>
+        <p class="empty">还没有文章。</p>
         {{end}}
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-inner">
-        <p>{{.Labels.Footer}}</p>
+        <p>Powered by HonePress</p>
         <div class="footer-links">
-          <a
-            class="footer-sitemap icon-link"
-            href="{{.SitemapPath}}"
-            aria-label="{{.Labels.Sitemap}}"
-            title="{{.Labels.Sitemap}}"
-          >
+          <a class="footer-sitemap icon-link" href="{{.SitemapPath}}" aria-label="站点地图" title="站点地图">
             <i class="nav-icon" data-lucide="map" aria-hidden="true"></i>
           </a>
-          <a class="footer-rss icon-link" href="{{.RSSPath}}" aria-label="{{.Labels.RSS}}" title="{{.Labels.RSS}}">
+          <a class="footer-rss icon-link" href="{{.RSSPath}}" aria-label="RSS" title="RSS">
             <i class="nav-icon" data-lucide="rss" aria-hidden="true"></i>
           </a>
         </div>

@@ -16,27 +16,27 @@ var publicHTMLFileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*\.
 func NormalizePermalink(rawPermalink string) (string, error) {
 	trimmedPermalink := strings.TrimSpace(rawPermalink)
 	if trimmedPermalink == "" {
-		return "", fmt.Errorf("固定链接不能为空")
+		return "", fmt.Errorf("permalink is empty")
 	}
 
 	trimmedPermalink = strings.TrimPrefix(trimmedPermalink, "/")
 	if strings.Contains(trimmedPermalink, "/") || strings.Contains(trimmedPermalink, `\`) {
-		return "", fmt.Errorf("固定链接不能包含斜杠：%s", rawPermalink)
+		return "", fmt.Errorf("permalink must not contain path separators: %s", rawPermalink)
 	}
 	if strings.Contains(trimmedPermalink, "..") {
-		return "", fmt.Errorf("固定链接不能包含路径穿越：%s", rawPermalink)
+		return "", fmt.Errorf("permalink must not contain path traversal: %s", rawPermalink)
 	}
 	if strings.ContainsAny(trimmedPermalink, " \t\r\n") {
-		return "", fmt.Errorf("固定链接不能包含空格：%s", rawPermalink)
+		return "", fmt.Errorf("permalink must not contain whitespace: %s", rawPermalink)
 	}
 	if !strings.HasSuffix(trimmedPermalink, ".html") {
 		trimmedPermalink += ".html"
 	}
 	if !publicHTMLFileNamePattern.MatchString(trimmedPermalink) {
-		return "", fmt.Errorf("固定链接只能使用 ASCII 字母、数字、短横线和下划线：%s", rawPermalink)
+		return "", fmt.Errorf("permalink must use ASCII letters, digits, hyphen, or underscore: %s", rawPermalink)
 	}
 	if _, isReservedFileName := core.ReservedPublicFileNames[trimmedPermalink]; isReservedFileName {
-		return "", fmt.Errorf("固定链接不能使用保留文件名：%s", trimmedPermalink)
+		return "", fmt.Errorf("permalink uses reserved public file name: %s", trimmedPermalink)
 	}
 
 	return trimmedPermalink, nil
@@ -57,24 +57,24 @@ func NormalizePermalinkWithFallback(rawPermalink string, sourceFileName string) 
 func ValidateMarkdownFileName(markdownFileName string) error {
 	trimmedFileName := strings.TrimSpace(markdownFileName)
 	if trimmedFileName == "" {
-		return fmt.Errorf("文章文件名不能为空")
+		return fmt.Errorf("markdown file name is empty")
 	}
 	if filepath.Base(trimmedFileName) != trimmedFileName {
-		return fmt.Errorf("文章文件名不能包含路径：%s", markdownFileName)
+		return fmt.Errorf("markdown file name must not contain a path: %s", markdownFileName)
 	}
 	if !strings.EqualFold(filepath.Ext(trimmedFileName), ".md") {
-		return fmt.Errorf("文章文件名必须以 .md 结尾：%s", markdownFileName)
+		return fmt.Errorf("markdown file name must end with .md: %s", markdownFileName)
 	}
 	fileNameStem := strings.TrimSuffix(trimmedFileName, filepath.Ext(trimmedFileName))
 	if strings.Trim(fileNameStem, " .") == "" {
-		return fmt.Errorf("文章文件名不能为空：%s", markdownFileName)
+		return fmt.Errorf("markdown file name is empty: %s", markdownFileName)
 	}
 	if strings.Contains(fileNameStem, "..") {
-		return fmt.Errorf("文章文件名不能包含路径穿越：%s", markdownFileName)
+		return fmt.Errorf("markdown file name must not contain path traversal: %s", markdownFileName)
 	}
 	for _, currentRune := range trimmedFileName {
 		if isInvalidMarkdownFileRune(currentRune) {
-			return fmt.Errorf("文章文件名包含非法字符：%s", markdownFileName)
+			return fmt.Errorf("markdown file name contains invalid characters: %s", markdownFileName)
 		}
 	}
 	return nil
@@ -97,7 +97,7 @@ func MarkdownFileNameFromPermalink(normalizedPermalink string) (string, error) {
 func MarkdownFileNameFromTitle(title string) (string, error) {
 	fileNameStem := strings.Join(strings.Fields(strings.TrimSpace(title)), " ")
 	if fileNameStem == "" {
-		return "", fmt.Errorf("标题不能为空")
+		return "", fmt.Errorf("title is empty")
 	}
 
 	var safeFileNameBuilder strings.Builder
@@ -110,7 +110,7 @@ func MarkdownFileNameFromTitle(title string) (string, error) {
 
 	fileNameStem = strings.Trim(safeFileNameBuilder.String(), " .")
 	if fileNameStem == "" {
-		return "", fmt.Errorf("标题不能只包含文件名非法字符")
+		return "", fmt.Errorf("title contains only invalid file name characters")
 	}
 
 	markdownFileName := fileNameStem + ".md"

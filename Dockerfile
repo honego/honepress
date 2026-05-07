@@ -36,7 +36,7 @@ COPY --from=build-backend /go/bin/honepress /app/honepress
 COPY config.example.yaml /app/config.example.yaml
 COPY --from=build-admin /src/dist/admin /app/dist/admin
 COPY --from=build-theme /src/dist/theme /app/dist/theme
-COPY --from=build-backend /src/backend/templates /app/backend/templates
+COPY --from=build-theme /src/frontend/theme/templates /app/frontend/theme/templates
 RUN set -ex \
     && apk add --no-cache --update curl ca-certificates tzdata \
     && mkdir -p /app/data/content/posts /app/data/public

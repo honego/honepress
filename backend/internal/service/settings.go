@@ -42,15 +42,15 @@ func validateSiteSettings(siteSettings model.SiteSettings) error {
 	switch strings.ToLower(strings.TrimSpace(siteSettings.ThemeDefault)) {
 	case "", "auto", "light", "dark":
 	default:
-		return fmt.Errorf("默认主题只能是 auto、light 或 dark")
+		return fmt.Errorf("default theme must be auto, light, or dark")
 	}
 	switch strings.ToLower(strings.TrimSpace(siteSettings.Font)) {
 	case "", "default", "douyin-sans":
 	default:
-		return fmt.Errorf("站点字体只能是 default 或 douyin-sans")
+		return fmt.Errorf("site font must be default or douyin-sans")
 	}
 	if strings.TrimSpace(siteSettings.IconURL) != "" && !isSupportedIconURL(siteSettings.IconURL) {
-		return fmt.Errorf("网站 icon 只支持 http(s) 链接或 / 开头的站内路径")
+		return fmt.Errorf("site icon must be an http(s) URL or an absolute site path")
 	}
 	return nil
 }

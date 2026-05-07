@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -29,12 +30,16 @@ type Server struct {
 }
 
 // 创建 HTTP 服务实例
-func New(options config.Options, blogService *service.BlogService) *Server {
+func New(options config.Options, blogService *service.BlogService) (*Server, error) {
+	adminSessionToken, err := newAdminSessionToken()
+	if err != nil {
+		return nil, fmt.Errorf("create admin session token: %w", err)
+	}
 	return &Server{
 		options:           options,
 		blogService:       blogService,
-		adminSessionToken: newAdminSessionToken(),
-	}
+		adminSessionToken: adminSessionToken,
+	}, nil
 }
 
 // 启动 HTTP 服务
@@ -46,23 +51,23 @@ func (server *Server) routes() http.Handler {
 	router := chi.NewRouter()
 	router.Use(securityHeaders)
 
-	router.Post("/api/login", server.handleLogin)
-	router.Post("/api/logout", server.handleLogout)
+	router.Post("/api/login", server.apiHandler(server.handleLogin))
+	router.Post("/api/logout", server.apiHandler(server.handleLogout))
 
 	router.Route("/api", func(apiRouter chi.Router) {
 		apiRouter.Use(server.adminAuth)
-		apiRouter.NotFound(func(responseWriter http.ResponseWriter, _ *http.Request) {
-			server.writeError(responseWriter, http.StatusNotFound, "接口不存在")
-		})
-		apiRouter.Get("/health", server.handleHealth)
-		apiRouter.Get("/posts", server.handleListPosts)
-		apiRouter.Post("/posts", server.handleCreatePost)
-		apiRouter.Post("/preview", server.handlePreview)
-		apiRouter.Get("/settings", server.handleGetSettings)
-		apiRouter.Put("/settings", server.handleUpdateSettings)
-		apiRouter.Get("/posts/{postID}", server.handleGetPost)
-		apiRouter.Put("/posts/{postID}", server.handleUpdatePost)
-		apiRouter.Delete("/posts/{postID}", server.handleDeletePost)
+		apiRouter.NotFound(server.apiHandler(func(_ http.ResponseWriter, _ *http.Request) error {
+			return newResponseErrorMessage(http.StatusNotFound, "api endpoint not found")
+		}))
+		apiRouter.Get("/health", server.apiHandler(server.handleHealth))
+		apiRouter.Get("/posts", server.apiHandler(server.handleListPosts))
+		apiRouter.Post("/posts", server.apiHandler(server.handleCreatePost))
+		apiRouter.Post("/preview", server.apiHandler(server.handlePreview))
+		apiRouter.Get("/settings", server.apiHandler(server.handleGetSettings))
+		apiRouter.Put("/settings", server.apiHandler(server.handleUpdateSettings))
+		apiRouter.Get("/posts/{postID}", server.apiHandler(server.handleGetPost))
+		apiRouter.Put("/posts/{postID}", server.apiHandler(server.handleUpdatePost))
+		apiRouter.Delete("/posts/{postID}", server.apiHandler(server.handleDeletePost))
 	})
 	router.Group(func(adminRouter chi.Router) {
 		adminRouter.Get("/admin", server.redirectAdmin)
@@ -75,6 +80,49 @@ func (server *Server) routes() http.Handler {
 
 const adminSessionCookieName = "honepress_admin_session"
 
+type apiHandler func(http.ResponseWriter, *http.Request) error
+
+type responseError struct {
+	statusCode int
+	err        error
+}
+
+func newResponseError(statusCode int, err error) error {
+	if err == nil {
+		err = errors.New(http.StatusText(statusCode))
+	}
+	return responseError{statusCode: statusCode, err: err}
+}
+
+func newResponseErrorMessage(statusCode int, message string) error {
+	return newResponseError(statusCode, errors.New(message))
+}
+
+func (err responseError) Error() string {
+	return err.err.Error()
+}
+
+func (err responseError) Unwrap() error {
+	return err.err
+}
+
+func (server *Server) apiHandler(handler apiHandler) http.HandlerFunc {
+	return func(responseWriter http.ResponseWriter, request *http.Request) {
+		if err := handler(responseWriter, request); err != nil {
+			statusCode := http.StatusInternalServerError
+			errorMessage := err.Error()
+			var responseErr responseError
+			if errors.As(err, &responseErr) {
+				statusCode = responseErr.statusCode
+				errorMessage = responseErr.Error()
+			}
+			if err := server.writeError(responseWriter, statusCode, errorMessage); err != nil {
+				log.Printf("write API error response: %v", err)
+			}
+		}
+	}
+}
+
 func (server *Server) adminAuth(nextHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
 		if server.options.AdminPassword == "" || server.hasValidAdminSession(request) || server.hasValidBasicAuth(request) {
@@ -82,7 +130,9 @@ func (server *Server) adminAuth(nextHandler http.Handler) http.Handler {
 			return
 		}
 
-		server.writeError(responseWriter, http.StatusUnauthorized, "请先登录后台。")
+		if err := server.writeError(responseWriter, http.StatusUnauthorized, "authentication required"); err != nil {
+			log.Printf("write authentication error response: %v", err)
+		}
 	})
 }
 
@@ -128,12 +178,12 @@ func clearAdminSessionCookie(responseWriter http.ResponseWriter, request *http.R
 	})
 }
 
-func newAdminSessionToken() string {
+func newAdminSessionToken() (string, error) {
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
-		panic(fmt.Sprintf("生成后台会话令牌失败：%v", err))
+		return "", fmt.Errorf("read random bytes: %w", err)
 	}
-	return base64.RawURLEncoding.EncodeToString(tokenBytes)
+	return base64.RawURLEncoding.EncodeToString(tokenBytes), nil
 }
 
 func securityHeaders(nextHandler http.Handler) http.Handler {
@@ -175,11 +225,15 @@ func (server *Server) serveAdminIndex(responseWriter http.ResponseWriter) {
 	}
 	responseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
 	responseWriter.WriteHeader(http.StatusOK)
-	_, _ = responseWriter.Write(indexFileContent)
+	if _, err := responseWriter.Write(indexFileContent); err != nil {
+		log.Printf("write admin index response: %v", err)
+	}
 }
 
 func (server *Server) serveAdminFallback(responseWriter http.ResponseWriter, cause error) {
-	server.writeError(responseWriter, http.StatusInternalServerError, "后台前端构建产物不存在，请先构建 frontend/admin："+cause.Error())
+	if err := server.writeError(responseWriter, http.StatusInternalServerError, "admin frontend assets are missing; build frontend/admin: "+cause.Error()); err != nil {
+		log.Printf("write admin fallback response: %v", err)
+	}
 }
 
 func (server *Server) servePublic(responseWriter http.ResponseWriter, request *http.Request) {
@@ -187,128 +241,117 @@ func (server *Server) servePublic(responseWriter http.ResponseWriter, request *h
 	publicFileServer.ServeHTTP(responseWriter, request)
 }
 
-func (server *Server) handleHealth(responseWriter http.ResponseWriter, _ *http.Request) {
-	server.writeJSON(responseWriter, http.StatusOK, healthResponse{Status: "ok"})
+func (server *Server) handleHealth(responseWriter http.ResponseWriter, _ *http.Request) error {
+	return server.writeJSON(responseWriter, http.StatusOK, healthResponse{Status: "ok"})
 }
 
-func (server *Server) handleLogin(responseWriter http.ResponseWriter, request *http.Request) {
+func (server *Server) handleLogin(responseWriter http.ResponseWriter, request *http.Request) error {
 	if server.options.AdminPassword == "" {
 		server.setAdminSessionCookie(responseWriter, request)
-		server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "后台已进入免密码模式。"})
-		return
+		return server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "ok"})
 	}
 
 	var loginRequest adminLoginRequest
 	if err := server.decodeJSON(request, &loginRequest); err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
 	usernameMatches := subtle.ConstantTimeCompare([]byte(loginRequest.Username), []byte(server.options.AdminUsername)) == 1
 	passwordMatches := subtle.ConstantTimeCompare([]byte(loginRequest.Password), []byte(server.options.AdminPassword)) == 1
 	if !usernameMatches || !passwordMatches {
-		server.writeError(responseWriter, http.StatusUnauthorized, "账号或密码不正确。")
-		return
+		return newResponseErrorMessage(http.StatusUnauthorized, "invalid username or password")
 	}
 
 	server.setAdminSessionCookie(responseWriter, request)
-	server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "登录成功。"})
+	return server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "ok"})
 }
 
-func (server *Server) handleLogout(responseWriter http.ResponseWriter, request *http.Request) {
+func (server *Server) handleLogout(responseWriter http.ResponseWriter, request *http.Request) error {
 	clearAdminSessionCookie(responseWriter, request)
-	server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "已退出后台。"})
+	return server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "ok"})
 }
 
-func (server *Server) handleListPosts(responseWriter http.ResponseWriter, _ *http.Request) {
+func (server *Server) handleListPosts(responseWriter http.ResponseWriter, _ *http.Request) error {
 	postSummaries, err := server.blogService.ListPosts()
 	if err != nil {
-		server.writeError(responseWriter, http.StatusInternalServerError, err.Error())
-		return
+		return newResponseError(http.StatusInternalServerError, err)
 	}
-	server.writeJSON(responseWriter, http.StatusOK, postsResponse{Posts: postSummaries})
+	return server.writeJSON(responseWriter, http.StatusOK, postsResponse{Posts: postSummaries})
 }
 
-func (server *Server) handleCreatePost(responseWriter http.ResponseWriter, request *http.Request) {
+func (server *Server) handleCreatePost(responseWriter http.ResponseWriter, request *http.Request) error {
 	var savePostRequest model.SavePostRequest
 	if err := server.decodeJSON(request, &savePostRequest); err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
 
 	createdPost, err := server.blogService.CreatePost(savePostRequest)
 	if err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
-	server.writeJSON(responseWriter, http.StatusCreated, postDetailResponse{Post: createdPost, Message: postSaveMessage(createdPost, true)})
+	return server.writeJSON(responseWriter, http.StatusCreated, postDetailResponse{Post: createdPost, Message: postSaveMessage(createdPost, true)})
 }
 
-func (server *Server) handlePreview(responseWriter http.ResponseWriter, request *http.Request) {
+func (server *Server) handlePreview(responseWriter http.ResponseWriter, request *http.Request) error {
 	var previewRequest model.PreviewRequest
 	if err := server.decodeJSON(request, &previewRequest); err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
 
 	renderedHTML, err := server.blogService.PreviewMarkdown(previewRequest.Markdown)
 	if err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
 	responseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
 	responseWriter.WriteHeader(http.StatusOK)
-	_, _ = responseWriter.Write([]byte(renderedHTML))
+	if _, err := responseWriter.Write([]byte(renderedHTML)); err != nil {
+		return fmt.Errorf("write preview response: %w", err)
+	}
+	return nil
 }
 
-func (server *Server) handleGetSettings(responseWriter http.ResponseWriter, _ *http.Request) {
-	server.writeJSON(responseWriter, http.StatusOK, settingsResponse{Settings: server.blogService.GetSiteSettings()})
+func (server *Server) handleGetSettings(responseWriter http.ResponseWriter, _ *http.Request) error {
+	return server.writeJSON(responseWriter, http.StatusOK, settingsResponse{Settings: server.blogService.GetSiteSettings()})
 }
 
-func (server *Server) handleUpdateSettings(responseWriter http.ResponseWriter, request *http.Request) {
+func (server *Server) handleUpdateSettings(responseWriter http.ResponseWriter, request *http.Request) error {
 	var settings model.SiteSettings
 	if err := server.decodeJSON(request, &settings); err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
 	if err := server.blogService.UpdateSiteSettings(settings); err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
-	server.writeJSON(responseWriter, http.StatusOK, settingsResponse{
+	return server.writeJSON(responseWriter, http.StatusOK, settingsResponse{
 		Settings: server.blogService.GetSiteSettings(),
-		Message:  "站点设置已保存，站点已自动更新。",
+		Message:  "ok",
 	})
 }
 
-func (server *Server) handleGetPost(responseWriter http.ResponseWriter, request *http.Request) {
+func (server *Server) handleGetPost(responseWriter http.ResponseWriter, request *http.Request) error {
 	postDetail, err := server.blogService.GetPost(chi.URLParam(request, "postID"))
 	if err != nil {
-		server.writeError(responseWriter, http.StatusNotFound, err.Error())
-		return
+		return newResponseError(http.StatusNotFound, err)
 	}
-	server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: postDetail})
+	return server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: postDetail})
 }
 
-func (server *Server) handleUpdatePost(responseWriter http.ResponseWriter, request *http.Request) {
+func (server *Server) handleUpdatePost(responseWriter http.ResponseWriter, request *http.Request) error {
 	var savePostRequest model.SavePostRequest
 	if err := server.decodeJSON(request, &savePostRequest); err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
 	updatedPost, err := server.blogService.UpdatePost(chi.URLParam(request, "postID"), savePostRequest)
 	if err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
-	server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: updatedPost, Message: postSaveMessage(updatedPost, false)})
+	return server.writeJSON(responseWriter, http.StatusOK, postDetailResponse{Post: updatedPost, Message: postSaveMessage(updatedPost, false)})
 }
 
-func (server *Server) handleDeletePost(responseWriter http.ResponseWriter, request *http.Request) {
+func (server *Server) handleDeletePost(responseWriter http.ResponseWriter, request *http.Request) error {
 	if err := server.blogService.DeletePost(chi.URLParam(request, "postID")); err != nil {
-		server.writeError(responseWriter, http.StatusBadRequest, err.Error())
-		return
+		return newResponseError(http.StatusBadRequest, err)
 	}
-	server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "文章已删除，站点已自动更新。"})
+	return server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "ok"})
 }
 
 func (server *Server) decodeJSON(request *http.Request, targetValue interface{}) error {
@@ -316,21 +359,25 @@ func (server *Server) decodeJSON(request *http.Request, targetValue interface{})
 	jsonDecoder := json.NewDecoder(limitedRequestBody)
 	jsonDecoder.DisallowUnknownFields()
 	if err := jsonDecoder.Decode(targetValue); err != nil {
-		return fmt.Errorf("解析请求 JSON 失败：%w", err)
+		return fmt.Errorf("decode request JSON: %w", err)
 	}
 	return nil
 }
 
-func (server *Server) writeJSON(responseWriter http.ResponseWriter, statusCode int, responseValue interface{}) {
+func (server *Server) writeJSON(responseWriter http.ResponseWriter, statusCode int, responseValue interface{}) error {
 	responseWriter.Header().Set("Content-Type", "application/json; charset=utf-8")
 	responseWriter.WriteHeader(statusCode)
 	if err := json.NewEncoder(responseWriter).Encode(responseValue); err != nil {
-		log.Printf("写入 JSON 响应失败：%v", err)
+		return fmt.Errorf("encode JSON response: %w", err)
 	}
+	return nil
 }
 
-func (server *Server) writeError(responseWriter http.ResponseWriter, statusCode int, errorMessage string) {
-	server.writeJSON(responseWriter, statusCode, model.APIErrorResponse{Error: errorMessage})
+func (server *Server) writeError(responseWriter http.ResponseWriter, statusCode int, errorMessage string) error {
+	if err := server.writeJSON(responseWriter, statusCode, model.APIErrorResponse{Error: errorMessage}); err != nil {
+		return fmt.Errorf("write error response: %w", err)
+	}
+	return nil
 }
 
 type adminLoginRequest struct {
@@ -354,14 +401,14 @@ type postDetailResponse struct {
 func postSaveMessage(postDetail model.PostDetail, created bool) string {
 	if postDetail.Draft {
 		if created {
-			return "草稿已创建，未生成公开页面。"
+			return "draft_created"
 		}
-		return "草稿已保存，未生成公开页面。"
+		return "draft_saved"
 	}
 	if created {
-		return "文章已发布，站点已自动更新。"
+		return "post_created"
 	}
-	return "文章已保存，站点已自动更新。"
+	return "post_saved"
 }
 
 type settingsResponse struct {

@@ -145,9 +145,9 @@ async function handleLogin(): Promise<void> {
   isLoggingIn.value = true;
   loginError.value = "";
   try {
-    const loginResponse = await loginAdmin(loginForm.value.username.trim(), loginForm.value.password);
+    await loginAdmin(loginForm.value.username.trim(), loginForm.value.password);
     isAuthenticated.value = true;
-    statusMessage.value = loginResponse.message;
+    statusMessage.value = "登录成功。";
     loginForm.value.password = "";
     await loadInitialData();
     activeView.value = "dashboard";
@@ -241,7 +241,7 @@ async function saveCurrentPost(): Promise<void> {
     editorForm.value = normalizePostDetail(postDetailResponse.post);
     aliasesText.value = postDetailResponse.post.aliases.join("\n");
     tagDraft.value = "";
-    statusMessage.value = postDetailResponse.message ?? "文章已保存。";
+    statusMessage.value = savedPostMessage(postDetailResponse.post);
     await loadPosts();
   } catch (error) {
     handleRequestError(error);
@@ -260,8 +260,8 @@ async function confirmDeleteCurrentPost(): Promise<void> {
   isSaving.value = true;
   errorMessage.value = "";
   try {
-    const messageResponse = await deletePost(editorForm.value.id);
-    statusMessage.value = messageResponse.message;
+    await deletePost(editorForm.value.id);
+    statusMessage.value = "文章已删除，站点已自动更新。";
     isDeleteDialogOpen.value = false;
     activeView.value = "posts";
     editorMode.value = "create";
@@ -280,7 +280,7 @@ async function saveSettings(): Promise<void> {
   try {
     const settingsResponse = await updateSettings(siteSettings.value);
     siteSettings.value = settingsResponse.settings;
-    statusMessage.value = settingsResponse.message ?? "站点设置已保存。";
+    statusMessage.value = "站点设置已保存，站点已自动更新。";
     await loadPosts();
   } catch (error) {
     handleRequestError(error);
@@ -480,8 +480,35 @@ function handleRequestError(error: unknown): void {
 }
 
 function readError(error: unknown): string {
-  if (error instanceof Error) return error.message;
+  if (error instanceof UnauthorizedError) return error.message;
+  if (error instanceof Error) return userMessageFromBackendError(error.message);
   return "发生未知错误。";
+}
+
+function savedPostMessage(postDetail: PostDetail): string {
+  if (postDetail.draft) return "草稿已保存，未生成公开页面。";
+  return "文章已保存，站点已自动更新。";
+}
+
+function userMessageFromBackendError(errorText: string): string {
+  const normalizedError = errorText.toLowerCase();
+  if (normalizedError.includes("decode request json")) return "请求内容格式不正确。";
+  if (normalizedError.includes("authentication required") || normalizedError.includes("unauthorized")) return "请先登录后台。";
+  if (normalizedError.includes("invalid username or password")) return "账号或密码不正确。";
+  if (normalizedError.includes("title is empty")) return "请输入文章标题。";
+  if (normalizedError.includes("date is empty")) return "请输入发布时间。";
+  if (normalizedError.includes("date must use")) return "发布时间格式必须是 YYYY-MM-DD HH:mm:ss。";
+  if (normalizedError.includes("permalink is empty")) return "请输入固定链接。";
+  if (normalizedError.includes("permalink conflict") || normalizedError.includes("alias conflict")) return "固定链接或别名已被使用，请换一个链接。";
+  if (normalizedError.includes("permalink")) return "固定链接格式不正确。";
+  if (normalizedError.includes("markdown file name")) return "文章文件名不正确。";
+  if (normalizedError.includes("default theme")) return "默认主题只能是自动、明亮或暗色。";
+  if (normalizedError.includes("site font")) return "站点字体配置不正确。";
+  if (normalizedError.includes("site icon")) return "网站 Icon 只支持 http(s) 链接或 / 开头的站内路径。";
+  if (normalizedError.includes("read post") || normalizedError.includes("read posts")) return "读取文章失败。";
+  if (normalizedError.includes("write") || normalizedError.includes("save")) return "保存失败，请稍后重试。";
+  if (normalizedError.includes("render")) return "站点渲染失败，请检查文章内容或配置。";
+  return "请求失败，请稍后重试。";
 }
 
 function escapeHTML(rawText: string): string {

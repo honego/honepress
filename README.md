@@ -28,7 +28,6 @@ backend/
     config/
     renderer/
     service/
-  templates/
 frontend/
   public/
     favicon.ico
@@ -37,6 +36,7 @@ frontend/
     logo.svg
   admin/
   theme/
+    templates/
 dist/
   admin/
   theme/
@@ -47,7 +47,7 @@ data/
 
 说明：
 
-- `backend/templates` 是运行时渲染静态站点所需的模板和前台 CSS。
+- `frontend/theme/templates` 是运行时渲染静态站点所需的模板和前台 CSS。
 - `frontend/admin` 是后台 Vue 3 + Vite 源码，构建产物输出到 `dist/admin`。
 - `frontend/theme` 是前台主题脚本源码，构建产物输出到 `dist/theme`。
 - `frontend/public` 是项目默认 favicon/logo 的唯一维护位置，admin 和 theme 构建时共用。
@@ -89,10 +89,10 @@ go build -trimpath -ldflags="-s -w" -o /out/honepress .
 
 - `dist/admin/index.html`
 - `dist/theme/theme.js`
-- `backend/templates/index.html`
-- `backend/templates/blog.html`
-- `backend/templates/post.html`
-- `backend/templates/style.css`
+- `frontend/theme/templates/index.html`
+- `frontend/theme/templates/blog.html`
+- `frontend/theme/templates/post.html`
+- `frontend/theme/templates/style.css`
 
 如果缺少构建产物或模板，会输出清晰的中文错误并停止启动。
 
@@ -135,7 +135,7 @@ Docker 内部启动命令保持不变：
   honepress
   config.yaml
   config.example.yaml
-  backend/templates/
+  frontend/theme/templates/
   dist/
     admin/
     theme/

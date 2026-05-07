@@ -60,7 +60,7 @@ func normalizeRuntimeOptions(options config.Options) config.Options {
 		options.ThemeDistDir = filepath.Join("dist", "theme")
 	}
 	if strings.TrimSpace(options.TemplateDir) == "" {
-		options.TemplateDir = filepath.Join("backend", "templates")
+		options.TemplateDir = filepath.Join("frontend", "theme", "templates")
 	}
 	if strings.TrimSpace(options.ThemeDefault) == "" {
 		options.ThemeDefault = "auto"
@@ -119,7 +119,7 @@ func (blogService *BlogService) ensureDataDirectories() error {
 func (blogService *BlogService) createExamplePostsIfEmpty() error {
 	directoryEntries, err := os.ReadDir(blogService.options.PostsDir)
 	if err != nil {
-		return fmt.Errorf("读取文章目录失败：%w", err)
+		return fmt.Errorf("read posts directory: %w", err)
 	}
 
 	hasMarkdownPost := false
@@ -143,7 +143,7 @@ func (blogService *BlogService) createExamplePostsIfEmpty() error {
 		return err
 	}
 
-	log.Println("未发现文章，已生成默认文章 世界你好.md。")
+	log.Println("no posts found; generated default post")
 	return nil
 }
 
@@ -185,14 +185,14 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 		return err
 	}
 
-	log.Println("静态站点已更新。")
+	log.Println("static site updated")
 	return nil
 }
 
 func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 	directoryEntries, err := os.ReadDir(blogService.options.PostsDir)
 	if err != nil {
-		return nil, fmt.Errorf("读取文章目录失败：%w", err)
+		return nil, fmt.Errorf("read posts directory: %w", err)
 	}
 
 	posts := make([]model.Post, 0, len(directoryEntries))
@@ -207,7 +207,7 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 		sourceFilePath := filepath.Join(blogService.options.PostsDir, directoryEntry.Name())
 		sourceMarkdownContent, err := os.ReadFile(sourceFilePath)
 		if err != nil {
-			return nil, fmt.Errorf("读取文章失败：%s：%w", sourceFilePath, err)
+			return nil, fmt.Errorf("read post at %s: %w", sourceFilePath, err)
 		}
 
 		parsedFrontMatter, bodyMarkdownContent, err := renderer.ParsePostDocument(directoryEntry.Name(), sourceMarkdownContent)
@@ -215,33 +215,33 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			return nil, err
 		}
 		if err := validation.ValidateRequiredPostFields(parsedFrontMatter.Title, parsedFrontMatter.Date); err != nil {
-			return nil, fmt.Errorf("文章 %s 校验失败：%w", sourceFilePath, err)
+			return nil, fmt.Errorf("validate post at %s: %w", sourceFilePath, err)
 		}
 
 		normalizedPermalink, err := validation.NormalizePermalinkWithFallback(parsedFrontMatter.URL, directoryEntry.Name())
 		if err != nil {
-			return nil, fmt.Errorf("文章 %s 的固定链接无效：%w", sourceFilePath, err)
+			return nil, fmt.Errorf("normalize permalink for post at %s: %w", sourceFilePath, err)
 		}
 
 		normalizedAliases := make([]string, 0, len(parsedFrontMatter.Aliases))
 		for _, rawAlias := range parsedFrontMatter.Aliases {
 			normalizedAlias, err := validation.NormalizePermalink(rawAlias)
 			if err != nil {
-				return nil, fmt.Errorf("文章 %s 的别名无效：%w", sourceFilePath, err)
+				return nil, fmt.Errorf("normalize alias for post at %s: %w", sourceFilePath, err)
 			}
 			normalizedAliases = append(normalizedAliases, normalizedAlias)
 		}
 
 		publishedAt, err := validation.ParsePostDate(parsedFrontMatter.Date)
 		if err != nil {
-			return nil, fmt.Errorf("文章 %s 的发布时间无效：%w", sourceFilePath, err)
+			return nil, fmt.Errorf("parse date for post at %s: %w", sourceFilePath, err)
 		}
 
 		var renderedPostHTML htmlTemplate.HTML
 		if !parsedFrontMatter.Draft {
 			renderedPostHTML, err = blogService.markdownRenderer.Render(bodyMarkdownContent)
 			if err != nil {
-				return nil, fmt.Errorf("文章 %s 渲染失败：%w", sourceFilePath, err)
+				return nil, fmt.Errorf("render post at %s: %w", sourceFilePath, err)
 			}
 		}
 
@@ -271,7 +271,6 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 
 func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRenderer, posts []model.Post) error {
 	postSummaries := postsToSummaries(posts)
-	labels := templateLabels(blogService.options.ThemeDefault)
 	archivePath := "/archive.html"
 	siteViewData := model.SiteViewData{
 		SiteTitle:       blogService.options.Title,
@@ -291,7 +290,6 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 		BlogPath:        archivePath,
 		RSSPath:         "/rss.xml",
 		SitemapPath:     "/sitemap.xml",
-		Labels:          labels,
 		Posts:           postSummaries,
 		PostCount:       len(posts),
 		WordCount:       totalPostWords(posts),
@@ -302,7 +300,7 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 	}
 	siteViewData.CanonicalPath = archivePath
 	siteViewData.CanonicalURL = seoPublicURL(blogService.options, archivePath)
-	siteViewData.SEOTitle = pageSEOTitle(labels.AllPosts, blogService.options.Title)
+	siteViewData.SEOTitle = pageSEOTitle("Archive", blogService.options.Title)
 	siteViewData.SEODescription = seoDescription(blogService.options.Title, blogService.options.Description)
 	siteViewData.SEOType = "website"
 	siteViewData.StructuredData = archiveStructuredData(blogService.options, posts)
@@ -339,7 +337,6 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 				BlogPath:        archivePath,
 				RSSPath:         "/rss.xml",
 				SitemapPath:     "/sitemap.xml",
-				Labels:          labels,
 				Post:            currentPost,
 				CommentHTML:     blogService.commentHTML(),
 			}
@@ -376,22 +373,22 @@ func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRe
 func (blogService *BlogService) resetPublicDirectory() error {
 	absoluteDataDirectoryPath, err := filepath.Abs(blogService.options.DataDir)
 	if err != nil {
-		return fmt.Errorf("解析 data 目录失败：%w", err)
+		return fmt.Errorf("resolve data directory: %w", err)
 	}
 	absolutePublicDirectoryPath, err := filepath.Abs(blogService.options.PublicDir)
 	if err != nil {
-		return fmt.Errorf("解析 public 目录失败：%w", err)
+		return fmt.Errorf("resolve public directory: %w", err)
 	}
 	relativePublicDirectoryPath, err := filepath.Rel(absoluteDataDirectoryPath, absolutePublicDirectoryPath)
 	if err != nil {
-		return fmt.Errorf("校验 public 目录失败：%w", err)
+		return fmt.Errorf("validate public directory: %w", err)
 	}
 	if relativePublicDirectoryPath == "." || strings.HasPrefix(relativePublicDirectoryPath, "..") {
-		return fmt.Errorf("public 目录必须位于 data 目录内部：%s", blogService.options.PublicDir)
+		return fmt.Errorf("public directory must be inside data directory: %s", blogService.options.PublicDir)
 	}
 
 	if err := os.RemoveAll(absolutePublicDirectoryPath); err != nil {
-		return fmt.Errorf("清理 public 目录失败：%w", err)
+		return fmt.Errorf("clean public directory: %w", err)
 	}
 	return filesystem.EnsureDirectory(absolutePublicDirectoryPath)
 }
@@ -399,9 +396,9 @@ func (blogService *BlogService) resetPublicDirectory() error {
 func (blogService *BlogService) copyThemeDist() error {
 	if _, err := os.Stat(blogService.options.ThemeDistDir); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("前台主题构建目录不存在：%s，请先构建 frontend/theme", blogService.options.ThemeDistDir)
+			return fmt.Errorf("theme dist directory does not exist at %s; build frontend/theme first", blogService.options.ThemeDistDir)
 		}
-		return fmt.Errorf("读取前台主题构建目录失败：%w", err)
+		return fmt.Errorf("read theme dist directory: %w", err)
 	}
 
 	return filepath.WalkDir(blogService.options.ThemeDistDir, func(sourcePath string, directoryEntry os.DirEntry, walkErr error) error {
@@ -413,7 +410,7 @@ func (blogService *BlogService) copyThemeDist() error {
 		}
 		relativePath, err := filepath.Rel(blogService.options.ThemeDistDir, sourcePath)
 		if err != nil {
-			return fmt.Errorf("解析前台主题资源路径失败：%w", err)
+			return fmt.Errorf("resolve theme asset path: %w", err)
 		}
 		targetPath := filepath.Join(blogService.options.PublicDir, relativePath)
 		return filesystem.CopyFile(sourcePath, targetPath)
@@ -424,7 +421,7 @@ func (blogService *BlogService) copyAssets() error {
 	if _, err := os.Stat(blogService.options.AssetsDir); os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
-		return fmt.Errorf("读取资源目录失败：%w", err)
+		return fmt.Errorf("read assets directory: %w", err)
 	}
 
 	return filepath.WalkDir(blogService.options.AssetsDir, func(sourcePath string, directoryEntry os.DirEntry, walkErr error) error {
@@ -436,7 +433,7 @@ func (blogService *BlogService) copyAssets() error {
 		}
 		relativePath, err := filepath.Rel(blogService.options.AssetsDir, sourcePath)
 		if err != nil {
-			return fmt.Errorf("解析资源路径失败：%w", err)
+			return fmt.Errorf("resolve asset path: %w", err)
 		}
 		targetPath := filepath.Join(blogService.options.PublicDir, "assets", relativePath)
 		return filesystem.CopyFile(sourcePath, targetPath)
@@ -448,7 +445,7 @@ func (blogService *BlogService) commentHTML() htmlTemplate.HTML {
 		return ""
 	}
 	if !blogService.options.Comment.HasRequiredGiscusConfig() {
-		log.Println("警告：giscus 配置不完整，已跳过评论容器。")
+		log.Println("warning: giscus config is incomplete; skipped comments container")
 		return ""
 	}
 
@@ -694,33 +691,6 @@ func emojiFaviconHref(emoji string) htmlTemplate.URL {
 	}
 	svgContent := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50%" y="50%" style="dominant-baseline:central;text-anchor:middle;font-size:86px;">` + htmlTemplate.HTMLEscapeString(trimmedEmoji) + `</text></svg>`
 	return htmlTemplate.URL("data:image/svg+xml," + url.PathEscape(svgContent))
-}
-
-func templateLabels(themeDefault string) model.TemplateLabels {
-	return model.TemplateLabels{
-		Home:             "首页",
-		Blog:             "归档",
-		RSS:              "RSS",
-		Sitemap:          "站点地图",
-		AllPosts:         "归档",
-		ReadMore:         "阅读",
-		PublishedAt:      "发布于",
-		NoPosts:          "还没有文章。",
-		BackToList:       "返回",
-		Footer:           "Powered by HonePress",
-		ThemeButtonLabel: themeButtonLabel(themeDefault),
-	}
-}
-
-func themeButtonLabel(themeDefault string) string {
-	switch themeDefault {
-	case "light":
-		return "主题：亮色"
-	case "dark":
-		return "主题：暗色"
-	default:
-		return "主题：自动"
-	}
 }
 
 func defaultFirstPost(dateText string) string {

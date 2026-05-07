@@ -30,7 +30,7 @@ func NewMarkdownRenderer() *MarkdownRenderer {
 func (markdownRenderer *MarkdownRenderer) Render(markdownContent string) (template.HTML, error) {
 	var renderedHTMLBuffer bytes.Buffer
 	if err := markdownRenderer.markdown.Convert([]byte(markdownContent), &renderedHTMLBuffer); err != nil {
-		return "", fmt.Errorf("渲染 Markdown 失败：%w", err)
+		return "", fmt.Errorf("render markdown: %w", err)
 	}
 	return template.HTML(renderedHTMLBuffer.String()), nil
 }

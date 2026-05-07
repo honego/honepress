@@ -36,7 +36,7 @@ func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail
 	}
 	sourceMarkdownContent, err := os.ReadFile(sourceFilePath)
 	if err != nil {
-		return model.PostDetail{}, fmt.Errorf("读取文章失败：%w", err)
+		return model.PostDetail{}, fmt.Errorf("read post: %w", err)
 	}
 
 	frontMatter, bodyMarkdownContent, err := renderer.ParsePostDocument(sourceFileName, sourceMarkdownContent)
@@ -109,7 +109,7 @@ func (blogService *BlogService) UpdatePost(sourceFileName string, savePostReques
 	}
 	previousFileContent, err := os.ReadFile(sourceFilePath)
 	if err != nil {
-		return model.PostDetail{}, fmt.Errorf("读取原文章失败：%w", err)
+		return model.PostDetail{}, fmt.Errorf("read existing post: %w", err)
 	}
 
 	targetFileName, err := blogService.availableMarkdownFileNameForTitle(frontMatter.Title, sourceFileName)
@@ -148,15 +148,15 @@ func (blogService *BlogService) DeletePost(sourceFileName string) error {
 	}
 	previousFileContent, err := os.ReadFile(sourceFilePath)
 	if err != nil {
-		return fmt.Errorf("读取原文章失败：%w", err)
+		return fmt.Errorf("read existing post: %w", err)
 	}
 	if err := os.Remove(sourceFilePath); err != nil {
-		return fmt.Errorf("删除文章失败：%w", err)
+		return fmt.Errorf("delete post: %w", err)
 	}
 
 	if err := blogService.renderAllWithoutLock(); err != nil {
 		if restoreErr := filesystem.WriteFileCreatingDirectory(sourceFilePath, previousFileContent, 0644); restoreErr != nil {
-			return fmt.Errorf("重新渲染失败且恢复文章失败：%v；恢复错误：%w", err, restoreErr)
+			return fmt.Errorf("render failed and restore post failed: %v; restore error: %w", err, restoreErr)
 		}
 		_ = blogService.renderAllWithoutLock()
 		return err
@@ -184,10 +184,10 @@ func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.Post
 			return model.PostFrontMatter{}, "", err
 		}
 		if normalizedAlias == normalizedPermalink {
-			return model.PostFrontMatter{}, "", fmt.Errorf("别名链接不能与固定链接相同：%s", normalizedAlias)
+			return model.PostFrontMatter{}, "", fmt.Errorf("alias permalink must differ from post permalink: %s", normalizedAlias)
 		}
 		if _, exists := aliasOwners[normalizedAlias]; exists {
-			return model.PostFrontMatter{}, "", fmt.Errorf("别名链接重复：%s", normalizedAlias)
+			return model.PostFrontMatter{}, "", fmt.Errorf("duplicate alias permalink: %s", normalizedAlias)
 		}
 		aliasOwners[normalizedAlias] = struct{}{}
 		normalizedAliases = append(normalizedAliases, normalizedAlias)
@@ -246,7 +246,7 @@ func (blogService *BlogService) availableMarkdownFileNameForTitle(title string, 
 		if _, err := os.Stat(candidateFilePath); os.IsNotExist(err) {
 			return candidateFileName, nil
 		} else if err != nil {
-			return "", fmt.Errorf("检查文章文件名失败：%w", err)
+			return "", fmt.Errorf("check post file name: %w", err)
 		}
 		if currentFileName != "" && candidateFileName == currentFileName {
 			return candidateFileName, nil
@@ -267,10 +267,10 @@ func (blogService *BlogService) writePostAndRenderWithRollback(sourceFilePath st
 	if err := blogService.renderAllWithoutLock(); err != nil {
 		if targetExisted {
 			if restoreErr := filesystem.WriteFileCreatingDirectory(sourceFilePath, previousFileContent, 0644); restoreErr != nil {
-				return fmt.Errorf("重新渲染失败且恢复文章失败：%v；恢复错误：%w", err, restoreErr)
+				return fmt.Errorf("render failed and restore post failed: %v; restore error: %w", err, restoreErr)
 			}
 		} else if removeErr := os.Remove(sourceFilePath); removeErr != nil && !os.IsNotExist(removeErr) {
-			return fmt.Errorf("重新渲染失败且删除新文章失败：%v；删除错误：%w", err, removeErr)
+			return fmt.Errorf("render failed and remove new post failed: %v; remove error: %w", err, removeErr)
 		}
 		_ = blogService.renderAllWithoutLock()
 		return err
@@ -289,15 +289,15 @@ func (blogService *BlogService) writeMovedPostAndRenderWithRollback(sourceFilePa
 	}
 	if err := os.Remove(sourceFilePath); err != nil {
 		_ = os.Remove(targetFilePath)
-		return fmt.Errorf("重命名文章文件失败：%w", err)
+		return fmt.Errorf("rename post file: %w", err)
 	}
 
 	if err := blogService.renderAllWithoutLock(); err != nil {
 		if restoreErr := filesystem.WriteFileCreatingDirectory(sourceFilePath, previousFileContent, 0644); restoreErr != nil {
-			return fmt.Errorf("重新渲染失败且恢复原文章失败：%v；恢复错误：%w", err, restoreErr)
+			return fmt.Errorf("render failed and restore original post failed: %v; restore error: %w", err, restoreErr)
 		}
 		if removeErr := os.Remove(targetFilePath); removeErr != nil && !os.IsNotExist(removeErr) {
-			return fmt.Errorf("重新渲染失败且删除新文章失败：%v；删除错误：%w", err, removeErr)
+			return fmt.Errorf("render failed and remove new post failed: %v; remove error: %w", err, removeErr)
 		}
 		_ = blogService.renderAllWithoutLock()
 		return err

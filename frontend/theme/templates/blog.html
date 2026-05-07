@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{.SEOTitle}}</title>
+    <title>归档{{if .SiteTitle}} - {{.SiteTitle}}{{end}}</title>
     {{if .SEODescription}}
     <meta name="description" content="{{.SEODescription}}" />
     {{end}}
     <link rel="canonical" href="{{.CanonicalURL}}" />
     <meta property="og:type" content="{{.SEOType}}" />
-    <meta property="og:title" content="{{.SEOTitle}}" />
+    <meta property="og:title" content="归档{{if .SiteTitle}} - {{.SiteTitle}}{{end}}" />
     {{if .SEODescription}}
     <meta property="og:description" content="{{.SEODescription}}" />
     {{end}}
@@ -19,7 +19,7 @@
     <meta property="og:image" content="{{.SEOImage}}" />
     {{end}}
     <meta name="twitter:card" content="{{if .SEOImage}}summary_large_image{{else}}summary{{end}}" />
-    <meta name="twitter:title" content="{{.SEOTitle}}" />
+    <meta name="twitter:title" content="归档{{if .SiteTitle}} - {{.SiteTitle}}{{end}}" />
     {{if .SEODescription}}
     <meta name="twitter:description" content="{{.SEODescription}}" />
     {{end}} {{if .SEOImage}}
@@ -48,16 +48,16 @@
           <span>{{.SiteTitle}}</span>
         </a>
         <div class="nav-links">
-          <a class="icon-link" href="{{.HomePath}}" aria-label="{{.Labels.Home}}" title="{{.Labels.Home}}">
+          <a class="icon-link" href="{{.HomePath}}" aria-label="首页" title="首页">
             <i class="nav-icon" data-lucide="house" aria-hidden="true"></i>
           </a>
-          <a href="{{.BlogPath}}">{{.Labels.Blog}}</a>
+          <a href="{{.BlogPath}}">归档</a>
           <button
             type="button"
             class="theme-toggle icon-button"
             data-theme-toggle
-            aria-label="{{.Labels.ThemeButtonLabel}}"
-            title="{{.Labels.ThemeButtonLabel}}"
+            aria-label="切换主题"
+            title="切换主题"
           >
             <i class="nav-icon theme-icon theme-icon-sun" data-lucide="sun" aria-hidden="true"></i>
             <i class="nav-icon theme-icon theme-icon-moon" data-lucide="moon" aria-hidden="true"></i>
@@ -69,7 +69,7 @@
     <main class="page page-archive">
       <section class="archive">
         <header class="archive-header">
-          <h1>{{.Labels.AllPosts}}</h1>
+          <h1>归档</h1>
           <p class="archive-stats">共 {{.PostCount}} 篇文章，约 {{.WordCount}} 字</p>
         </header>
         <div class="archive-list">
@@ -81,7 +81,7 @@
             </h2>
           </article>
           {{else}}
-          <p class="empty">{{.Labels.NoPosts}}</p>
+          <p class="empty">还没有文章。</p>
           {{end}}
         </div>
       </section>
@@ -89,17 +89,12 @@
 
     <footer class="site-footer">
       <div class="footer-inner">
-        <p>{{.Labels.Footer}}</p>
+        <p>Powered by HonePress</p>
         <div class="footer-links">
-          <a
-            class="footer-sitemap icon-link"
-            href="{{.SitemapPath}}"
-            aria-label="{{.Labels.Sitemap}}"
-            title="{{.Labels.Sitemap}}"
-          >
+          <a class="footer-sitemap icon-link" href="{{.SitemapPath}}" aria-label="站点地图" title="站点地图">
             <i class="nav-icon" data-lucide="map" aria-hidden="true"></i>
           </a>
-          <a class="footer-rss icon-link" href="{{.RSSPath}}" aria-label="{{.Labels.RSS}}" title="{{.Labels.RSS}}">
+          <a class="footer-rss icon-link" href="{{.RSSPath}}" aria-label="RSS" title="RSS">
             <i class="nav-icon" data-lucide="rss" aria-hidden="true"></i>
           </a>
         </div>

@@ -9,11 +9,11 @@ func TestNormalizePermalink(t *testing.T) {
 		expectedPermalink string
 		wantError         bool
 	}{
-		{name: "追加扩展名", rawPermalink: "1", expectedPermalink: "1.html"},
-		{name: "去掉开头斜杠", rawPermalink: "/docker-install", expectedPermalink: "docker-install.html"},
-		{name: "拒绝路径穿越", rawPermalink: "../1.html", wantError: true},
-		{name: "拒绝保留文件", rawPermalink: "rss.xml", wantError: true},
-		{name: "拒绝中文", rawPermalink: "中文.html", wantError: true},
+		{name: "append extension", rawPermalink: "1", expectedPermalink: "1.html"},
+		{name: "trim leading slash", rawPermalink: "/docker-install", expectedPermalink: "docker-install.html"},
+		{name: "reject path traversal", rawPermalink: "../1.html", wantError: true},
+		{name: "reject reserved file", rawPermalink: "rss.xml", wantError: true},
+		{name: "reject non-ASCII", rawPermalink: "中文.html", wantError: true},
 	}
 
 	for _, testCase := range testCases {
@@ -21,15 +21,15 @@ func TestNormalizePermalink(t *testing.T) {
 			normalizedPermalink, err := NormalizePermalink(testCase.rawPermalink)
 			if testCase.wantError {
 				if err == nil {
-					t.Fatalf("期望返回错误")
+					t.Fatalf("expected an error")
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("不期望返回错误：%v", err)
+				t.Fatalf("unexpected error: %v", err)
 			}
 			if normalizedPermalink != testCase.expectedPermalink {
-				t.Fatalf("固定链接不一致：实际 %s，期望 %s", normalizedPermalink, testCase.expectedPermalink)
+				t.Fatalf("permalink mismatch: got %s, want %s", normalizedPermalink, testCase.expectedPermalink)
 			}
 		})
 	}
@@ -38,9 +38,9 @@ func TestNormalizePermalink(t *testing.T) {
 func TestMarkdownFileNameFromTitleAllowsChineseTitle(t *testing.T) {
 	markdownFileName, err := MarkdownFileNameFromTitle("记录生活")
 	if err != nil {
-		t.Fatalf("不期望返回错误：%v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if markdownFileName != "记录生活.md" {
-		t.Fatalf("文件名不一致：实际 %s，期望 记录生活.md", markdownFileName)
+		t.Fatalf("markdown file name mismatch: got %s", markdownFileName)
 	}
 }
