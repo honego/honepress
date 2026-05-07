@@ -148,22 +148,13 @@ a:hover {
   background: transparent;
   cursor: pointer;
   padding: 0;
-  transform: translateY(0);
-  transition:
-    color 160ms ease,
-    transform 180ms ease;
+  transition: color 160ms ease;
 }
 
 .icon-link:hover,
 .icon-button:hover {
   color: var(--accent-strong);
   text-decoration: none;
-  transform: translateY(-2px);
-}
-
-.icon-link:hover .nav-icon,
-.icon-button:hover .nav-icon {
-  transform: rotate(-8deg) scale(1.08);
 }
 
 .nav-icon {
@@ -175,7 +166,6 @@ a:hover {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: transform 180ms ease;
 }
 
 .theme-icon {
@@ -445,6 +435,24 @@ button.back-link:hover {
   gap: 12px;
 }
 
+.footer-links .icon-link {
+  transform: translateY(0);
+  transition:
+    color 160ms ease,
+    transform 180ms ease;
+}
+
+.footer-links .icon-link:hover {
+  transform: translateY(-2px);
+}
+
+.footer-links .icon-link:hover .nav-icon {
+  transform: rotate(-8deg) scale(1.08);
+}
+
+.footer-links .nav-icon {
+  transition: transform 180ms ease;
+}
 .footer-sitemap,
 .footer-rss {
   color: var(--muted);

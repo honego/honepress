@@ -64,7 +64,7 @@ const isLoggingIn = ref(false);
 const isDeleteDialogOpen = ref(false);
 const adminTheme = ref<AdminThemeMode>(readStoredTheme());
 const siteSettings = ref<SiteSettings>(createEmptySiteSettings());
-const loginForm = ref({ username: "admin", password: "" });
+const loginForm = ref({ username: "", password: "" });
 const loginError = ref("");
 
 let previewTimerID: number | undefined;
@@ -700,7 +700,7 @@ function escapeHTML(rawText: string): string {
               <tr v-for="post in posts" :key="post.id">
                 <td>
                   <button type="button" class="title-button" @click="openEditorForPost(post.id)">{{ post.title
-                  }}</button>
+                    }}</button>
                   <p>{{ post.description || "没有文章摘要" }}</p>
                 </td>
                 <td>
