@@ -43,6 +43,8 @@ export interface SiteSettings {
   title: string;
   description: string;
   iconUrl: string;
+  adminUsername: string;
+  adminPassword: string;
   commentEnabled: boolean;
   giscusRepo: string;
   giscusRepoId: string;

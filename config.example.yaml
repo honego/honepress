@@ -6,7 +6,7 @@ data:
 
 # 后台登录账号。生产环境务必设置强密码。
 admin:
-  username: "admin"
+  username: ""
   password: ""
 
 # 站点基础信息。后台“站点设置”也可以修改这些字段。

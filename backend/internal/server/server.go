@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/honeok/honepress/internal/config"
@@ -24,6 +25,7 @@ import (
 
 // HTTP 服务
 type Server struct {
+	optionsMutex      sync.RWMutex
 	options           config.Options
 	blogService       *service.BlogService
 	adminSessionToken string
@@ -125,7 +127,8 @@ func (server *Server) apiHandler(handler apiHandler) http.HandlerFunc {
 
 func (server *Server) adminAuth(nextHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
-		if server.options.AdminPassword == "" || server.hasValidAdminSession(request) || server.hasValidBasicAuth(request) {
+		_, adminPassword := server.adminCredentials()
+		if adminPassword == "" || server.hasValidAdminSession(request) || server.hasValidBasicAuth(request) {
 			nextHandler.ServeHTTP(responseWriter, request)
 			return
 		}
@@ -141,9 +144,28 @@ func (server *Server) hasValidBasicAuth(request *http.Request) bool {
 	if !hasCredentials {
 		return false
 	}
-	usernameMatches := subtle.ConstantTimeCompare([]byte(username), []byte(server.options.AdminUsername)) == 1
-	passwordMatches := subtle.ConstantTimeCompare([]byte(password), []byte(server.options.AdminPassword)) == 1
+	adminUsername, adminPassword := server.adminCredentials()
+	if adminPassword == "" {
+		return true
+	}
+	usernameMatches := subtle.ConstantTimeCompare([]byte(username), []byte(adminUsername)) == 1
+	passwordMatches := subtle.ConstantTimeCompare([]byte(password), []byte(adminPassword)) == 1
 	return usernameMatches && passwordMatches
+}
+
+func (server *Server) adminCredentials() (string, string) {
+	server.optionsMutex.RLock()
+	defer server.optionsMutex.RUnlock()
+
+	return server.options.AdminUsername, server.options.AdminPassword
+}
+
+func (server *Server) setAdminCredentials(username string, password string) {
+	server.optionsMutex.Lock()
+	defer server.optionsMutex.Unlock()
+
+	server.options.AdminUsername = username
+	server.options.AdminPassword = password
 }
 
 func (server *Server) hasValidAdminSession(request *http.Request) bool {
@@ -246,7 +268,8 @@ func (server *Server) handleHealth(responseWriter http.ResponseWriter, _ *http.R
 }
 
 func (server *Server) handleLogin(responseWriter http.ResponseWriter, request *http.Request) error {
-	if server.options.AdminPassword == "" {
+	adminUsername, adminPassword := server.adminCredentials()
+	if adminPassword == "" {
 		server.setAdminSessionCookie(responseWriter, request)
 		return server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "ok"})
 	}
@@ -255,8 +278,8 @@ func (server *Server) handleLogin(responseWriter http.ResponseWriter, request *h
 	if err := server.decodeJSON(request, &loginRequest); err != nil {
 		return newResponseError(http.StatusBadRequest, err)
 	}
-	usernameMatches := subtle.ConstantTimeCompare([]byte(loginRequest.Username), []byte(server.options.AdminUsername)) == 1
-	passwordMatches := subtle.ConstantTimeCompare([]byte(loginRequest.Password), []byte(server.options.AdminPassword)) == 1
+	usernameMatches := subtle.ConstantTimeCompare([]byte(loginRequest.Username), []byte(adminUsername)) == 1
+	passwordMatches := subtle.ConstantTimeCompare([]byte(loginRequest.Password), []byte(adminPassword)) == 1
 	if !usernameMatches || !passwordMatches {
 		return newResponseErrorMessage(http.StatusUnauthorized, "invalid username or password")
 	}
@@ -321,8 +344,11 @@ func (server *Server) handleUpdateSettings(responseWriter http.ResponseWriter, r
 	if err := server.blogService.UpdateSiteSettings(settings); err != nil {
 		return newResponseError(http.StatusBadRequest, err)
 	}
+	updatedSettings := server.blogService.GetSiteSettings()
+	server.setAdminCredentials(updatedSettings.AdminUsername, updatedSettings.AdminPassword)
+	server.setAdminSessionCookie(responseWriter, request)
 	return server.writeJSON(responseWriter, http.StatusOK, settingsResponse{
-		Settings: server.blogService.GetSiteSettings(),
+		Settings: updatedSettings,
 		Message:  "ok",
 	})
 }

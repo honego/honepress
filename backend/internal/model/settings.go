@@ -5,6 +5,8 @@ type SiteSettings struct {
 	Title            string `json:"title"`
 	Description      string `json:"description"`
 	IconURL          string `json:"iconUrl"`
+	AdminUsername    string `json:"adminUsername"`
+	AdminPassword    string `json:"adminPassword"`
 	CommentEnabled   bool   `json:"commentEnabled"`
 	GiscusRepo       string `json:"giscusRepo"`
 	GiscusRepoID     string `json:"giscusRepoId"`

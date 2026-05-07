@@ -52,6 +52,14 @@ func validateSiteSettings(siteSettings model.SiteSettings) error {
 	if strings.TrimSpace(siteSettings.IconURL) != "" && !isSupportedIconURL(siteSettings.IconURL) {
 		return fmt.Errorf("site icon must be an http(s) URL or an absolute site path")
 	}
+	adminUsername := strings.TrimSpace(siteSettings.AdminUsername)
+	adminPassword := strings.TrimSpace(siteSettings.AdminPassword)
+	if adminPassword != "" && adminUsername == "" {
+		return fmt.Errorf("admin username is required when admin password is set")
+	}
+	if adminUsername != "" && strings.ContainsAny(adminUsername, " 	\r\n") {
+		return fmt.Errorf("admin username must not contain whitespace")
+	}
 	return nil
 }
 

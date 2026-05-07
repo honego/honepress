@@ -68,3 +68,56 @@ func TestLoadGeneratesDefaultConfig(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadMigratesMissingConfigFields(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	legacyConfig := []byte("data:\n  directory: custom-data\nsite:\n  title: HonePress\n")
+	if err := os.WriteFile(configPath, legacyConfig, 0644); err != nil {
+		t.Fatalf("write legacy config failed: %v", err)
+	}
+
+	loadedOptions, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("load legacy config failed: %v", err)
+	}
+	if loadedOptions.DataDir != "custom-data" {
+		t.Fatalf("data directory mismatch: got %s, want custom-data", loadedOptions.DataDir)
+	}
+	if loadedOptions.Title != "HonePress" {
+		t.Fatalf("title mismatch: got %s, want HonePress", loadedOptions.Title)
+	}
+
+	configFileContent, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read migrated config failed: %v", err)
+	}
+	migratedConfig := string(configFileContent)
+	missingKeys := []string{"admin:", "username:", "password:", "comment:", "giscus:", "theme:", "default:", "font:"}
+	for _, missingKey := range missingKeys {
+		if !strings.Contains(migratedConfig, missingKey) {
+			t.Fatalf("migrated config missing key %s in:\n%s", missingKey, migratedConfig)
+		}
+	}
+	if strings.Contains(migratedConfig, "username: admin") {
+		t.Fatalf("migrated config must not set a default admin username")
+	}
+}
+
+func TestLoadDoesNotOverwriteExistingAdminCredentials(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	existingConfig := []byte("admin:\n  username: root\n  password: secret\n")
+	if err := os.WriteFile(configPath, existingConfig, 0644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	loadedOptions, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("load config failed: %v", err)
+	}
+	if loadedOptions.AdminUsername != "root" {
+		t.Fatalf("admin username mismatch: got %s, want root", loadedOptions.AdminUsername)
+	}
+	if loadedOptions.AdminPassword != "secret" {
+		t.Fatalf("admin password mismatch: got %s, want secret", loadedOptions.AdminPassword)
+	}
+}

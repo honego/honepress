@@ -137,6 +137,18 @@ func Load(configPath string) (Options, error) {
 		return Options{}, fmt.Errorf("read config at %s: %w", absoluteConfigPath, err)
 	}
 
+	migratedConfigFileContent, migratedConfig, err := migrateConfigContent(configFileContent)
+	if err != nil {
+		return Options{}, fmt.Errorf("migrate config at %s: %w", absoluteConfigPath, err)
+	}
+	if migratedConfig {
+		if err := os.WriteFile(absoluteConfigPath, migratedConfigFileContent, 0644); err != nil {
+			return Options{}, fmt.Errorf("write migrated config at %s: %w", absoluteConfigPath, err)
+		}
+		configFileContent = migratedConfigFileContent
+		log.Printf("updated config at %s with missing defaults", absoluteConfigPath)
+	}
+
 	loadedConfig := DefaultConfig()
 	if err := yaml.Unmarshal(configFileContent, &loadedConfig); err != nil {
 		return Options{}, fmt.Errorf("decode config at %s: %w", absoluteConfigPath, err)
@@ -161,7 +173,7 @@ func DefaultConfig() Config {
 			Directory: "data",
 		},
 		Admin: AdminConfig{
-			Username: "admin",
+			Username: "",
 			Password: "",
 		},
 		Site: SiteConfig{
@@ -208,6 +220,161 @@ func WriteConfig(configPath string, config Config) error {
 	return nil
 }
 
+func migrateConfigContent(configFileContent []byte) ([]byte, bool, error) {
+	var configDocument yaml.Node
+	changed := false
+	markChanged := func(fieldChanged bool) {
+		if fieldChanged {
+			changed = true
+		}
+	}
+
+	if len(bytes.TrimSpace(configFileContent)) == 0 {
+		configDocument.Kind = yaml.DocumentNode
+		configDocument.Content = []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map"}}
+		changed = true
+	} else if err := yaml.Unmarshal(configFileContent, &configDocument); err != nil {
+		return nil, false, err
+	}
+
+	configRoot, rootChanged, err := configRootNode(&configDocument)
+	if err != nil {
+		return nil, false, err
+	}
+	markChanged(rootChanged)
+
+	defaultConfig := DefaultConfig()
+	dataConfig, dataChanged, err := ensureConfigMapping(configRoot, "data")
+	if err != nil {
+		return nil, false, err
+	}
+	markChanged(dataChanged)
+	markChanged(ensureConfigScalar(dataConfig, "directory", defaultConfig.Data.Directory, "!!str"))
+
+	adminConfig, adminChanged, err := ensureConfigMapping(configRoot, "admin")
+	if err != nil {
+		return nil, false, err
+	}
+	markChanged(adminChanged)
+	markChanged(ensureConfigScalar(adminConfig, "username", defaultConfig.Admin.Username, "!!str"))
+	markChanged(ensureConfigScalar(adminConfig, "password", defaultConfig.Admin.Password, "!!str"))
+
+	siteConfig, siteChanged, err := ensureConfigMapping(configRoot, "site")
+	if err != nil {
+		return nil, false, err
+	}
+	markChanged(siteChanged)
+	markChanged(ensureConfigScalar(siteConfig, "title", defaultConfig.Site.Title, "!!str"))
+	markChanged(ensureConfigScalar(siteConfig, "description", defaultConfig.Site.Description, "!!str"))
+	markChanged(ensureConfigScalar(siteConfig, "iconURL", defaultConfig.Site.IconURL, "!!str"))
+
+	commentConfig, commentChanged, err := ensureConfigMapping(configRoot, "comment")
+	if err != nil {
+		return nil, false, err
+	}
+	markChanged(commentChanged)
+	markChanged(ensureConfigScalar(commentConfig, "enabled", fmt.Sprintf("%t", defaultConfig.Comment.Enabled), "!!bool"))
+	giscusConfig, giscusChanged, err := ensureConfigMapping(commentConfig, "giscus")
+	if err != nil {
+		return nil, false, err
+	}
+	markChanged(giscusChanged)
+	markChanged(ensureConfigScalar(giscusConfig, "repo", defaultConfig.Comment.Giscus.Repo, "!!str"))
+	markChanged(ensureConfigScalar(giscusConfig, "repoID", defaultConfig.Comment.Giscus.RepoID, "!!str"))
+	markChanged(ensureConfigScalar(giscusConfig, "category", defaultConfig.Comment.Giscus.Category, "!!str"))
+	markChanged(ensureConfigScalar(giscusConfig, "categoryID", defaultConfig.Comment.Giscus.CategoryID, "!!str"))
+
+	themeConfig, themeChanged, err := ensureConfigMapping(configRoot, "theme")
+	if err != nil {
+		return nil, false, err
+	}
+	markChanged(themeChanged)
+	markChanged(ensureConfigScalar(themeConfig, "default", defaultConfig.Theme.Default, "!!str"))
+	markChanged(ensureConfigScalar(themeConfig, "font", defaultConfig.Theme.Font, "!!str"))
+
+	if !changed {
+		return configFileContent, false, nil
+	}
+
+	var configFileBuffer bytes.Buffer
+	configEncoder := yaml.NewEncoder(&configFileBuffer)
+	configEncoder.SetIndent(2)
+	if err := configEncoder.Encode(&configDocument); err != nil {
+		return nil, false, err
+	}
+	if err := configEncoder.Close(); err != nil {
+		return nil, false, err
+	}
+	return configFileBuffer.Bytes(), true, nil
+}
+
+func configRootNode(configDocument *yaml.Node) (*yaml.Node, bool, error) {
+	changed := false
+	if configDocument.Kind == 0 {
+		configDocument.Kind = yaml.DocumentNode
+		changed = true
+	}
+	if configDocument.Kind != yaml.DocumentNode {
+		return nil, false, fmt.Errorf("config document must be a YAML document")
+	}
+	if len(configDocument.Content) == 0 {
+		configDocument.Content = []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map"}}
+		changed = true
+	}
+	configRoot := configDocument.Content[0]
+	if configRoot.Kind == yaml.ScalarNode && configRoot.Tag == "!!null" {
+		configRoot.Kind = yaml.MappingNode
+		configRoot.Tag = "!!map"
+		configRoot.Value = ""
+		changed = true
+	}
+	if configRoot.Kind != yaml.MappingNode {
+		return nil, false, fmt.Errorf("config root must be a mapping")
+	}
+	return configRoot, changed, nil
+}
+
+func ensureConfigMapping(parentNode *yaml.Node, key string) (*yaml.Node, bool, error) {
+	valueNode := configMappingValue(parentNode, key)
+	if valueNode == nil {
+		valueNode = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		parentNode.Content = append(parentNode.Content, configKeyNode(key), valueNode)
+		return valueNode, true, nil
+	}
+	if valueNode.Kind == yaml.ScalarNode && valueNode.Tag == "!!null" {
+		valueNode.Kind = yaml.MappingNode
+		valueNode.Tag = "!!map"
+		valueNode.Value = ""
+		valueNode.Content = nil
+		return valueNode, true, nil
+	}
+	if valueNode.Kind != yaml.MappingNode {
+		return nil, false, fmt.Errorf("config field %s must be a mapping", key)
+	}
+	return valueNode, false, nil
+}
+
+func ensureConfigScalar(parentNode *yaml.Node, key string, value string, tag string) bool {
+	if configMappingValue(parentNode, key) != nil {
+		return false
+	}
+	parentNode.Content = append(parentNode.Content, configKeyNode(key), &yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: value})
+	return true
+}
+
+func configMappingValue(mappingNode *yaml.Node, key string) *yaml.Node {
+	for contentIndex := 0; contentIndex+1 < len(mappingNode.Content); contentIndex += 2 {
+		if mappingNode.Content[contentIndex].Value == key {
+			return mappingNode.Content[contentIndex+1]
+		}
+	}
+	return nil
+}
+
+func configKeyNode(key string) *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
+}
+
 // 转换运行配置
 func OptionsFromConfig(configPath string, config Config) Options {
 	NormalizeConfig(&config)
@@ -249,9 +416,6 @@ func NormalizeConfig(config *Config) {
 	if strings.TrimSpace(config.Data.Directory) == "" {
 		config.Data.Directory = defaultConfig.Data.Directory
 	}
-	if strings.TrimSpace(config.Admin.Username) == "" {
-		config.Admin.Username = defaultConfig.Admin.Username
-	}
 	config.Site.Title = strings.TrimSpace(config.Site.Title)
 	config.Site.Description = strings.TrimSpace(config.Site.Description)
 	config.Site.IconURL = strings.TrimSpace(config.Site.IconURL)
@@ -265,6 +429,8 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 	config.Site.Title = strings.TrimSpace(siteSettings.Title)
 	config.Site.Description = strings.TrimSpace(siteSettings.Description)
 	config.Site.IconURL = strings.TrimSpace(siteSettings.IconURL)
+	config.Admin.Username = strings.TrimSpace(siteSettings.AdminUsername)
+	config.Admin.Password = strings.TrimSpace(siteSettings.AdminPassword)
 	config.Comment.Enabled = siteSettings.CommentEnabled
 	config.Comment.Giscus.Repo = strings.TrimSpace(siteSettings.GiscusRepo)
 	config.Comment.Giscus.RepoID = strings.TrimSpace(siteSettings.GiscusRepoID)
@@ -282,6 +448,8 @@ func SiteSettingsFromOptions(options Options) model.SiteSettings {
 		Title:            options.Title,
 		Description:      options.Description,
 		IconURL:          options.SiteIconURL,
+		AdminUsername:    options.AdminUsername,
+		AdminPassword:    options.AdminPassword,
 		CommentEnabled:   options.Comment.Enabled,
 		GiscusRepo:       options.Comment.GiscusRepo,
 		GiscusRepoID:     options.Comment.GiscusRepoID,

@@ -446,6 +446,8 @@ function createEmptySiteSettings(): SiteSettings {
     title: "",
     description: "",
     iconUrl: "",
+    adminUsername: "",
+    adminPassword: "",
     commentEnabled: false,
     giscusRepo: "",
     giscusRepoId: "",
@@ -502,6 +504,8 @@ function userMessageFromBackendError(errorText: string): string {
   if (normalizedError.includes("default theme")) return "默认主题只能是自动、明亮或暗色。";
   if (normalizedError.includes("site font")) return "站点字体配置不正确。";
   if (normalizedError.includes("site icon")) return "网站 Icon 只支持 http(s) 链接或 / 开头的站内路径。";
+  if (normalizedError.includes("admin username is required")) return "设置后台密码时需要填写用户名。";
+  if (normalizedError.includes("admin username")) return "后台用户名不能包含空格。";
   if (normalizedError.includes("read post") || normalizedError.includes("read posts")) return "读取文章失败。";
   if (normalizedError.includes("write") || normalizedError.includes("save")) return "保存失败，请稍后重试。";
   if (normalizedError.includes("render")) return "站点渲染失败，请检查文章内容或配置。";
@@ -696,7 +700,7 @@ function escapeHTML(rawText: string): string {
               <tr v-for="post in posts" :key="post.id">
                 <td>
                   <button type="button" class="title-button" @click="openEditorForPost(post.id)">{{ post.title
-                    }}</button>
+                  }}</button>
                   <p>{{ post.description || "没有文章摘要" }}</p>
                 </td>
                 <td>
@@ -872,7 +876,25 @@ function escapeHTML(rawText: string): string {
             <label class="form-field wide-field">
               <span>网站 Icon</span>
               <input v-model="siteSettings.iconUrl" type="text"
-                placeholder="填写网站 Icon URL，例如 https://example.com/favicon.png" />
+                placeholder="填写网站 Icon，例如 https://example.com/favicon.png" />
+            </label>
+          </div>
+        </section>
+
+        <section class="card settings-card">
+          <div class="card-heading compact-heading">
+            <h2>后台账号</h2>
+          </div>
+          <div class="settings-grid">
+            <label class="form-field">
+              <span>用户名</span>
+              <input v-model="siteSettings.adminUsername" type="text" autocomplete="username"
+                placeholder="设置后台密码时填写用户名" />
+            </label>
+            <label class="form-field">
+              <span>密码</span>
+              <input v-model="siteSettings.adminPassword" type="password" autocomplete="new-password"
+                placeholder="留空则不启用后台密码" />
             </label>
           </div>
         </section>
