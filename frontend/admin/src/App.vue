@@ -68,6 +68,7 @@ const loginForm = ref({ username: "", password: "" });
 const loginError = ref("");
 
 let previewTimerID: number | undefined;
+let toastTimerID: number | undefined;
 
 const publishedPosts = computed(() => posts.value.filter((post) => !post.draft));
 const draftPosts = computed(() => posts.value.filter((post) => post.draft));
@@ -100,11 +101,15 @@ onBeforeUnmount(() => {
   window.removeEventListener("load", initializeIcons);
   window.removeEventListener("keydown", handleGlobalKeydown);
   if (previewTimerID !== undefined) window.clearTimeout(previewTimerID);
+  if (toastTimerID !== undefined) window.clearTimeout(toastTimerID);
 });
 
 watch(
   () => [activeView.value, isAuthenticated.value, isDeleteDialogOpen.value, statusMessage.value, errorMessage.value],
-  () => void nextTick(initializeIcons),
+  () => {
+    scheduleToastDismiss();
+    void nextTick(initializeIcons);
+  },
 );
 
 watch(
@@ -470,6 +475,16 @@ function formatCurrentDate(): string {
   return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
+function scheduleToastDismiss(): void {
+  if (toastTimerID !== undefined) window.clearTimeout(toastTimerID);
+  if (!statusMessage.value && !errorMessage.value) return;
+  toastTimerID = window.setTimeout(() => {
+    statusMessage.value = "";
+    errorMessage.value = "";
+    toastTimerID = undefined;
+  }, 3000);
+}
+
 function handleRequestError(error: unknown): void {
   if (error instanceof UnauthorizedError) {
     isAuthenticated.value = false;
@@ -701,7 +716,7 @@ function escapeHTML(rawText: string): string {
               <tr v-for="post in posts" :key="post.id">
                 <td>
                   <button type="button" class="title-button" @click="openEditorForPost(post.id)">{{ post.title
-                    }}</button>
+                  }}</button>
                   <p>{{ post.description || "没有文章摘要" }}</p>
                 </td>
                 <td>
