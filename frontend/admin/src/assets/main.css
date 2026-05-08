@@ -159,8 +159,13 @@ textarea:focus-visible {
 }
 
 a {
-  color: inherit;
+  color: color-mix(in srgb, var(--foreground) 72%, var(--muted-foreground));
   text-decoration: none;
+  transition: color 150ms ease;
+}
+
+a:hover {
+  color: var(--foreground);
 }
 
 svg,
@@ -684,16 +689,16 @@ svg,
 .title-button {
   border: 0;
   padding: 0;
-  color: var(--foreground);
+  color: color-mix(in srgb, var(--foreground) 82%, var(--muted-foreground));
   background: transparent;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
+  transition: color 150ms ease;
 }
 
 .title-button:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  color: var(--foreground);
 }
 
 .data-table p {

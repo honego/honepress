@@ -36,8 +36,8 @@
   --text: #f2f0e9;
   --muted: #adb3b8;
   --line: #34383d;
-  --accent: #7cc7b8;
-  --accent-strong: #a7ded3;
+  --accent: #c7ccd1;
+  --accent-strong: #ffffff;
   --code: #2b3232;
 }
 
@@ -48,8 +48,8 @@
     --text: #f2f0e9;
     --muted: #adb3b8;
     --line: #34383d;
-    --accent: #7cc7b8;
-    --accent-strong: #a7ded3;
+    --accent: #c7ccd1;
+    --accent-strong: #ffffff;
     --code: #2b3232;
   }
 }
@@ -82,11 +82,12 @@ body {
 a {
   color: var(--accent);
   text-decoration: none;
+  transition: color 160ms ease;
 }
 
 a:hover {
   color: var(--accent-strong);
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .site-header {
@@ -135,6 +136,9 @@ a:hover {
   font-size: 17px;
 }
 
+.nav-links a:hover {
+  text-decoration: none;
+}
 .icon-link,
 .icon-button {
   width: 28px;
@@ -144,7 +148,7 @@ a:hover {
   justify-content: center;
   flex: 0 0 28px;
   border: 0;
-  color: var(--text);
+  color: var(--accent);
   background: transparent;
   cursor: pointer;
   padding: 0;
@@ -335,7 +339,7 @@ button.back-link {
 
 button.back-link:hover {
   color: var(--accent-strong);
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .article {
@@ -431,7 +435,7 @@ button.back-link:hover {
 }
 
 .footer-inner a:hover {
-  color: inherit;
+  color: var(--accent-strong);
   text-decoration: none;
 }
 .footer-inner p {
@@ -452,6 +456,7 @@ button.back-link:hover {
 }
 
 .footer-links .icon-link:hover {
+  color: var(--accent);
   transform: translateY(-2px);
 }
 
@@ -464,7 +469,7 @@ button.back-link:hover {
 }
 .footer-sitemap,
 .footer-rss {
-  color: var(--muted);
+  color: var(--accent);
 }
 
 @media (max-width: 680px) {
