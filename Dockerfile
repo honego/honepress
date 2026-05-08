@@ -1,6 +1,4 @@
 # syntax=docker/dockerfile:1
-# SPDX-License-Identifier: Apache-2.0
-# Copyright (c) 2026 honeok <i@honeok.com>
 
 FROM node:22.22-alpine AS base
 
@@ -25,8 +23,8 @@ WORKDIR /go/src/github.com/honeok/honepress
 ENV CGO_ENABLED=0
 COPY backend .
 RUN set -ex \
-    go build -v -trimpath -ldflags="-s -w -buildid=" \
-    -o /go/bin/honepress main.go
+    && go build -v -trimpath -ldflags="-s -w -buildid=" \
+        -o /go/bin/honepress main.go
 
 FROM alpine:3.23.4
 LABEL org.opencontainers.image.authors="honeok <i@honeok.com>"
