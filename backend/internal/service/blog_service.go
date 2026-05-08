@@ -251,6 +251,7 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			SourceFilePath: sourceFilePath,
 			Title:          parsedFrontMatter.Title,
 			Icon:           parsedFrontMatter.Icon,
+			Thumbnail:      parsedFrontMatter.Thumbnail,
 			DateText:       parsedFrontMatter.Date,
 			PublishedAt:    publishedAt,
 			Description:    parsedFrontMatter.Description,
@@ -651,6 +652,7 @@ func postsToSummaries(posts []model.Post) []model.PostSummary {
 		postSummaries = append(postSummaries, model.PostSummary{
 			ID:          currentPost.SourceFileName,
 			Title:       currentPost.Title,
+			Thumbnail:   currentPost.Thumbnail,
 			Date:        currentPost.DateText,
 			Description: currentPost.Description,
 			Draft:       currentPost.Draft,

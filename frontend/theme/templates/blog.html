@@ -82,10 +82,17 @@
         <div class="archive-list">
           {{range .Posts}}
           <article class="archive-item">
-            <time datetime="{{.Date}}">{{.Date}}</time>
-            <h2>
-              <a href="{{.PublicURL}}">{{.Title}}</a>
-            </h2>
+            {{if .Thumbnail}}
+            <a class="archive-thumbnail" href="{{.PublicURL}}">
+              <img src="{{.Thumbnail}}" alt="" loading="lazy" />
+            </a>
+            {{end}}
+            <div class="archive-content">
+              <time datetime="{{.Date}}">{{.Date}}</time>
+              <h2>
+                <a href="{{.PublicURL}}">{{.Title}}</a>
+              </h2>
+            </div>
           </article>
           {{else}}
           <p class="empty">还没有文章。</p>

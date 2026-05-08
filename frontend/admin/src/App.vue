@@ -400,6 +400,7 @@ function buildSavePostRequest(): SavePostRequest {
     id: editorMode.value === "create" ? "" : editorForm.value.id,
     title: editorForm.value.title,
     icon: editorForm.value.icon,
+    thumbnail: editorForm.value.thumbnail,
     date: editorForm.value.date,
     description: editorForm.value.description,
     seoTitle: editorForm.value.seoTitle,
@@ -420,6 +421,7 @@ function createEmptyPost(): PostDetail {
     id: "",
     title: "未命名文章",
     icon: "",
+    thumbnail: "",
     date: formatCurrentDate(),
     description: "",
     seoTitle: "",
@@ -436,6 +438,7 @@ function normalizePostDetail(postDetail: PostDetail): PostDetail {
   return {
     ...postDetail,
     icon: postDetail.icon ?? "",
+    thumbnail: postDetail.thumbnail ?? "",
     seoTitle: postDetail.seoTitle ?? "",
     seoDescription: postDetail.seoDescription ?? "",
     aliases: postDetail.aliases ?? [],
@@ -796,6 +799,10 @@ function escapeHTML(rawText: string): string {
               <label class="form-field">
                 <span>摘要</span>
                 <textarea v-model="editorForm.description" rows="3" placeholder="用于首页、归档和 SEO 的简短摘要"></textarea>
+              </label>
+              <label class="form-field">
+                <span>缩略图</span>
+                <input v-model="editorForm.thumbnail" type="text" placeholder="图床图片URL，留空则不显示" />
               </label>
               <label class="switch-field">
                 <input v-model="editorForm.draft" type="checkbox" />

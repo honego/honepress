@@ -1,6 +1,7 @@
 export interface PostSummary {
   id: string;
   title: string;
+  thumbnail: string;
   date: string;
   description: string;
   draft: boolean;
@@ -13,6 +14,7 @@ export interface PostDetail {
   id: string;
   title: string;
   icon: string;
+  thumbnail: string;
   date: string;
   description: string;
   seoTitle: string;
@@ -28,6 +30,7 @@ export interface SavePostRequest {
   id: string;
   title: string;
   icon: string;
+  thumbnail: string;
   date: string;
   description: string;
   seoTitle: string;

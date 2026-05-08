@@ -255,16 +255,49 @@ h1 {
 }
 
 .archive-item {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 18px;
-  align-items: baseline;
-  padding: 8px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 12px 0;
+}
+
+.archive-thumbnail {
+  flex: 0 0 180px;
+  width: 180px;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.archive-thumbnail img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: opacity 200ms ease;
+}
+
+.archive-thumbnail:hover img {
+  opacity: 0.86;
+}
+
+.archive-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .archive-item time {
+  display: block;
   color: var(--muted);
   font-size: 14px;
+  margin-bottom: 4px;
 }
 
 .archive-item h2 {
@@ -281,8 +314,43 @@ h1 {
 }
 
 .post-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
   padding: 20px 0;
   border-bottom: 1px solid transparent;
+}
+
+.post-thumbnail {
+  flex: 0 0 200px;
+  width: 200px;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.post-thumbnail img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: opacity 200ms ease;
+}
+
+.post-thumbnail:hover img {
+  opacity: 0.86;
+}
+
+.post-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .post-item time,
@@ -515,8 +583,35 @@ button.back-link:hover {
   }
 
   .archive-item {
-    grid-template-columns: 1fr;
-    gap: 2px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .archive-thumbnail {
+    align-self: center;
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .archive-content {
+    width: 100%;
+  }
+
+  .post-item {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .post-thumbnail {
+    align-self: center;
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .post-content {
+    width: 100%;
   }
 }
 

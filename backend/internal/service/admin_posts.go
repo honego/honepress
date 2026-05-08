@@ -53,6 +53,7 @@ func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail
 		ID:             sourceFileName,
 		Title:          frontMatter.Title,
 		Icon:           frontMatter.Icon,
+		Thumbnail:      frontMatter.Thumbnail,
 		Date:           frontMatter.Date,
 		Description:    frontMatter.Description,
 		SEOTitle:       frontMatter.SEOTitle,
@@ -196,6 +197,7 @@ func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.Post
 	frontMatter := model.PostFrontMatter{
 		Title:          strings.TrimSpace(savePostRequest.Title),
 		Icon:           strings.TrimSpace(savePostRequest.Icon),
+		Thumbnail:      strings.TrimSpace(savePostRequest.Thumbnail),
 		Date:           strings.TrimSpace(savePostRequest.Date),
 		Description:    strings.TrimSpace(savePostRequest.Description),
 		SEOTitle:       strings.TrimSpace(savePostRequest.SEOTitle),

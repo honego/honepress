@@ -12,6 +12,7 @@ import (
 type postFrontMatterYAML struct {
 	Title          string   `yaml:"title"`
 	Icon           string   `yaml:"icon,omitempty"`
+	Thumbnail      string   `yaml:"thumbnail,omitempty"`
 	Date           string   `yaml:"date"`
 	Description    string   `yaml:"description"`
 	SEOTitle       string   `yaml:"seoTitle,omitempty"`
@@ -36,6 +37,7 @@ func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.Pos
 	parsedFrontMatter := model.PostFrontMatter{
 		Title:          strings.TrimSpace(decodedFrontMatter.Title),
 		Icon:           strings.TrimSpace(decodedFrontMatter.Icon),
+		Thumbnail:      strings.TrimSpace(decodedFrontMatter.Thumbnail),
 		Date:           strings.TrimSpace(decodedFrontMatter.Date),
 		Description:    strings.TrimSpace(decodedFrontMatter.Description),
 		SEOTitle:       strings.TrimSpace(decodedFrontMatter.SEOTitle),
@@ -53,6 +55,7 @@ func BuildPostDocument(frontMatter model.PostFrontMatter, bodyMarkdownContent st
 	encodedFrontMatter, err := yaml.Marshal(postFrontMatterYAML{
 		Title:          frontMatter.Title,
 		Icon:           frontMatter.Icon,
+		Thumbnail:      frontMatter.Thumbnail,
 		Date:           frontMatter.Date,
 		Description:    frontMatter.Description,
 		SEOTitle:       frontMatter.SEOTitle,

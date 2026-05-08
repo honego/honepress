@@ -82,11 +82,18 @@
       <section class="page-body post-list" aria-label="文章">
         {{range .Posts}}
         <article class="page-entry post-item">
-          <time datetime="{{.Date}}">{{.Date}}</time>
-          <h3>
-            <a href="{{.PublicURL}}">{{.Title}}</a>
-          </h3>
-          <p>{{.Description}}</p>
+          {{if .Thumbnail}}
+          <a class="post-thumbnail" href="{{.PublicURL}}">
+            <img src="{{.Thumbnail}}" alt="" loading="lazy" />
+          </a>
+          {{end}}
+          <div class="post-content">
+            <time datetime="{{.Date}}">{{.Date}}</time>
+            <h3>
+              <a href="{{.PublicURL}}">{{.Title}}</a>
+            </h3>
+            <p>{{.Description}}</p>
+          </div>
         </article>
         {{else}}
         <p class="empty">还没有文章。</p>

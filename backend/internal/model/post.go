@@ -9,6 +9,7 @@ import (
 type PostFrontMatter struct {
 	Title          string   `yaml:"title"`
 	Icon           string   `yaml:"icon,omitempty"`
+	Thumbnail      string   `yaml:"thumbnail,omitempty"`
 	Date           string   `yaml:"date"`
 	Description    string   `yaml:"description"`
 	SEOTitle       string   `yaml:"seoTitle,omitempty"`
@@ -25,6 +26,7 @@ type Post struct {
 	SourceFilePath string
 	Title          string
 	Icon           string
+	Thumbnail      string
 	DateText       string
 	PublishedAt    time.Time
 	Description    string
@@ -42,6 +44,7 @@ type Post struct {
 type PostSummary struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
+	Thumbnail   string   `json:"thumbnail"`
 	Date        string   `json:"date"`
 	Description string   `json:"description"`
 	Draft       bool     `json:"draft"`
@@ -55,6 +58,7 @@ type PostDetail struct {
 	ID             string   `json:"id"`
 	Title          string   `json:"title"`
 	Icon           string   `json:"icon"`
+	Thumbnail      string   `json:"thumbnail"`
 	Date           string   `json:"date"`
 	Description    string   `json:"description"`
 	SEOTitle       string   `json:"seoTitle"`
@@ -71,6 +75,7 @@ type SavePostRequest struct {
 	ID             string   `json:"id"`
 	Title          string   `json:"title"`
 	Icon           string   `json:"icon"`
+	Thumbnail      string   `json:"thumbnail"`
 	Date           string   `json:"date"`
 	Description    string   `json:"description"`
 	SEOTitle       string   `json:"seoTitle"`
