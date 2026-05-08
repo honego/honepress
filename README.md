@@ -98,7 +98,7 @@ go build -trimpath -ldflags="-s -w" -o /out/honepress .
 复制配置文件：
 
 ```bash
-cp config.example.yaml config.yaml
+cp docs/config.yaml config.yaml
 ```
 
 编辑配置文件：
@@ -131,7 +131,6 @@ Docker 内部启动命令保持不变：
 /app/
   honepress
   config.yaml
-  config.example.yaml
   frontend/theme/templates/
   dist/
     admin/

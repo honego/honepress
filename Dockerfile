@@ -21,19 +21,17 @@ COPY frontend/theme/ ./
 RUN npm run build
 
 FROM golang:1.26-alpine AS build-backend
-WORKDIR /src/backend
+WORKDIR /go/src/github.com/honeok/honepress
 ENV CGO_ENABLED=0
-COPY backend/go.mod backend/go.sum ./
-RUN go mod download
-COPY backend/ ./
-RUN go build -v -trimpath -ldflags="-s -w" \
-    -o /go/bin/honepress .
+COPY backend .
+RUN set -ex \
+    go build -v -trimpath -ldflags="-s -w -buildid=" \
+    -o /go/bin/honepress main.go
 
 FROM alpine:3.23.4
 LABEL org.opencontainers.image.authors="honeok <i@honeok.com>"
 WORKDIR /app
 COPY --from=build-backend /go/bin/honepress /app/honepress
-COPY config.example.yaml /app/config.example.yaml
 COPY --from=build-admin /src/dist/admin /app/dist/admin
 COPY --from=build-theme /src/dist/theme /app/dist/theme
 COPY --from=build-theme /src/frontend/theme/templates /app/frontend/theme/templates
@@ -42,5 +40,4 @@ RUN set -ex \
     && mkdir -p /app/data/content/posts /app/data/public
 VOLUME /app/data
 EXPOSE 8080
-ENV TZ=Asia/Shanghai
-ENTRYPOINT ["/app/honepress", "-c", "/app/config.yaml"]
+ENTRYPOINT ["./honepress", "-c", "config.yaml"]

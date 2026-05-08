@@ -474,14 +474,31 @@ button.back-link:hover {
 
 @media (max-width: 680px) {
   .nav {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 14px 0;
+    align-items: center;
+    flex-direction: row;
+    padding: 12px 0;
     gap: 12px;
   }
 
+  .brand {
+    min-width: 0;
+    flex: 1 1 auto;
+    font-size: 18px;
+  }
+
+  .brand span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .nav-links {
-    justify-content: flex-start;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 10px;
+    font-size: 16px;
   }
 
   .page {
