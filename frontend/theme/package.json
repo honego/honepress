@@ -4,10 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build"
+    "build": "next build"
+  },
+  "dependencies": {
+    "next": "16.0.7",
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
   },
   "devDependencies": {
-    "typescript": "6.0.3",
-    "vite": "8.0.11"
+    "@types/node": "25.0.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "typescript": "6.0.3"
   }
 }

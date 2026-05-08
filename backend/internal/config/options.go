@@ -473,7 +473,6 @@ func (options Options) ValidateRuntimeFiles() error {
 	requiredDirectories := map[string]string{
 		"admin dist directory": options.AdminDistDir,
 		"theme dist directory": options.ThemeDistDir,
-		"template directory":   options.TemplateDir,
 	}
 	for directoryName, directoryPath := range requiredDirectories {
 		if strings.TrimSpace(directoryPath) == "" {
@@ -492,11 +491,8 @@ func (options Options) ValidateRuntimeFiles() error {
 	}
 
 	requiredFiles := map[string]string{
-		"admin entry file":     filepath.Join(options.AdminDistDir, "index.html"),
-		"theme asset manifest": filepath.Join(options.ThemeDistDir, ".vite", "manifest.json"),
-		"index template":       filepath.Join(options.TemplateDir, "index.html"),
-		"archive template":     filepath.Join(options.TemplateDir, "blog.html"),
-		"post template":        filepath.Join(options.TemplateDir, "post.html"),
+		"admin entry file": filepath.Join(options.AdminDistDir, "index.html"),
+		"theme entry file": filepath.Join(options.ThemeDistDir, "index.html"),
 	}
 	for fileName, filePath := range requiredFiles {
 		fileInfo, err := os.Stat(filePath)

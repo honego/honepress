@@ -10,6 +10,7 @@ var ReservedPublicFileNames = map[string]struct{}{
 	"index.html":   {},
 	"blog.html":    {},
 	"archive.html": {},
+	"posts.html":   {},
 	"rss.xml":      {},
 	"sitemap.xml":  {},
 

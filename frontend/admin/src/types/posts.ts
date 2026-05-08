@@ -61,6 +61,25 @@ export interface PostsResponse {
   posts: PostSummary[];
 }
 
+export interface AdminPostsResponse {
+  posts: PostSummary[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface AdminStats {
+  totalPosts: number;
+  publishedPosts: number;
+  draftPosts: number;
+}
+
+export interface MeResponse {
+  user_id: string;
+  role: string;
+}
+
 export interface PostDetailResponse {
   post: PostDetail;
   message?: string;

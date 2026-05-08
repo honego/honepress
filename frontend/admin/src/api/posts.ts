@@ -1,10 +1,11 @@
 import type {
+  AdminPostsResponse,
+  AdminStats,
   ErrorResponse,
+  MeResponse,
   MessageResponse,
   PostDetail,
   PostDetailResponse,
-  PostsResponse,
-  PostSummary,
   SavePostRequest,
   SettingsResponse,
   SiteSettings,
@@ -15,7 +16,7 @@ const jsonHeaders: HeadersInit = {
 };
 
 export class UnauthorizedError extends Error {
-  constructor(message = "请先登录后台。") {
+  constructor(message = "请先登录。") {
     super(message);
     this.name = "UnauthorizedError";
   }
@@ -41,25 +42,41 @@ export async function logoutAdmin(): Promise<MessageResponse> {
   );
 }
 
-export async function checkAdminSession(): Promise<void> {
-  await readJSONResponse<{ status: string }>(await authorizedFetch("/api/health"));
+export async function checkAdminSession(): Promise<MeResponse> {
+  return readJSONResponse<MeResponse>(await authorizedFetch("/api/admin/me"));
 }
 
-export async function fetchPosts(): Promise<PostSummary[]> {
-  const postsResponse = await readJSONResponse<PostsResponse>(await authorizedFetch("/api/posts"));
-  return postsResponse.posts;
+export async function fetchAdminStats(): Promise<AdminStats> {
+  return readJSONResponse<AdminStats>(await authorizedFetch("/api/admin/stats"));
+}
+
+export async function fetchPosts(params: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  draft?: "all" | "true" | "false";
+}): Promise<AdminPostsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
+  if (params.search) searchParams.set("search", params.search);
+  if (params.draft && params.draft !== "all") searchParams.set("draft", params.draft);
+  const queryString = searchParams.toString();
+  return readJSONResponse<AdminPostsResponse>(
+    await authorizedFetch(`/api/admin/posts${queryString ? `?${queryString}` : ""}`),
+  );
 }
 
 export async function fetchPost(postID: string): Promise<PostDetail> {
   const postDetailResponse = await readJSONResponse<PostDetailResponse>(
-    await authorizedFetch(`/api/posts/${encodeURIComponent(postID)}`),
+    await authorizedFetch(`/api/admin/posts/${encodeURIComponent(postID)}`),
   );
   return postDetailResponse.post;
 }
 
 export async function createPost(savePostRequest: SavePostRequest): Promise<PostDetailResponse> {
   return readJSONResponse<PostDetailResponse>(
-    await authorizedFetch("/api/posts", {
+    await authorizedFetch("/api/admin/posts", {
       method: "POST",
       headers: jsonHeaders,
       body: JSON.stringify(savePostRequest),
@@ -69,7 +86,7 @@ export async function createPost(savePostRequest: SavePostRequest): Promise<Post
 
 export async function updatePost(postID: string, savePostRequest: SavePostRequest): Promise<PostDetailResponse> {
   return readJSONResponse<PostDetailResponse>(
-    await authorizedFetch(`/api/posts/${encodeURIComponent(postID)}`, {
+    await authorizedFetch(`/api/admin/posts/${encodeURIComponent(postID)}`, {
       method: "PUT",
       headers: jsonHeaders,
       body: JSON.stringify(savePostRequest),
@@ -79,14 +96,14 @@ export async function updatePost(postID: string, savePostRequest: SavePostReques
 
 export async function deletePost(postID: string): Promise<MessageResponse> {
   return readJSONResponse<MessageResponse>(
-    await authorizedFetch(`/api/posts/${encodeURIComponent(postID)}`, {
+    await authorizedFetch(`/api/admin/posts/${encodeURIComponent(postID)}`, {
       method: "DELETE",
     }),
   );
 }
 
 export async function previewMarkdown(markdown: string): Promise<string> {
-  const previewResponse = await authorizedFetch("/api/preview", {
+  const previewResponse = await authorizedFetch("/api/admin/preview", {
     method: "POST",
     headers: jsonHeaders,
     body: JSON.stringify({ markdown }),
@@ -98,13 +115,13 @@ export async function previewMarkdown(markdown: string): Promise<string> {
 }
 
 export async function fetchSettings(): Promise<SiteSettings> {
-  const settingsResponse = await readJSONResponse<SettingsResponse>(await authorizedFetch("/api/settings"));
+  const settingsResponse = await readJSONResponse<SettingsResponse>(await authorizedFetch("/api/admin/settings"));
   return settingsResponse.settings;
 }
 
 export async function updateSettings(siteSettings: SiteSettings): Promise<SettingsResponse> {
   return readJSONResponse<SettingsResponse>(
-    await authorizedFetch("/api/settings", {
+    await authorizedFetch("/api/admin/settings", {
       method: "PUT",
       headers: jsonHeaders,
       body: JSON.stringify(siteSettings),
@@ -122,7 +139,7 @@ async function authorizedFetch(input: RequestInfo | URL, init: RequestInit = {})
 async function readJSONResponse<ResponseType>(response: Response): Promise<ResponseType> {
   const responseText = await response.text();
   if (response.status === 401) {
-    throw new UnauthorizedError(readErrorMessageFromText(responseText) || "请先登录后台。");
+    throw new UnauthorizedError(readErrorMessageFromText(responseText) || "请先登录。");
   }
   if (!response.ok) {
     throw new Error(readErrorMessageFromText(responseText));
@@ -130,8 +147,7 @@ async function readJSONResponse<ResponseType>(response: Response): Promise<Respo
   if (responseText.trim() === "") {
     throw new Error("接口没有返回内容。");
   }
-  const parsedResponse = JSON.parse(responseText) as unknown;
-  return parsedResponse as ResponseType;
+  return JSON.parse(responseText) as ResponseType;
 }
 
 async function readErrorMessage(response: Response): Promise<string> {

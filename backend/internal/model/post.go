@@ -70,6 +70,20 @@ type PostDetail struct {
 	Body           string   `json:"body"`
 }
 
+type PublicPostDetail struct {
+	ID             string   `json:"id"`
+	Title          string   `json:"title"`
+	Thumbnail      string   `json:"thumbnail"`
+	Date           string   `json:"date"`
+	Description    string   `json:"description"`
+	SEOTitle       string   `json:"seoTitle"`
+	SEODescription string   `json:"seoDescription"`
+	URL            string   `json:"url"`
+	PublicURL      string   `json:"publicUrl"`
+	Tags           []string `json:"tags"`
+	HTML           string   `json:"html"`
+}
+
 // 文章保存请求
 type SavePostRequest struct {
 	ID             string   `json:"id"`

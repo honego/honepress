@@ -1,9 +1,7 @@
 package server
 
 import (
-	"crypto/rand"
 	"crypto/subtle"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -25,22 +24,24 @@ import (
 
 // HTTP 服务
 type Server struct {
-	optionsMutex      sync.RWMutex
-	options           config.Options
-	blogService       *service.BlogService
-	adminSessionToken string
+	optionsMutex sync.RWMutex
+	options      config.Options
+	blogService  *service.BlogService
+	jwtSecret    []byte
+	apiLimiter   *apiRateLimiter
 }
 
 // 创建 HTTP 服务实例
 func New(options config.Options, blogService *service.BlogService) (*Server, error) {
-	adminSessionToken, err := newAdminSessionToken()
+	jwtSecret, err := resolveJWTSecret()
 	if err != nil {
-		return nil, fmt.Errorf("create admin session token: %w", err)
+		return nil, fmt.Errorf("create JWT secret: %w", err)
 	}
 	return &Server{
-		options:           options,
-		blogService:       blogService,
-		adminSessionToken: adminSessionToken,
+		options:     options,
+		blogService: blogService,
+		jwtSecret:   jwtSecret,
+		apiLimiter:  newAPIRateLimiter(),
 	}, nil
 }
 
@@ -53,23 +54,33 @@ func (server *Server) routes() http.Handler {
 	router := chi.NewRouter()
 	router.Use(securityHeaders)
 
-	router.Post("/api/login", server.apiHandler(server.handleLogin))
-	router.Post("/api/logout", server.apiHandler(server.handleLogout))
-
 	router.Route("/api", func(apiRouter chi.Router) {
-		apiRouter.Use(server.adminAuth)
+		apiRouter.Use(server.apiLimiter.middleware)
+		apiRouter.Use(apiAccessLog)
 		apiRouter.NotFound(server.apiHandler(func(_ http.ResponseWriter, _ *http.Request) error {
 			return newResponseErrorMessage(http.StatusNotFound, "api endpoint not found")
 		}))
-		apiRouter.Get("/health", server.apiHandler(server.handleHealth))
-		apiRouter.Get("/posts", server.apiHandler(server.handleListPosts))
-		apiRouter.Post("/posts", server.apiHandler(server.handleCreatePost))
-		apiRouter.Post("/preview", server.apiHandler(server.handlePreview))
-		apiRouter.Get("/settings", server.apiHandler(server.handleGetSettings))
-		apiRouter.Put("/settings", server.apiHandler(server.handleUpdateSettings))
-		apiRouter.Get("/posts/{postID}", server.apiHandler(server.handleGetPost))
-		apiRouter.Put("/posts/{postID}", server.apiHandler(server.handleUpdatePost))
-		apiRouter.Delete("/posts/{postID}", server.apiHandler(server.handleDeletePost))
+		apiRouter.Post("/login", server.apiHandler(server.handleLogin))
+		apiRouter.Post("/logout", server.apiHandler(server.handleLogout))
+		apiRouter.Post("/refresh-token", server.apiHandler(server.handleRefreshToken))
+		apiRouter.Get("/site", server.apiHandler(server.handleGetPublicSite))
+		apiRouter.Get("/posts", server.apiHandler(server.handleListPublicPosts))
+		apiRouter.Get("/posts/{postID}", server.apiHandler(server.handleGetPublicPost))
+
+		apiRouter.Route("/admin", func(adminRouter chi.Router) {
+			adminRouter.Use(server.adminAuth)
+			adminRouter.Get("/health", server.apiHandler(server.handleHealth))
+			adminRouter.Get("/me", server.apiHandler(server.handleMe))
+			adminRouter.Get("/stats", server.apiHandler(server.handleAdminStats))
+			adminRouter.Get("/posts", server.apiHandler(server.handleListPosts))
+			adminRouter.Post("/posts", server.apiHandler(server.handleCreatePost))
+			adminRouter.Post("/preview", server.apiHandler(server.handlePreview))
+			adminRouter.Get("/settings", server.apiHandler(server.handleGetSettings))
+			adminRouter.Put("/settings", server.apiHandler(server.handleUpdateSettings))
+			adminRouter.Get("/posts/{postID}", server.apiHandler(server.handleGetPost))
+			adminRouter.Put("/posts/{postID}", server.apiHandler(server.handleUpdatePost))
+			adminRouter.Delete("/posts/{postID}", server.apiHandler(server.handleDeletePost))
+		})
 	})
 	router.Group(func(adminRouter chi.Router) {
 		adminRouter.Get("/admin", server.redirectAdmin)
@@ -79,8 +90,6 @@ func (server *Server) routes() http.Handler {
 
 	return router
 }
-
-const adminSessionCookieName = "honepress_admin_session"
 
 type apiHandler func(http.ResponseWriter, *http.Request) error
 
@@ -128,7 +137,11 @@ func (server *Server) apiHandler(handler apiHandler) http.HandlerFunc {
 func (server *Server) adminAuth(nextHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
 		_, adminPassword := server.adminCredentials()
-		if adminPassword == "" || server.hasValidAdminSession(request) || server.hasValidBasicAuth(request) {
+		if adminPassword == "" {
+			nextHandler.ServeHTTP(responseWriter, request)
+			return
+		}
+		if _, ok := server.authenticatedClaims(request); ok {
 			nextHandler.ServeHTTP(responseWriter, request)
 			return
 		}
@@ -137,20 +150,6 @@ func (server *Server) adminAuth(nextHandler http.Handler) http.Handler {
 			log.Printf("write authentication error response: %v", err)
 		}
 	})
-}
-
-func (server *Server) hasValidBasicAuth(request *http.Request) bool {
-	username, password, hasCredentials := request.BasicAuth()
-	if !hasCredentials {
-		return false
-	}
-	adminUsername, adminPassword := server.adminCredentials()
-	if adminPassword == "" {
-		return true
-	}
-	usernameMatches := subtle.ConstantTimeCompare([]byte(username), []byte(adminUsername)) == 1
-	passwordMatches := subtle.ConstantTimeCompare([]byte(password), []byte(adminPassword)) == 1
-	return usernameMatches && passwordMatches
 }
 
 func (server *Server) adminCredentials() (string, string) {
@@ -168,50 +167,11 @@ func (server *Server) setAdminCredentials(username string, password string) {
 	server.options.AdminPassword = password
 }
 
-func (server *Server) hasValidAdminSession(request *http.Request) bool {
-	adminSessionCookie, err := request.Cookie(adminSessionCookieName)
-	if err != nil || server.adminSessionToken == "" {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(adminSessionCookie.Value), []byte(server.adminSessionToken)) == 1
-}
-
-func (server *Server) setAdminSessionCookie(responseWriter http.ResponseWriter, request *http.Request) {
-	http.SetCookie(responseWriter, &http.Cookie{
-		Name:     adminSessionCookieName,
-		Value:    server.adminSessionToken,
-		Path:     "/",
-		MaxAge:   7 * 24 * 60 * 60,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   request.TLS != nil,
-	})
-}
-
-func clearAdminSessionCookie(responseWriter http.ResponseWriter, request *http.Request) {
-	http.SetCookie(responseWriter, &http.Cookie{
-		Name:     adminSessionCookieName,
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   request.TLS != nil,
-	})
-}
-
-func newAdminSessionToken() (string, error) {
-	tokenBytes := make([]byte, 32)
-	if _, err := rand.Read(tokenBytes); err != nil {
-		return "", fmt.Errorf("read random bytes: %w", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(tokenBytes), nil
-}
-
 func securityHeaders(nextHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
 		responseWriter.Header().Set("X-Content-Type-Options", "nosniff")
 		responseWriter.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		responseWriter.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		nextHandler.ServeHTTP(responseWriter, request)
 	})
 }
@@ -229,14 +189,70 @@ func (server *Server) serveAdmin(responseWriter http.ResponseWriter, request *ht
 
 	targetFilePath := filepath.Join(server.options.AdminDistDir, filepath.FromSlash(cleanRequestPath))
 	fileInfo, err := os.Stat(targetFilePath)
-	if err == nil && !fileInfo.IsDir() {
-		fileServerRequest := request.Clone(request.Context())
-		fileServerRequest.URL.Path = "/" + cleanRequestPath
-		http.FileServer(http.Dir(server.options.AdminDistDir)).ServeHTTP(responseWriter, fileServerRequest)
-		return
+	if err == nil {
+		if fileInfo.IsDir() {
+			if server.serveStaticFile(responseWriter, request, server.options.AdminDistDir, filepath.ToSlash(filepath.Join(cleanRequestPath, "index.html"))) {
+				return
+			}
+		} else if server.serveStaticFile(responseWriter, request, server.options.AdminDistDir, cleanRequestPath) {
+			return
+		}
+	}
+
+	if !strings.HasSuffix(cleanRequestPath, ".html") {
+		if server.serveStaticFile(responseWriter, request, server.options.AdminDistDir, cleanRequestPath+".html") {
+			return
+		}
+		if server.serveStaticFile(responseWriter, request, server.options.AdminDistDir, filepath.ToSlash(filepath.Join(cleanRequestPath, "index.html"))) {
+			return
+		}
 	}
 
 	server.serveAdminIndex(responseWriter)
+}
+
+func (server *Server) serveStaticFile(responseWriter http.ResponseWriter, request *http.Request, rootDirectory string, cleanRequestPath string) bool {
+	targetFilePath := filepath.Join(rootDirectory, filepath.FromSlash(cleanRequestPath))
+	fileInfo, err := os.Stat(targetFilePath)
+	if err != nil || fileInfo.IsDir() {
+		return false
+	}
+	fileServerRequest := request.Clone(request.Context())
+	fileServerRequest.URL.Path = "/" + strings.TrimPrefix(filepath.ToSlash(cleanRequestPath), "/")
+	http.FileServer(http.Dir(rootDirectory)).ServeHTTP(responseWriter, fileServerRequest)
+	return true
+}
+
+func (server *Server) servePublic(responseWriter http.ResponseWriter, request *http.Request) {
+	cleanRequestPath := path.Clean(strings.TrimPrefix(request.URL.Path, "/"))
+	if cleanRequestPath == "." || cleanRequestPath == "/" || strings.HasPrefix(cleanRequestPath, "..") {
+		http.FileServer(http.Dir(server.options.PublicDir)).ServeHTTP(responseWriter, request)
+		return
+	}
+
+	if server.serveStaticFile(responseWriter, request, server.options.PublicDir, cleanRequestPath) {
+		return
+	}
+
+	if !strings.HasSuffix(cleanRequestPath, ".html") {
+		if server.serveStaticFile(responseWriter, request, server.options.PublicDir, cleanRequestPath+".html") {
+			return
+		}
+		if server.serveStaticFile(responseWriter, request, server.options.PublicDir, filepath.ToSlash(filepath.Join(cleanRequestPath, "index.html"))) {
+			return
+		}
+	}
+	if strings.EqualFold(cleanRequestPath, "blog.html") {
+		if server.serveStaticFile(responseWriter, request, server.options.PublicDir, "archive.html") {
+			return
+		}
+	}
+	if strings.HasSuffix(strings.ToLower(cleanRequestPath), ".html") {
+		if server.serveStaticFile(responseWriter, request, server.options.PublicDir, "posts.html") {
+			return
+		}
+	}
+	http.FileServer(http.Dir(server.options.PublicDir)).ServeHTTP(responseWriter, request)
 }
 
 func (server *Server) serveAdminIndex(responseWriter http.ResponseWriter) {
@@ -258,19 +274,17 @@ func (server *Server) serveAdminFallback(responseWriter http.ResponseWriter, cau
 	}
 }
 
-func (server *Server) servePublic(responseWriter http.ResponseWriter, request *http.Request) {
-	publicFileServer := http.FileServer(http.Dir(server.options.PublicDir))
-	publicFileServer.ServeHTTP(responseWriter, request)
-}
-
 func (server *Server) handleHealth(responseWriter http.ResponseWriter, _ *http.Request) error {
 	return server.writeJSON(responseWriter, http.StatusOK, healthResponse{Status: "ok"})
 }
 
 func (server *Server) handleLogin(responseWriter http.ResponseWriter, request *http.Request) error {
 	adminUsername, adminPassword := server.adminCredentials()
+	userID := adminUserID(adminUsername)
 	if adminPassword == "" {
-		server.setAdminSessionCookie(responseWriter, request)
+		if err := server.setAuthCookie(responseWriter, userID, "admin"); err != nil {
+			return err
+		}
 		return server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "ok"})
 	}
 
@@ -284,21 +298,101 @@ func (server *Server) handleLogin(responseWriter http.ResponseWriter, request *h
 		return newResponseErrorMessage(http.StatusUnauthorized, "invalid username or password")
 	}
 
-	server.setAdminSessionCookie(responseWriter, request)
+	if err := server.setAuthCookie(responseWriter, userID, "admin"); err != nil {
+		return err
+	}
 	return server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "ok"})
 }
 
-func (server *Server) handleLogout(responseWriter http.ResponseWriter, request *http.Request) error {
-	clearAdminSessionCookie(responseWriter, request)
+func (server *Server) handleLogout(responseWriter http.ResponseWriter, _ *http.Request) error {
+	clearAuthCookie(responseWriter)
 	return server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "ok"})
 }
 
-func (server *Server) handleListPosts(responseWriter http.ResponseWriter, _ *http.Request) error {
-	postSummaries, err := server.blogService.ListPosts()
+func (server *Server) handleRefreshToken(responseWriter http.ResponseWriter, request *http.Request) error {
+	claims, ok := server.authenticatedClaims(request)
+	if !ok {
+		return newResponseErrorMessage(http.StatusUnauthorized, "authentication required")
+	}
+	if err := server.setAuthCookie(responseWriter, claims.UserID, claims.Role); err != nil {
+		return err
+	}
+	return server.writeJSON(responseWriter, http.StatusOK, model.APIMessageResponse{Message: "ok"})
+}
+
+func (server *Server) handleMe(responseWriter http.ResponseWriter, request *http.Request) error {
+	claims, ok := server.authenticatedClaims(request)
+	if !ok {
+		return newResponseErrorMessage(http.StatusUnauthorized, "authentication required")
+	}
+	return server.writeJSON(responseWriter, http.StatusOK, meResponse{UserID: claims.UserID, Role: claims.Role})
+}
+
+func (server *Server) handleGetPublicSite(responseWriter http.ResponseWriter, _ *http.Request) error {
+	settings := server.blogService.GetSiteSettings()
+	return server.writeJSON(responseWriter, http.StatusOK, publicSiteResponse{
+		Site: publicSiteSettings{
+			Title:            settings.Title,
+			Description:      settings.Description,
+			IconURL:          settings.IconURL,
+			CommentEnabled:   settings.CommentEnabled,
+			GiscusRepo:       settings.GiscusRepo,
+			GiscusRepoID:     settings.GiscusRepoID,
+			GiscusCategory:   settings.GiscusCategory,
+			GiscusCategoryID: settings.GiscusCategoryID,
+			ThemeDefault:     settings.ThemeDefault,
+			Font:             settings.Font,
+		},
+	})
+}
+
+func (server *Server) handleListPublicPosts(responseWriter http.ResponseWriter, _ *http.Request) error {
+	postSummaries, err := server.blogService.ListPublicPosts()
 	if err != nil {
 		return newResponseError(http.StatusInternalServerError, err)
 	}
 	return server.writeJSON(responseWriter, http.StatusOK, postsResponse{Posts: postSummaries})
+}
+
+func (server *Server) handleGetPublicPost(responseWriter http.ResponseWriter, request *http.Request) error {
+	postDetail, err := server.blogService.GetPublicPost(chi.URLParam(request, "postID"))
+	if err != nil {
+		return newResponseError(http.StatusNotFound, err)
+	}
+	return server.writeJSON(responseWriter, http.StatusOK, publicPostDetailResponse{Post: postDetail})
+}
+
+func (server *Server) handleAdminStats(responseWriter http.ResponseWriter, _ *http.Request) error {
+	postSummaries, err := server.blogService.ListPosts()
+	if err != nil {
+		return newResponseError(http.StatusInternalServerError, err)
+	}
+	stats := adminStatsResponse{TotalPosts: len(postSummaries)}
+	for _, currentPost := range postSummaries {
+		if currentPost.Draft {
+			stats.DraftPosts++
+		} else {
+			stats.PublishedPosts++
+		}
+	}
+	return server.writeJSON(responseWriter, http.StatusOK, stats)
+}
+
+func (server *Server) handleListPosts(responseWriter http.ResponseWriter, request *http.Request) error {
+	postSummaries, err := server.blogService.ListPosts()
+	if err != nil {
+		return newResponseError(http.StatusInternalServerError, err)
+	}
+	filteredPosts := filterAdminPosts(postSummaries, request)
+	page, pageSize := paginationFromRequest(request)
+	pagedPosts, totalPages := paginatePosts(filteredPosts, page, pageSize)
+	return server.writeJSON(responseWriter, http.StatusOK, adminPostsResponse{
+		Posts:      pagedPosts,
+		Page:       page,
+		PageSize:   pageSize,
+		Total:      len(filteredPosts),
+		TotalPages: totalPages,
+	})
 }
 
 func (server *Server) handleCreatePost(responseWriter http.ResponseWriter, request *http.Request) error {
@@ -346,7 +440,9 @@ func (server *Server) handleUpdateSettings(responseWriter http.ResponseWriter, r
 	}
 	updatedSettings := server.blogService.GetSiteSettings()
 	server.setAdminCredentials(updatedSettings.AdminUsername, updatedSettings.AdminPassword)
-	server.setAdminSessionCookie(responseWriter, request)
+	if err := server.setAuthCookie(responseWriter, adminUserID(updatedSettings.AdminUsername), "admin"); err != nil {
+		return err
+	}
 	return server.writeJSON(responseWriter, http.StatusOK, settingsResponse{
 		Settings: updatedSettings,
 		Message:  "ok",
@@ -419,9 +515,49 @@ type postsResponse struct {
 	Posts []model.PostSummary `json:"posts"`
 }
 
+type adminPostsResponse struct {
+	Posts      []model.PostSummary `json:"posts"`
+	Page       int                 `json:"page"`
+	PageSize   int                 `json:"pageSize"`
+	Total      int                 `json:"total"`
+	TotalPages int                 `json:"totalPages"`
+}
+
 type postDetailResponse struct {
 	Post    model.PostDetail `json:"post"`
 	Message string           `json:"message,omitempty"`
+}
+
+type publicPostDetailResponse struct {
+	Post model.PublicPostDetail `json:"post"`
+}
+
+type publicSiteResponse struct {
+	Site publicSiteSettings `json:"site"`
+}
+
+type publicSiteSettings struct {
+	Title            string `json:"title"`
+	Description      string `json:"description"`
+	IconURL          string `json:"iconUrl"`
+	CommentEnabled   bool   `json:"commentEnabled"`
+	GiscusRepo       string `json:"giscusRepo"`
+	GiscusRepoID     string `json:"giscusRepoId"`
+	GiscusCategory   string `json:"giscusCategory"`
+	GiscusCategoryID string `json:"giscusCategoryId"`
+	ThemeDefault     string `json:"themeDefault"`
+	Font             string `json:"font"`
+}
+
+type meResponse struct {
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
+}
+
+type adminStatsResponse struct {
+	TotalPosts     int `json:"totalPosts"`
+	PublishedPosts int `json:"publishedPosts"`
+	DraftPosts     int `json:"draftPosts"`
 }
 
 func postSaveMessage(postDetail model.PostDetail, created bool) string {
@@ -440,4 +576,87 @@ func postSaveMessage(postDetail model.PostDetail, created bool) string {
 type settingsResponse struct {
 	Settings model.SiteSettings `json:"settings"`
 	Message  string             `json:"message,omitempty"`
+}
+
+func adminUserID(adminUsername string) string {
+	if trimmedUsername := strings.TrimSpace(adminUsername); trimmedUsername != "" {
+		return trimmedUsername
+	}
+	return "admin"
+}
+
+func paginationFromRequest(request *http.Request) (int, int) {
+	page := positiveQueryInt(request, "page", 1)
+	pageSize := positiveQueryInt(request, "pageSize", 10)
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	return page, pageSize
+}
+
+func positiveQueryInt(request *http.Request, key string, fallback int) int {
+	rawValue := strings.TrimSpace(request.URL.Query().Get(key))
+	if rawValue == "" {
+		return fallback
+	}
+	parsedValue, err := strconv.Atoi(rawValue)
+	if err != nil || parsedValue < 1 {
+		return fallback
+	}
+	return parsedValue
+}
+
+func filterAdminPosts(posts []model.PostSummary, request *http.Request) []model.PostSummary {
+	query := request.URL.Query()
+	searchText := strings.ToLower(strings.TrimSpace(query.Get("search")))
+	draftFilter := strings.ToLower(strings.TrimSpace(query.Get("draft")))
+
+	filteredPosts := make([]model.PostSummary, 0, len(posts))
+	for _, currentPost := range posts {
+		if draftFilter == "true" && !currentPost.Draft {
+			continue
+		}
+		if draftFilter == "false" && currentPost.Draft {
+			continue
+		}
+		if searchText != "" && !postMatchesSearch(currentPost, searchText) {
+			continue
+		}
+		filteredPosts = append(filteredPosts, currentPost)
+	}
+	return filteredPosts
+}
+
+func postMatchesSearch(post model.PostSummary, searchText string) bool {
+	searchFields := []string{
+		post.Title,
+		post.Description,
+		post.URL,
+		strings.Join(post.Tags, " "),
+	}
+	for _, searchField := range searchFields {
+		if strings.Contains(strings.ToLower(searchField), searchText) {
+			return true
+		}
+	}
+	return false
+}
+
+func paginatePosts(posts []model.PostSummary, page int, pageSize int) ([]model.PostSummary, int) {
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	totalPages := (len(posts) + pageSize - 1) / pageSize
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	if page > totalPages {
+		return []model.PostSummary{}, totalPages
+	}
+	startIndex := (page - 1) * pageSize
+	endIndex := startIndex + pageSize
+	if endIndex > len(posts) {
+		endIndex = len(posts)
+	}
+	return posts[startIndex:endIndex], totalPages
 }

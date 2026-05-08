@@ -8,11 +8,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/honeok/honepress/internal/config"
 	"github.com/honeok/honepress/internal/filesystem"
@@ -166,15 +166,6 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 		return err
 	}
 
-	templateRenderer, err := renderer.NewTemplateRenderer(blogService.options)
-	if err != nil {
-		return err
-	}
-	themeAssets, err := renderer.ResolveThemeAssets(blogService.options.ThemeDistDir)
-	if err != nil {
-		return err
-	}
-
 	if err := blogService.copyAssets(); err != nil {
 		return err
 	}
@@ -182,12 +173,206 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 		return err
 	}
 
-	if err := blogService.renderSite(templateRenderer, themeAssets, publishedPosts); err != nil {
+	if err := blogService.renderStaticPostPages(publishedPosts); err != nil {
+		return err
+	}
+
+	if err := blogService.renderStaticMetadata(publishedPosts); err != nil {
 		return err
 	}
 
 	log.Println("static site updated")
 	return nil
+}
+
+func (blogService *BlogService) renderStaticMetadata(posts []model.Post) error {
+	metadataRenderer := renderer.NewMetadataRenderer(blogService.options)
+	if err := metadataRenderer.RenderRSS(filepath.Join(blogService.options.PublicDir, "rss.xml"), blogService.options.Title, blogService.options.Description, "/", posts, ""); err != nil {
+		return err
+	}
+
+	sitemapPaths := []string{"/", "/archive.html"}
+	for _, currentPost := range posts {
+		sitemapPaths = append(sitemapPaths, "/"+currentPost.URL)
+	}
+	return metadataRenderer.RenderSitemap(filepath.Join(blogService.options.PublicDir, "sitemap.xml"), sitemapPaths)
+}
+
+func (blogService *BlogService) renderStaticPostPages(posts []model.Post) error {
+	metadataRenderer := renderer.NewMetadataRenderer(blogService.options)
+	if err := metadataRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, "blog.html"), "/archive.html"); err != nil {
+		return err
+	}
+	if len(posts) == 0 {
+		return nil
+	}
+
+	postShellFilePath := filepath.Join(blogService.options.PublicDir, "posts.html")
+	postShellContent, err := os.ReadFile(postShellFilePath)
+	if err != nil {
+		return fmt.Errorf("read Next post shell at %s: %w", postShellFilePath, err)
+	}
+
+	for _, currentPost := range posts {
+		postPageHTML := blogService.postShellWithSEO(string(postShellContent), currentPost)
+		if err := filesystem.WriteFileCreatingDirectory(filepath.Join(blogService.options.PublicDir, currentPost.URL), []byte(postPageHTML), 0644); err != nil {
+			return fmt.Errorf("write static post page %s: %w", currentPost.URL, err)
+		}
+		for _, normalizedAlias := range currentPost.Aliases {
+			if err := metadataRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, normalizedAlias), "/"+currentPost.URL); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (blogService *BlogService) postShellWithSEO(postShellHTML string, post model.Post) string {
+	htmlWithAttributes := blogService.withDocumentAttributes(postShellHTML)
+	return injectSEOHead(htmlWithAttributes, blogService.postSEOHeadHTML(post))
+}
+
+func (blogService *BlogService) withDocumentAttributes(documentHTML string) string {
+	lowerDocumentHTML := strings.ToLower(documentHTML)
+	htmlTagStart := strings.Index(lowerDocumentHTML, "<html")
+	if htmlTagStart < 0 {
+		return documentHTML
+	}
+	htmlTagEndRelative := strings.Index(documentHTML[htmlTagStart:], ">")
+	if htmlTagEndRelative < 0 {
+		return documentHTML
+	}
+	htmlTagEnd := htmlTagStart + htmlTagEndRelative
+	htmlTag := documentHTML[htmlTagStart : htmlTagEnd+1]
+	htmlTag = setHTMLAttribute(htmlTag, "lang", "zh-CN")
+	htmlTag = setHTMLAttribute(htmlTag, "data-theme", blogService.options.ThemeDefault)
+	htmlTag = setHTMLAttribute(htmlTag, "data-font", blogService.options.Font)
+	return documentHTML[:htmlTagStart] + htmlTag + documentHTML[htmlTagEnd+1:]
+}
+
+func injectSEOHead(documentHTML string, seoHeadHTML string) string {
+	lowerDocumentHTML := strings.ToLower(documentHTML)
+	headTagStart := strings.Index(lowerDocumentHTML, "<head")
+	if headTagStart < 0 {
+		return seoHeadHTML + documentHTML
+	}
+	headTagEndRelative := strings.Index(documentHTML[headTagStart:], ">")
+	if headTagEndRelative < 0 {
+		return seoHeadHTML + documentHTML
+	}
+	headContentStart := headTagStart + headTagEndRelative + 1
+	headTagEnd := headContentStart - 1
+	headCloseRelative := strings.Index(strings.ToLower(documentHTML[headContentStart:]), "</head>")
+	if headCloseRelative < 0 {
+		return documentHTML[:headContentStart] + seoHeadHTML + documentHTML[headContentStart:]
+	}
+	headClose := headContentStart + headCloseRelative
+	headContent := stripSEOHeadElements(documentHTML[headContentStart:headClose])
+	return documentHTML[:headTagEnd+1] + headContent + seoHeadHTML + documentHTML[headClose:]
+}
+
+func stripSEOHeadElements(headHTML string) string {
+	for _, pattern := range seoHeadElementPatterns {
+		headHTML = pattern.ReplaceAllString(headHTML, "")
+	}
+	return headHTML
+}
+
+var seoHeadElementPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?is)\s*<title\b[^>]*>.*?</title>`),
+	regexp.MustCompile(`(?is)\s*<meta\b[^>]*(?:name|property)=["'](?:description|og:[^"']+|twitter:[^"']+)["'][^>]*>`),
+	regexp.MustCompile(`(?is)\s*<link\b[^>]*rel=["'][^"']*\bcanonical\b[^"']*["'][^>]*>`),
+	regexp.MustCompile(`(?is)\s*<link\b[^>]*rel=["'][^"']*(?:icon|apple-touch-icon)[^"']*["'][^>]*>`),
+	regexp.MustCompile(`(?is)\s*<script\b[^>]*type=["']application/ld\+json["'][^>]*>.*?</script>`),
+}
+
+func setHTMLAttribute(htmlTag string, attributeName string, attributeValue string) string {
+	attributePattern := regexp.MustCompile(`(?i)\s+` + regexp.QuoteMeta(attributeName) + `=(?:"[^"]*"|'[^']*'|[^\s>]+)`)
+	attributeHTML := ` ` + attributeName + `="` + htmlTemplate.HTMLEscapeString(attributeValue) + `"`
+	if attributePattern.MatchString(htmlTag) {
+		return attributePattern.ReplaceAllString(htmlTag, attributeHTML)
+	}
+	return strings.TrimSuffix(htmlTag, ">") + attributeHTML + ">"
+}
+
+func (blogService *BlogService) postSEOHeadHTML(post model.Post) string {
+	seoTitle := postSEOTitle(post, blogService.options.Title)
+	seoDescription := postSEODescription(post)
+	canonicalURL := string(seoPublicURL(blogService.options, "/"+post.URL))
+	siteTitle := siteName(blogService.options.Title)
+	seoImage := string(seoImageURL(blogService.options, blogService.options.SiteIconURL))
+	structuredData := string(postStructuredData(blogService.options, post))
+
+	var htmlBuilder strings.Builder
+	htmlBuilder.WriteString("\n")
+	htmlBuilder.WriteString(`<title>`)
+	htmlBuilder.WriteString(htmlTemplate.HTMLEscapeString(seoTitle))
+	htmlBuilder.WriteString("</title>\n")
+	if strings.TrimSpace(seoDescription) != "" {
+		writeMetaName(&htmlBuilder, "description", seoDescription)
+	}
+	writeLink(&htmlBuilder, "canonical", canonicalURL)
+	writeMetaProperty(&htmlBuilder, "og:type", "article")
+	writeMetaProperty(&htmlBuilder, "og:title", seoTitle)
+	if strings.TrimSpace(seoDescription) != "" {
+		writeMetaProperty(&htmlBuilder, "og:description", seoDescription)
+	}
+	writeMetaProperty(&htmlBuilder, "og:url", canonicalURL)
+	writeMetaProperty(&htmlBuilder, "og:site_name", siteTitle)
+	if seoImage != "" {
+		writeMetaProperty(&htmlBuilder, "og:image", seoImage)
+	}
+	if seoImage != "" {
+		writeMetaName(&htmlBuilder, "twitter:card", "summary_large_image")
+	} else {
+		writeMetaName(&htmlBuilder, "twitter:card", "summary")
+	}
+	writeMetaName(&htmlBuilder, "twitter:title", seoTitle)
+	if strings.TrimSpace(seoDescription) != "" {
+		writeMetaName(&htmlBuilder, "twitter:description", seoDescription)
+	}
+	if seoImage != "" {
+		writeMetaName(&htmlBuilder, "twitter:image", seoImage)
+	}
+	if structuredData != "" {
+		htmlBuilder.WriteString(`<script type="application/ld+json">`)
+		htmlBuilder.WriteString(structuredData)
+		htmlBuilder.WriteString("</script>\n")
+	}
+	faviconHref := string(postFaviconHref(post.Icon, blogService.options.SiteIconURL))
+	if faviconHref != "" {
+		writeLink(&htmlBuilder, "icon", faviconHref)
+	} else {
+		htmlBuilder.WriteString(`<link rel="icon" href="/honepress-black.svg" type="image/svg+xml" />` + "\n")
+	}
+	if blogService.options.Font == "douyin-sans" {
+		htmlBuilder.WriteString(`<link rel="preload" href="/fonts/DouyinSansBold.ttf" as="font" type="font/ttf" crossorigin />` + "\n")
+	}
+	return htmlBuilder.String()
+}
+
+func writeMetaName(htmlBuilder *strings.Builder, name string, content string) {
+	htmlBuilder.WriteString(`<meta name="`)
+	htmlBuilder.WriteString(htmlTemplate.HTMLEscapeString(name))
+	htmlBuilder.WriteString(`" content="`)
+	htmlBuilder.WriteString(htmlTemplate.HTMLEscapeString(content))
+	htmlBuilder.WriteString(`" />` + "\n")
+}
+
+func writeMetaProperty(htmlBuilder *strings.Builder, property string, content string) {
+	htmlBuilder.WriteString(`<meta property="`)
+	htmlBuilder.WriteString(htmlTemplate.HTMLEscapeString(property))
+	htmlBuilder.WriteString(`" content="`)
+	htmlBuilder.WriteString(htmlTemplate.HTMLEscapeString(content))
+	htmlBuilder.WriteString(`" />` + "\n")
+}
+
+func writeLink(htmlBuilder *strings.Builder, rel string, href string) {
+	htmlBuilder.WriteString(`<link rel="`)
+	htmlBuilder.WriteString(htmlTemplate.HTMLEscapeString(rel))
+	htmlBuilder.WriteString(`" href="`)
+	htmlBuilder.WriteString(htmlTemplate.HTMLEscapeString(href))
+	htmlBuilder.WriteString(`" />` + "\n")
 }
 
 func (blogService *BlogService) scanPosts() ([]model.Post, error) {
@@ -271,111 +456,6 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 	return posts, nil
 }
 
-func (blogService *BlogService) renderSite(templateRenderer *renderer.TemplateRenderer, themeAssets renderer.ThemeAssets, posts []model.Post) error {
-	postSummaries := postsToSummaries(posts)
-	archivePath := "/archive.html"
-	siteViewData := model.SiteViewData{
-		SiteTitle:       blogService.options.Title,
-		SiteDescription: blogService.options.Description,
-		SiteIconURL:     blogService.options.SiteIconURL,
-		FaviconHref:     faviconHref(blogService.options.SiteIconURL),
-		ThemeDefault:    blogService.options.ThemeDefault,
-		Font:            blogService.options.Font,
-		ThemeScriptPath: themeAssets.ScriptPath,
-		ThemeStylePaths: themeAssets.StylePaths,
-		CanonicalPath:   "/",
-		CanonicalURL:    seoPublicURL(blogService.options, "/"),
-		SEOTitle:        homeSEOTitle(blogService.options.Title, blogService.options.Description),
-		SEODescription:  seoDescription(blogService.options.Title, blogService.options.Description),
-		SEOType:         "website",
-		SEOImage:        seoImageURL(blogService.options, blogService.options.SiteIconURL),
-		StructuredData:  siteStructuredData(blogService.options),
-		HomePath:        "/",
-		BlogPath:        archivePath,
-		RSSPath:         "/rss.xml",
-		SitemapPath:     "/sitemap.xml",
-		Posts:           postSummaries,
-		PostCount:       len(posts),
-		WordCount:       totalPostWords(posts),
-	}
-
-	if err := templateRenderer.RenderIndex(filepath.Join(blogService.options.PublicDir, "index.html"), siteViewData); err != nil {
-		return err
-	}
-	siteViewData.CanonicalPath = archivePath
-	siteViewData.CanonicalURL = seoPublicURL(blogService.options, archivePath)
-	siteViewData.SEOTitle = pageSEOTitle("Archive", blogService.options.Title)
-	siteViewData.SEODescription = seoDescription(blogService.options.Title, blogService.options.Description)
-	siteViewData.SEOType = "website"
-	siteViewData.StructuredData = archiveStructuredData(blogService.options, posts)
-	if err := templateRenderer.RenderBlog(filepath.Join(blogService.options.PublicDir, "archive.html"), siteViewData); err != nil {
-		return err
-	}
-	if err := templateRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, "blog.html"), archivePath); err != nil {
-		return err
-	}
-
-	postRenderErrors := make(chan error, len(posts))
-	var postRenderWaitGroup sync.WaitGroup
-	for _, currentPost := range posts {
-		currentPost := currentPost
-		postRenderWaitGroup.Add(1)
-		go func() {
-			defer postRenderWaitGroup.Done()
-
-			postViewData := model.PostViewData{
-				SiteTitle:       blogService.options.Title,
-				SiteDescription: blogService.options.Description,
-				SiteIconURL:     blogService.options.SiteIconURL,
-				FaviconHref:     postFaviconHref(currentPost.Icon, blogService.options.SiteIconURL),
-				ThemeDefault:    blogService.options.ThemeDefault,
-				Font:            blogService.options.Font,
-				ThemeScriptPath: themeAssets.ScriptPath,
-				ThemeStylePaths: themeAssets.StylePaths,
-				CanonicalPath:   "/" + currentPost.URL,
-				CanonicalURL:    seoPublicURL(blogService.options, "/"+currentPost.URL),
-				SEOTitle:        postSEOTitle(currentPost, blogService.options.Title),
-				SEODescription:  postSEODescription(currentPost),
-				SEOType:         "article",
-				SEOImage:        seoImageURL(blogService.options, blogService.options.SiteIconURL),
-				StructuredData:  postStructuredData(blogService.options, currentPost),
-				HomePath:        "/",
-				BlogPath:        archivePath,
-				RSSPath:         "/rss.xml",
-				SitemapPath:     "/sitemap.xml",
-				Post:            currentPost,
-				CommentHTML:     blogService.commentHTML(),
-			}
-			if err := templateRenderer.RenderPost(filepath.Join(blogService.options.PublicDir, currentPost.URL), postViewData); err != nil {
-				postRenderErrors <- err
-				return
-			}
-			for _, normalizedAlias := range currentPost.Aliases {
-				if err := templateRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, normalizedAlias), "/"+currentPost.URL); err != nil {
-					postRenderErrors <- err
-					return
-				}
-			}
-		}()
-	}
-	postRenderWaitGroup.Wait()
-	close(postRenderErrors)
-	for renderErr := range postRenderErrors {
-		if renderErr != nil {
-			return renderErr
-		}
-	}
-	if err := templateRenderer.RenderRSS(filepath.Join(blogService.options.PublicDir, "rss.xml"), blogService.options.Title, blogService.options.Description, "/", posts, ""); err != nil {
-		return err
-	}
-
-	sitemapPaths := []string{"/", archivePath}
-	for _, currentPost := range posts {
-		sitemapPaths = append(sitemapPaths, "/"+currentPost.URL)
-	}
-	return templateRenderer.RenderSitemap(filepath.Join(blogService.options.PublicDir, "sitemap.xml"), sitemapPaths)
-}
-
 func (blogService *BlogService) resetPublicDirectory() error {
 	absoluteDataDirectoryPath, err := filepath.Abs(blogService.options.DataDir)
 	if err != nil {
@@ -415,14 +495,7 @@ func (blogService *BlogService) copyThemeDist() error {
 		if err != nil {
 			return fmt.Errorf("resolve theme asset path: %w", err)
 		}
-		normalizedRelativePath := filepath.ToSlash(relativePath)
 		if directoryEntry.IsDir() {
-			if normalizedRelativePath == ".vite" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if strings.HasPrefix(normalizedRelativePath, ".vite/") {
 			return nil
 		}
 		targetPath := filepath.Join(blogService.options.PublicDir, relativePath)
@@ -453,57 +526,12 @@ func (blogService *BlogService) copyAssets() error {
 	})
 }
 
-func (blogService *BlogService) commentHTML() htmlTemplate.HTML {
-	if !blogService.options.Comment.Enabled {
-		return ""
-	}
-	if !blogService.options.Comment.HasRequiredGiscusConfig() {
-		log.Println("warning: giscus config is incomplete; skipped comments container")
-		return ""
-	}
-
-	commentAttributes := map[string]string{
-		"data-repo":        blogService.options.Comment.GiscusRepo,
-		"data-repo-id":     blogService.options.Comment.GiscusRepoID,
-		"data-category":    blogService.options.Comment.GiscusCategory,
-		"data-category-id": blogService.options.Comment.GiscusCategoryID,
-	}
-	attributeNames := []string{
-		"data-repo",
-		"data-repo-id",
-		"data-category",
-		"data-category-id",
-	}
-
-	var htmlBuilder strings.Builder
-	htmlBuilder.WriteString(`<section id="comments" class="comments" data-giscus-comments`)
-	for _, attributeName := range attributeNames {
-		htmlBuilder.WriteString(` `)
-		htmlBuilder.WriteString(attributeName)
-		htmlBuilder.WriteString(`="`)
-		htmlBuilder.WriteString(htmlTemplate.HTMLEscapeString(commentAttributes[attributeName]))
-		htmlBuilder.WriteString(`"`)
-	}
-	htmlBuilder.WriteString(`></section>`)
-
-	return htmlTemplate.HTML(htmlBuilder.String())
-}
-
 func siteName(title string) string {
 	trimmedTitle := strings.TrimSpace(title)
 	if trimmedTitle == "" {
 		return "HonePress"
 	}
 	return trimmedTitle
-}
-
-func homeSEOTitle(siteTitle string, siteDescription string) string {
-	name := siteName(siteTitle)
-	description := strings.TrimSpace(siteDescription)
-	if description == "" {
-		return name
-	}
-	return name + " - " + description
 }
 
 func pageSEOTitle(pageTitle string, siteTitle string) string {
@@ -570,42 +598,6 @@ func addPublisher(document map[string]interface{}, options config.Options) {
 	document["publisher"] = publisher
 }
 
-func siteStructuredData(options config.Options) htmlTemplate.JS {
-	document := map[string]interface{}{
-		"@context":    "https://schema.org",
-		"@type":       "Blog",
-		"name":        siteName(options.Title),
-		"description": seoDescription(options.Title, options.Description),
-		"url":         options.AbsoluteURL("/"),
-	}
-	addPublisher(document, options)
-	return structuredData(document)
-}
-
-func archiveStructuredData(options config.Options, posts []model.Post) htmlTemplate.JS {
-	items := make([]map[string]interface{}, 0, len(posts))
-	for postIndex, currentPost := range posts {
-		items = append(items, map[string]interface{}{
-			"@type":    "ListItem",
-			"position": postIndex + 1,
-			"name":     currentPost.Title,
-			"url":      options.AbsoluteURL("/" + currentPost.URL),
-		})
-	}
-	document := map[string]interface{}{
-		"@context":    "https://schema.org",
-		"@type":       "CollectionPage",
-		"name":        pageSEOTitle("Archive", options.Title),
-		"description": seoDescription(options.Title, options.Description),
-		"url":         options.AbsoluteURL("/archive.html"),
-		"mainEntity": map[string]interface{}{
-			"@type":           "ItemList",
-			"itemListElement": items,
-		},
-	}
-	return structuredData(document)
-}
-
 func postStructuredData(options config.Options, post model.Post) htmlTemplate.JS {
 	postURL := options.AbsoluteURL("/" + post.URL)
 	document := map[string]interface{}{
@@ -627,6 +619,30 @@ func postStructuredData(options config.Options, post model.Post) htmlTemplate.JS
 	}
 	addPublisher(document, options)
 	return structuredData(document)
+}
+
+func postFaviconHref(postIcon string, siteIconURL string) htmlTemplate.URL {
+	if emojiHref := emojiFaviconHref(postIcon); emojiHref != "" {
+		return emojiHref
+	}
+	return faviconHref(siteIconURL)
+}
+
+func faviconHref(iconURL string) htmlTemplate.URL {
+	trimmedIconURL := strings.TrimSpace(iconURL)
+	if trimmedIconURL == "" {
+		return ""
+	}
+	return htmlTemplate.URL(trimmedIconURL)
+}
+
+func emojiFaviconHref(emoji string) htmlTemplate.URL {
+	trimmedEmoji := strings.TrimSpace(emoji)
+	if trimmedEmoji == "" {
+		return ""
+	}
+	svgContent := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50%" y="50%" style="dominant-baseline:central;text-anchor:middle;font-size:86px;">` + htmlTemplate.HTMLEscapeString(trimmedEmoji) + `</text></svg>`
+	return htmlTemplate.URL("data:image/svg+xml," + url.PathEscape(svgContent))
 }
 
 func filterPublishedPosts(posts []model.Post) []model.Post {
@@ -662,49 +678,6 @@ func postsToSummaries(posts []model.Post) []model.PostSummary {
 		})
 	}
 	return postSummaries
-}
-
-func totalPostWords(posts []model.Post) int {
-	totalWords := 0
-	for _, currentPost := range posts {
-		totalWords += countVisibleRunes(currentPost.BodyMarkdown)
-	}
-	return totalWords
-}
-
-func countVisibleRunes(text string) int {
-	visibleRuneCount := 0
-	for _, currentRune := range text {
-		if unicode.IsSpace(currentRune) {
-			continue
-		}
-		visibleRuneCount++
-	}
-	return visibleRuneCount
-}
-
-func postFaviconHref(postIcon string, siteIconURL string) htmlTemplate.URL {
-	if emojiHref := emojiFaviconHref(postIcon); emojiHref != "" {
-		return emojiHref
-	}
-	return faviconHref(siteIconURL)
-}
-
-func faviconHref(iconURL string) htmlTemplate.URL {
-	trimmedIconURL := strings.TrimSpace(iconURL)
-	if trimmedIconURL == "" {
-		return ""
-	}
-	return htmlTemplate.URL(trimmedIconURL)
-}
-
-func emojiFaviconHref(emoji string) htmlTemplate.URL {
-	trimmedEmoji := strings.TrimSpace(emoji)
-	if trimmedEmoji == "" {
-		return ""
-	}
-	svgContent := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50%" y="50%" style="dominant-baseline:central;text-anchor:middle;font-size:86px;">` + htmlTemplate.HTMLEscapeString(trimmedEmoji) + `</text></svg>`
-	return htmlTemplate.URL("data:image/svg+xml," + url.PathEscape(svgContent))
 }
 
 func defaultFirstPost(dateText string) string {

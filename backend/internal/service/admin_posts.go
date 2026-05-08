@@ -24,6 +24,59 @@ func (blogService *BlogService) ListPosts() ([]model.PostSummary, error) {
 	return postsToSummaries(posts), nil
 }
 
+func (blogService *BlogService) ListPublicPosts() ([]model.PostSummary, error) {
+	blogService.renderMutex.Lock()
+	defer blogService.renderMutex.Unlock()
+
+	posts, err := blogService.scanPosts()
+	if err != nil {
+		return nil, err
+	}
+	return postsToSummaries(filterPublishedPosts(posts)), nil
+}
+
+func (blogService *BlogService) GetPublicPost(postID string) (model.PublicPostDetail, error) {
+	blogService.renderMutex.Lock()
+	defer blogService.renderMutex.Unlock()
+
+	normalizedPostID := strings.Trim(strings.TrimSpace(postID), "/")
+	posts, err := blogService.scanPosts()
+	if err != nil {
+		return model.PublicPostDetail{}, err
+	}
+	for _, currentPost := range posts {
+		if currentPost.Draft {
+			continue
+		}
+		if currentPost.SourceFileName != normalizedPostID && currentPost.URL != normalizedPostID && !stringListContains(currentPost.Aliases, normalizedPostID) {
+			continue
+		}
+		return model.PublicPostDetail{
+			ID:             currentPost.SourceFileName,
+			Title:          currentPost.Title,
+			Thumbnail:      currentPost.Thumbnail,
+			Date:           currentPost.DateText,
+			Description:    currentPost.Description,
+			SEOTitle:       currentPost.SEOTitle,
+			SEODescription: currentPost.SEODescription,
+			URL:            currentPost.URL,
+			PublicURL:      "/" + currentPost.URL,
+			Tags:           currentPost.Tags,
+			HTML:           string(currentPost.BodyHTML),
+		}, nil
+	}
+	return model.PublicPostDetail{}, fmt.Errorf("post not found: %s", normalizedPostID)
+}
+
+func stringListContains(values []string, targetValue string) bool {
+	for _, value := range values {
+		if value == targetValue {
+			return true
+		}
+	}
+	return false
+}
+
 // 读取单篇文章
 func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail, error) {
 	if err := validation.ValidateMarkdownFileName(sourceFileName); err != nil {

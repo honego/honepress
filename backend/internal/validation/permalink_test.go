@@ -13,6 +13,7 @@ func TestNormalizePermalink(t *testing.T) {
 		{name: "trim leading slash", rawPermalink: "/docker-install", expectedPermalink: "docker-install.html"},
 		{name: "reject path traversal", rawPermalink: "../1.html", wantError: true},
 		{name: "reject reserved file", rawPermalink: "rss.xml", wantError: true},
+		{name: "reject Next post shell", rawPermalink: "posts.html", wantError: true},
 		{name: "reject non-ASCII", rawPermalink: "中文.html", wantError: true},
 	}
 
