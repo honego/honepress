@@ -34,7 +34,9 @@
     <link rel="icon" href="/honepress-black.svg" type="image/svg+xml" />
     {{end}}
     <link rel="alternate" type="application/rss+xml" title="{{.SiteTitle}}" href="{{.RSSPath}}" />
-    {{range .ThemeStylePaths}}
+    {{if eq .Font "douyin-sans"}}
+    <link rel="preload" href="/fonts/DouyinSansBold.ttf" as="font" type="font/ttf" crossorigin />
+    {{end}} {{range .ThemeStylePaths}}
     <link rel="stylesheet" href="{{.}}" />
     {{end}}
     <script src="https://fastly.jsdelivr.net/npm/lucide@1.14.0/dist/umd/lucide.min.js" defer></script>

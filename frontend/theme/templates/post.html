@@ -32,6 +32,8 @@
     <link rel="icon" href="{{.FaviconHref}}" />
     {{else}}
     <link rel="icon" href="/honepress-black.svg" type="image/svg+xml" />
+    {{end}} {{if eq .Font "douyin-sans"}}
+    <link rel="preload" href="/fonts/DouyinSansBold.ttf" as="font" type="font/ttf" crossorigin />
     {{end}} {{range .ThemeStylePaths}}
     <link rel="stylesheet" href="{{.}}" />
     {{end}}

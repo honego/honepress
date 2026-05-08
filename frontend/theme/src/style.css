@@ -20,8 +20,8 @@
 
 @font-face {
   font-family: "Douyin Sans";
-  src: url("https://fastly.jsdelivr.net/gh/bytedance/fonts@main/DouyinSans/DouyinSansBold.ttf") format("truetype");
-  font-display: swap;
+  src: url("/fonts/DouyinSansBold.ttf") format("truetype");
+  font-display: block;
   font-style: normal;
   font-weight: 400;
 }

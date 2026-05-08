@@ -1,32 +1,30 @@
-# 容器内部固定监听 8080 端口；宿主机端口请通过 Docker 端口映射调整。
-
-# 数据目录。文章、上传资源和渲染后的静态文件都会放在这里。
+# 数据目录 文章 上传资源和渲染后的静态文件
 data:
-  directory: "/app/data"
+  directory: '/app/data'
 
-# 后台登录账号。生产环境务必设置强密码。
+# 后台登录账号 生产环境务必设置强密码
 admin:
-  username: ""
-  password: ""
+  username: ''
+  password: ''
 
-# 站点基础信息。后台“站点设置”也可以修改这些字段。
+# 站点基础信息 后台"站点设置"也可以修改这些字段
 site:
-  title: ""
-  description: ""
-  iconURL: ""
+  title: ''
+  description: ''
+  iconURL: ''
 
-# 评论设置。后台“站点设置”也可以修改这些字段。
+# 评论设置 后台"站点设置"也可以修改这些字段
 comment:
   enabled: false
   giscus:
-    repo: ""
-    repoID: ""
-    category: ""
-    categoryID: ""
+    repo: ''
+    repoID: ''
+    category: ''
+    categoryID: ''
 
-# 前台显示设置。
+# 前台显示设置
 theme:
-  # 默认主题：auto、light 或 dark。
-  default: "auto"
-  # 字体：default 使用系统默认字体；douyin-sans 使用 bytedance/fonts 的抖音美好体。
-  font: "default"
+  # 默认主题: auto light 或 dark
+  default: 'auto'
+  # 字体: default 使用系统默认字体; douyin-sans 使用内置的抖音美好体
+  font: 'default'
