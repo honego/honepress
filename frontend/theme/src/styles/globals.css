@@ -70,13 +70,17 @@ html {
 
 body {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
   margin: 0;
   background: var(--background);
   color: var(--text);
   font-family: var(--font-family);
   line-height: 1.7;
+}
+
+#__next {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 a {
@@ -484,6 +488,7 @@ button.back-link:hover {
 
 .site-footer {
   width: var(--content-width);
+  flex: 0 0 auto;
   margin: 32px auto 0;
   padding: 42px 0 46px;
   border-top: 1px solid transparent;

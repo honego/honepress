@@ -71,7 +71,7 @@ export function SiteChrome({
 }) {
   const { theme, toggleTheme } = useTheme(site);
   const siteTitle = siteName(site);
-  const siteIcon = site?.iconUrl?.trim();
+  const siteIcon = site?.iconUrl?.trim() || "/honepress-black.svg";
   const themeIcon = useThemeIcon(theme);
 
   return (
@@ -79,7 +79,7 @@ export function SiteChrome({
       <header className="site-header">
         <nav className="nav">
           <Link className="brand" href="/">
-            {siteIcon ? <img className="brand-icon" src={siteIcon} alt="" /> : null}
+            <img className="brand-icon" src={siteIcon} alt="" />
             <span>{siteTitle}</span>
           </Link>
           <div className="nav-links">
