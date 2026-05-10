@@ -15,7 +15,7 @@ export function useAdminSession() {
         if (mounted) setIsReady(true);
       } catch (error) {
         if (error instanceof UnauthorizedError) {
-          window.location.href = "/login";
+          window.location.href = "/admin/login";
           return;
         }
         if (mounted) setIsReady(true);

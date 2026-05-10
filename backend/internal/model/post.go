@@ -51,6 +51,7 @@ type PostSummary struct {
 	URL         string   `json:"url"`
 	PublicURL   string   `json:"publicUrl"`
 	Tags        []string `json:"tags"`
+	WordCount   int      `json:"wordCount"`
 }
 
 // 文章详情

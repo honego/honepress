@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/honeok/honepress/internal/config"
 	"github.com/honeok/honepress/internal/filesystem"
@@ -675,9 +676,21 @@ func postsToSummaries(posts []model.Post) []model.PostSummary {
 			URL:         currentPost.URL,
 			PublicURL:   publicURL,
 			Tags:        currentPost.Tags,
+			WordCount:   countVisibleRunes(currentPost.BodyMarkdown),
 		})
 	}
 	return postSummaries
+}
+
+func countVisibleRunes(text string) int {
+	visibleRuneCount := 0
+	for _, currentRune := range text {
+		if unicode.IsSpace(currentRune) {
+			continue
+		}
+		visibleRuneCount++
+	}
+	return visibleRuneCount
 }
 
 func defaultFirstPost(dateText string) string {

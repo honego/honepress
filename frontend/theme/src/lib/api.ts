@@ -8,6 +8,7 @@ export interface PostSummary {
   url: string;
   publicUrl: string;
   tags: string[];
+  wordCount: number;
 }
 
 export interface PublicPostDetail {
@@ -47,23 +48,6 @@ interface PublicPostResponse {
 
 interface PublicSiteResponse {
   site: PublicSiteSettings;
-}
-
-export async function checkSession(): Promise<boolean> {
-  const response = await fetch("/api/admin/me", { credentials: "same-origin" });
-  return response.ok;
-}
-
-export async function login(username: string, password: string): Promise<void> {
-  const response = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    body: JSON.stringify({ username, password }),
-  });
-  if (!response.ok) {
-    throw new Error(await readError(response));
-  }
 }
 
 export async function fetchPosts(): Promise<PostSummary[]> {

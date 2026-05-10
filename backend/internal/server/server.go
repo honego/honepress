@@ -323,6 +323,14 @@ func (server *Server) handleRefreshToken(responseWriter http.ResponseWriter, req
 func (server *Server) handleMe(responseWriter http.ResponseWriter, request *http.Request) error {
 	claims, ok := server.authenticatedClaims(request)
 	if !ok {
+		adminUsername, adminPassword := server.adminCredentials()
+		if adminPassword == "" {
+			userID := adminUserID(adminUsername)
+			if err := server.setAuthCookie(responseWriter, userID, "admin"); err != nil {
+				return err
+			}
+			return server.writeJSON(responseWriter, http.StatusOK, meResponse{UserID: userID, Role: "admin"})
+		}
 		return newResponseErrorMessage(http.StatusUnauthorized, "authentication required")
 	}
 	return server.writeJSON(responseWriter, http.StatusOK, meResponse{UserID: claims.UserID, Role: claims.Role})
