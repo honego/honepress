@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { SiteChrome, SiteHead, siteName } from "../src/components/site-chrome";
+import { SiteHead, SiteLayout, siteName } from "../src/components/site-layout";
 import { fetchPosts, fetchSite, type PostSummary, type PublicSiteSettings } from "../src/lib/api";
 
 export default function ArchivePage() {
@@ -38,7 +38,7 @@ export default function ArchivePage() {
   return (
     <>
       <SiteHead site={site} title={title} description={site?.description} canonicalPath="/archive.html" />
-      <SiteChrome site={site} pageClassName="page-archive">
+      <SiteLayout site={site} pageClassName="page-archive">
         <section className="archive">
           <header className="archive-header">
             <h1>归档</h1>
@@ -66,7 +66,7 @@ export default function ArchivePage() {
             ))}
           </div>
         </section>
-      </SiteChrome>
+      </SiteLayout>
     </>
   );
 }

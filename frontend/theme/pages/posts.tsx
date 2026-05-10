@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
-import { SiteChrome, SiteHead, siteName } from "../src/components/site-chrome";
+import { SiteHead, SiteLayout, siteName } from "../src/components/site-layout";
 import { fetchPost, fetchSite, type PublicPostDetail, type PublicSiteSettings } from "../src/lib/api";
 
 export default function PostPage() {
@@ -82,7 +82,7 @@ export default function PostPage() {
         canonicalPath={post?.publicUrl}
         type="article"
       />
-      <SiteChrome site={site} pageClassName="page-post">
+      <SiteLayout site={site} pageClassName="page-post">
         <article className="article">
           <section className="page-lead">
             <button type="button" className="back-link" onClick={goBack}>
@@ -109,7 +109,7 @@ export default function PostPage() {
           ) : null}
         </article>
         {post && site?.commentEnabled ? <section className="comments" data-giscus-comments /> : null}
-      </SiteChrome>
+      </SiteLayout>
     </>
   );
 }

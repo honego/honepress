@@ -60,7 +60,7 @@ export function SiteHead({
   );
 }
 
-export function SiteChrome({
+export function SiteLayout({
   site,
   children,
   pageClassName,

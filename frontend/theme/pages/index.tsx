@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { SiteChrome, SiteHead } from "../src/components/site-chrome";
+import { SiteHead, SiteLayout } from "../src/components/site-layout";
 import { fetchPosts, fetchSite, type PostSummary, type PublicSiteSettings } from "../src/lib/api";
 
 export default function HomePage() {
@@ -32,7 +32,7 @@ export default function HomePage() {
   return (
     <>
       <SiteHead site={site} canonicalPath="/" />
-      <SiteChrome site={site} pageClassName="page-home">
+      <SiteLayout site={site} pageClassName="page-home">
         {site?.description ? (
           <section className="page-lead">
             <p className="site-kicker">{site.description}</p>
@@ -58,7 +58,7 @@ export default function HomePage() {
             </article>
           ))}
         </section>
-      </SiteChrome>
+      </SiteLayout>
     </>
   );
 }
