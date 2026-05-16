@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { FileText, LayoutDashboard, LogOut, Settings, Users } from "lucide-react";
+import { FileText, Home, LayoutDashboard, LogOut, Settings, Users } from "lucide-react";
 import { ReactNode } from "react";
 
 import { logoutAdmin } from "@/api/posts";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -60,14 +60,20 @@ export function AdminLayout({
       <div className="md:pl-64">
         <header className="sticky top-0 z-10 border-b bg-background/95 px-4 py-3 backdrop-blur md:px-8">
           <div className="flex items-center justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <h1 className="text-xl font-semibold tracking-normal">{title}</h1>
               {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
             </div>
-            <Button variant="outline" size="sm" onClick={logout}>
-              <LogOut className="h-4 w-4" />
-              退出
-            </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              <a href="/" className={buttonVariants({ variant: "outline", size: "xs" })}>
+                <Home className="h-3.5 w-3.5" />
+                返回主页
+              </a>
+              <Button variant="outline" size="xs" onClick={logout}>
+                <LogOut className="h-3.5 w-3.5" />
+                退出
+              </Button>
+            </div>
           </div>
           <nav className="mt-3 flex gap-2 overflow-x-auto md:hidden">
             {navItems.map((item) => (

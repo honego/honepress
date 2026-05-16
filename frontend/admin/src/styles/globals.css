@@ -35,7 +35,7 @@ textarea,
 input,
 select,
 button {
-  font: inherit;
+  font-family: inherit;
 }
 
 .prose-preview h1,
