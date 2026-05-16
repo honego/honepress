@@ -395,7 +395,6 @@ func (blogService *BlogService) postPublicURL(frontMatter model.PostFrontMatter,
 		"%post_id%":  postID,
 		"%postname%": postSlug,
 		"%category%": firstCategorySlug(frontMatter.Tags),
-		"%author%":   "admin",
 	}
 	publicURL := structure
 	for tagName, tagValue := range replacements {

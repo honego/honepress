@@ -262,7 +262,6 @@ const permalinkTags = [
   "%post_id%",
   "%postname%",
   "%category%",
-  "%author%",
 ];
 
 function isCustomPermalink(structure: string): boolean {

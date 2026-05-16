@@ -57,6 +57,7 @@ func TestValidatePermalinkStructure(t *testing.T) {
 		{name: "plain", structure: "/?p=%post_id%"},
 		{name: "reject missing post token", structure: "/%year%/%monthnum%/", wantError: true},
 		{name: "reject unknown token", structure: "/%unknown%/%postname%/", wantError: true},
+		{name: "reject author token", structure: "/%author%/%postname%/", wantError: true},
 		{name: "reject unsupported query", structure: "/?slug=%postname%", wantError: true},
 		{name: "reject traversal", structure: "/../%postname%/", wantError: true},
 	}

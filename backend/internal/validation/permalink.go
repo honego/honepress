@@ -27,7 +27,6 @@ var allowedPermalinkTags = map[string]struct{}{
 	"%post_id%":  {},
 	"%postname%": {},
 	"%category%": {},
-	"%author%":   {},
 }
 
 // 把后台输入的固定链接归一成最终输出文件名
