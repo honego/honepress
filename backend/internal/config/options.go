@@ -17,6 +17,8 @@ import (
 	"github.com/honeok/honepress/internal/validation"
 )
 
+const legacyPermalinkStructure = "/%postname%.html"
+
 // config.yaml 结构
 type Config struct {
 	Data      DataConfig      `yaml:"data"`
@@ -306,7 +308,7 @@ func migrateConfigContent(configFileContent []byte) ([]byte, bool, error) {
 		return nil, false, err
 	}
 	markChanged(permalinkChanged)
-	markChanged(ensureConfigScalar(permalinkConfig, "structure", defaultConfig.Permalink.Structure, "!!str"))
+	markChanged(ensureConfigScalar(permalinkConfig, "structure", legacyPermalinkStructure, "!!str"))
 
 	themeConfig, themeChanged, err := ensureConfigMapping(configRoot, "theme")
 	if err != nil {

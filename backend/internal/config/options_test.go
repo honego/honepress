@@ -47,6 +47,9 @@ func TestLoadGeneratesDefaultConfig(t *testing.T) {
 	if loadedOptions.Font != "default" {
 		t.Fatalf("default font mismatch: got %s, want default", loadedOptions.Font)
 	}
+	if loadedOptions.PermalinkStructure != "/?p=%post_id%" {
+		t.Fatalf("default permalink mismatch: got %s, want /?p=%%post_id%%", loadedOptions.PermalinkStructure)
+	}
 	if _, err := os.Stat(configPath); err != nil {
 		t.Fatalf("config file was not generated: %v", err)
 	}
@@ -100,6 +103,9 @@ func TestLoadMigratesMissingConfigFields(t *testing.T) {
 	}
 	if strings.Contains(migratedConfig, "username: admin") {
 		t.Fatalf("migrated config must not set a default admin username")
+	}
+	if loadedOptions.PermalinkStructure != legacyPermalinkStructure || !strings.Contains(migratedConfig, legacyPermalinkStructure) {
+		t.Fatalf("migrated config should preserve legacy permalink behavior with %s in:\n%s", legacyPermalinkStructure, migratedConfig)
 	}
 }
 
