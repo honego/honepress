@@ -104,30 +104,34 @@ export default function SettingsPage() {
                 开启评论
               </label>
               <div />
-              <Field label="GitHub 仓库">
-                <Input
-                  value={settings.giscusRepo}
-                  onChange={(event) => setSettings({ ...settings, giscusRepo: event.target.value })}
-                />
-              </Field>
-              <Field label="仓库 ID">
-                <Input
-                  value={settings.giscusRepoId}
-                  onChange={(event) => setSettings({ ...settings, giscusRepoId: event.target.value })}
-                />
-              </Field>
-              <Field label="分类">
-                <Input
-                  value={settings.giscusCategory}
-                  onChange={(event) => setSettings({ ...settings, giscusCategory: event.target.value })}
-                />
-              </Field>
-              <Field label="分类 ID">
-                <Input
-                  value={settings.giscusCategoryId}
-                  onChange={(event) => setSettings({ ...settings, giscusCategoryId: event.target.value })}
-                />
-              </Field>
+              {settings.commentEnabled ? (
+                <>
+                  <Field label="GitHub 仓库">
+                    <Input
+                      value={settings.giscusRepo}
+                      onChange={(event) => setSettings({ ...settings, giscusRepo: event.target.value })}
+                    />
+                  </Field>
+                  <Field label="仓库 ID">
+                    <Input
+                      value={settings.giscusRepoId}
+                      onChange={(event) => setSettings({ ...settings, giscusRepoId: event.target.value })}
+                    />
+                  </Field>
+                  <Field label="分类">
+                    <Input
+                      value={settings.giscusCategory}
+                      onChange={(event) => setSettings({ ...settings, giscusCategory: event.target.value })}
+                    />
+                  </Field>
+                  <Field label="分类 ID">
+                    <Input
+                      value={settings.giscusCategoryId}
+                      onChange={(event) => setSettings({ ...settings, giscusCategoryId: event.target.value })}
+                    />
+                  </Field>
+                </>
+              ) : null}
             </CardContent>
           </Card>
         </div>
