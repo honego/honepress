@@ -22,6 +22,11 @@ comment:
     category: ""
     categoryID: ""
 
+# 固定链接结构
+permalink:
+  # 可选示例: /?p=%post_id% /%year%/%monthnum%/%day%/%postname%/ /%year%/%monthnum%/%postname%/ /archives/%post_id% /%postname%/
+  structure: "/?p=%post_id%"
+
 # 前台显示设置
 theme:
   # 默认主题: auto light 或 dark
