@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/honeok/honepress/internal/bootstrap"
 	"github.com/honeok/honepress/internal/config"
 	"github.com/honeok/honepress/internal/server"
 	"github.com/honeok/honepress/internal/service"
@@ -28,6 +29,9 @@ func run() error {
 	}
 	if err := loadedOptions.ValidateRuntimeFiles(); err != nil {
 		return fmt.Errorf("validate runtime files: %w", err)
+	}
+	if err := bootstrap.GenerateDefaultPostIfEmpty(loadedOptions.PostsDir); err != nil {
+		return fmt.Errorf("generate default post: %w", err)
 	}
 
 	blogService := service.NewBlogService(loadedOptions)

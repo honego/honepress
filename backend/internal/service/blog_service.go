@@ -82,9 +82,6 @@ func (blogService *BlogService) InitializeAndRender() error {
 	if err := blogService.ensureDataDirectories(); err != nil {
 		return err
 	}
-	if err := blogService.createExamplePostsIfEmpty(); err != nil {
-		return err
-	}
 	return blogService.RenderAll()
 }
 
@@ -116,37 +113,6 @@ func (blogService *BlogService) ensureDataDirectories() error {
 			return err
 		}
 	}
-	return nil
-}
-
-func (blogService *BlogService) createExamplePostsIfEmpty() error {
-	directoryEntries, err := os.ReadDir(blogService.options.PostsDir)
-	if err != nil {
-		return fmt.Errorf("read posts directory: %w", err)
-	}
-
-	hasMarkdownPost := false
-	for _, directoryEntry := range directoryEntries {
-		if !directoryEntry.IsDir() && strings.EqualFold(filepath.Ext(directoryEntry.Name()), ".md") {
-			hasMarkdownPost = true
-			break
-		}
-	}
-	if hasMarkdownPost {
-		return nil
-	}
-
-	exampleFileName := "世界你好.md"
-	exampleFilePath, err := filesystem.SafeJoin(blogService.options.PostsDir, exampleFileName)
-	if err != nil {
-		return err
-	}
-	exampleMarkdownContent := defaultFirstPost(time.Now().Format("2006-01-02 15:04:05"))
-	if err := filesystem.WriteFileCreatingDirectory(exampleFilePath, []byte(exampleMarkdownContent), 0644); err != nil {
-		return err
-	}
-
-	log.Println("no posts found; generated default post")
 	return nil
 }
 
@@ -804,21 +770,4 @@ func countVisibleRunes(text string) int {
 		visibleRuneCount++
 	}
 	return visibleRuneCount
-}
-
-func defaultFirstPost(dateText string) string {
-	return fmt.Sprintf(`---
-title: "世界你好"
-icon: "☘️"
-date: "%s"
-description: "欢迎使用 HonePress。"
-draft: false
-url: "hello.html"
-aliases: []
-tags:
-  - HonePress
----
-
-欢迎使用 HonePress 。这是您的第一篇文章，编辑或删除它，然后开始写作吧！
-`, dateText)
 }

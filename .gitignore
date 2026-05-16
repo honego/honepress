@@ -39,6 +39,5 @@ dist/
 frontend/admin/dist/
 frontend/theme/dist/
 
-# Generated public site
-data/public/*
-!data/public/.gitkeep
+# Runtime data
+data/
