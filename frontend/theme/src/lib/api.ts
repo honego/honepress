@@ -69,7 +69,8 @@ export async function fetchSite(): Promise<PublicSiteSettings> {
 }
 
 export async function fetchPost(postID: string): Promise<PublicPostDetail> {
-  const response = await fetch(`/api/posts/${encodeURIComponent(postID)}`, { credentials: "same-origin" });
+  const searchParams = new URLSearchParams({ path: postID });
+  const response = await fetch(`/api/post?${searchParams.toString()}`, { credentials: "same-origin" });
   if (!response.ok) {
     throw new Error(await readError(response));
   }

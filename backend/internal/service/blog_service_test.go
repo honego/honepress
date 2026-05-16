@@ -138,6 +138,8 @@ Draft body.`,
 		t.Fatalf("render failed: %v", err)
 	}
 
+	publishedPostID := stablePostID("published.html")
+	expectedPublishedPublicURL := "/?p=" + publishedPostID
 	generatedFiles := []string{
 		filepath.Join(testOptions.PublicDir, "rss.xml"),
 		filepath.Join(testOptions.PublicDir, "sitemap.xml"),
@@ -151,7 +153,10 @@ Draft body.`,
 		if strings.Contains(generatedContent, "Draft Post") || strings.Contains(generatedContent, "draft.html") {
 			t.Fatalf("generated file %s must not contain draft content", generatedFile)
 		}
-		if !strings.Contains(generatedContent, "published") && !strings.Contains(generatedContent, "Published Post") {
+		if generatedFile == filepath.Join(testOptions.PublicDir, "sitemap.xml") && !strings.Contains(generatedContent, expectedPublishedPublicURL) {
+			t.Fatalf("sitemap should contain published post permalink: %s", generatedContent)
+		}
+		if generatedFile != filepath.Join(testOptions.PublicDir, "sitemap.xml") && !strings.Contains(generatedContent, "Published Post") {
 			t.Fatalf("generated file %s should contain published post metadata", generatedFile)
 		}
 		if generatedFile == filepath.Join(testOptions.PublicDir, "sitemap.xml") && strings.Contains(generatedContent, "old-published.html") {
@@ -159,7 +164,7 @@ Draft body.`,
 		}
 	}
 
-	staticPostContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "published.html"))
+	staticPostContent, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "p", publishedPostID+".html"))
 	if err != nil {
 		t.Fatalf("read static post page failed: %v", err)
 	}
@@ -167,7 +172,7 @@ Draft body.`,
 	expectedStaticPostSnippets := []string{
 		"<title>Published SEO Title</title>",
 		`<meta name="description" content="Published SEO Description" />`,
-		`<link rel="canonical" href="/published.html" />`,
+		`<link rel="canonical" href="` + expectedPublishedPublicURL + `" />`,
 		`<meta property="og:type" content="article" />`,
 		`"@type":"BlogPosting"`,
 		"next-posts",
@@ -185,7 +190,7 @@ Draft body.`,
 	if err != nil {
 		t.Fatalf("read static alias redirect failed: %v", err)
 	}
-	if !strings.Contains(string(aliasContent), `url=/published.html`) || !strings.Contains(string(aliasContent), `href="/published.html"`) {
+	if !strings.Contains(string(aliasContent), `url=`+expectedPublishedPublicURL) || !strings.Contains(string(aliasContent), `href="`+expectedPublishedPublicURL+`"`) {
 		t.Fatalf("alias should redirect canonically to published post: %s", string(aliasContent))
 	}
 	if _, err := os.Stat(filepath.Join(testOptions.PublicDir, "draft.html")); !os.IsNotExist(err) {
@@ -274,5 +279,145 @@ Draft body.`,
 
 	if _, err := blogService.GetPublicPost("draft.html"); err == nil {
 		t.Fatalf("draft post must not be available from public API")
+	}
+}
+
+func TestRenderAllUsesGlobalPermalinkStructure(t *testing.T) {
+	dataDirectoryPath := t.TempDir()
+
+	testOptions := config.Options{
+		Title:              "honepress",
+		Description:        "test blog",
+		DataDir:            dataDirectoryPath,
+		ContentDir:         filepath.Join(dataDirectoryPath, "content"),
+		PostsDir:           filepath.Join(dataDirectoryPath, "content", "posts"),
+		PublicDir:          filepath.Join(dataDirectoryPath, "public"),
+		PermalinkStructure: "/%year%/%monthnum%/%postname%/",
+	}
+	testOptions = withTestRuntimeFiles(t, dataDirectoryPath, testOptions)
+
+	if err := os.MkdirAll(testOptions.PostsDir, 0755); err != nil {
+		t.Fatalf("create posts directory failed: %v", err)
+	}
+	postContent := `---
+title: "Permalink Post"
+date: "2026-05-04 12:00:00"
+description: "permalink content"
+draft: false
+url: "permalink-post.html"
+aliases: []
+tags: []
+---
+
+Permalink body.`
+	if err := os.WriteFile(filepath.Join(testOptions.PostsDir, "permalink.md"), []byte(postContent), 0644); err != nil {
+		t.Fatalf("write post failed: %v", err)
+	}
+
+	blogService := NewBlogService(testOptions)
+	if err := blogService.RenderAll(); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+
+	expectedPostPath := filepath.Join(testOptions.PublicDir, "2026", "05", "permalink-post", "index.html")
+	if _, err := os.Stat(expectedPostPath); err != nil {
+		t.Fatalf("global permalink page was not generated: %v", err)
+	}
+	postContentBytes, err := os.ReadFile(expectedPostPath)
+	if err != nil {
+		t.Fatalf("read generated permalink post failed: %v", err)
+	}
+	if !strings.Contains(string(postContentBytes), `href="/2026/05/permalink-post/"`) {
+		t.Fatalf("post canonical should use global permalink: %s", string(postContentBytes))
+	}
+
+	oldPermalinkRedirect, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "permalink-post.html"))
+	if err != nil {
+		t.Fatalf("read old permalink redirect failed: %v", err)
+	}
+	if !strings.Contains(string(oldPermalinkRedirect), `url=/2026/05/permalink-post/`) {
+		t.Fatalf("old permalink should redirect to global permalink: %s", string(oldPermalinkRedirect))
+	}
+
+	publicPosts, err := blogService.ListPublicPosts()
+	if err != nil {
+		t.Fatalf("list public posts failed: %v", err)
+	}
+	if len(publicPosts) != 1 || publicPosts[0].PublicURL != "/2026/05/permalink-post/" {
+		t.Fatalf("public post URL should use global permalink: %#v", publicPosts)
+	}
+	if _, err := blogService.GetPublicPost("2026/05/permalink-post"); err != nil {
+		t.Fatalf("get public post by global permalink failed: %v", err)
+	}
+}
+
+func TestRenderAllUsesPlainPermalinkPostID(t *testing.T) {
+	dataDirectoryPath := t.TempDir()
+
+	testOptions := config.Options{
+		Title:              "honepress",
+		Description:        "test blog",
+		DataDir:            dataDirectoryPath,
+		ContentDir:         filepath.Join(dataDirectoryPath, "content"),
+		PostsDir:           filepath.Join(dataDirectoryPath, "content", "posts"),
+		PublicDir:          filepath.Join(dataDirectoryPath, "public"),
+		PermalinkStructure: "/?p=%post_id%",
+	}
+	testOptions = withTestRuntimeFiles(t, dataDirectoryPath, testOptions)
+
+	if err := os.MkdirAll(testOptions.PostsDir, 0755); err != nil {
+		t.Fatalf("create posts directory failed: %v", err)
+	}
+	postContent := `---
+title: "Plain Permalink Post"
+date: "2026-05-04 12:00:00"
+description: "plain permalink content"
+draft: false
+url: "plain-post.html"
+aliases: []
+tags: []
+---
+
+Plain permalink body.`
+	if err := os.WriteFile(filepath.Join(testOptions.PostsDir, "plain.md"), []byte(postContent), 0644); err != nil {
+		t.Fatalf("write post failed: %v", err)
+	}
+
+	blogService := NewBlogService(testOptions)
+	if err := blogService.RenderAll(); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+
+	postID := stablePostID("plain-post.html")
+	expectedPublicURL := "/?p=" + postID
+	expectedPostPath := filepath.Join(testOptions.PublicDir, "p", postID+".html")
+	if _, err := os.Stat(expectedPostPath); err != nil {
+		t.Fatalf("plain permalink page was not generated by post id: %v", err)
+	}
+	postContentBytes, err := os.ReadFile(expectedPostPath)
+	if err != nil {
+		t.Fatalf("read generated plain permalink post failed: %v", err)
+	}
+	if !strings.Contains(string(postContentBytes), `href="`+expectedPublicURL+`"`) {
+		t.Fatalf("post canonical should use plain permalink: %s", string(postContentBytes))
+	}
+
+	oldPermalinkRedirect, err := os.ReadFile(filepath.Join(testOptions.PublicDir, "plain-post.html"))
+	if err != nil {
+		t.Fatalf("read old permalink redirect failed: %v", err)
+	}
+	if !strings.Contains(string(oldPermalinkRedirect), `url=`+expectedPublicURL) {
+		t.Fatalf("old permalink should redirect to plain permalink: %s", string(oldPermalinkRedirect))
+	}
+
+	publicPosts, err := blogService.ListPublicPosts()
+	if err != nil {
+		t.Fatalf("list public posts failed: %v", err)
+	}
+	if len(publicPosts) != 1 || publicPosts[0].PublicURL != expectedPublicURL {
+		t.Fatalf("public post URL should use plain permalink: %#v", publicPosts)
+	}
+	if _, err := blogService.GetPublicPost(postID); err != nil {
+		t.Fatalf("get public post by numeric post id failed: %v", err)
 	}
 }

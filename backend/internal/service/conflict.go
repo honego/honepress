@@ -15,10 +15,14 @@ type permalinkOwner struct {
 func validatePermalinkConflicts(posts []model.Post) error {
 	permalinkOwners := make(map[string]permalinkOwner)
 	for _, currentPost := range posts {
-		if previousOwner, exists := permalinkOwners[currentPost.URL]; exists {
-			return fmt.Errorf("permalink conflict: %s is used by both %s and %s", currentPost.URL, displaySourcePath(previousOwner.sourceFilePath), displaySourcePath(currentPost.SourceFilePath))
+		if err := claimPermalink(permalinkOwners, currentPost.URL, currentPost.SourceFilePath, false); err != nil {
+			return err
 		}
-		permalinkOwners[currentPost.URL] = permalinkOwner{sourceFilePath: currentPost.SourceFilePath}
+		if currentPost.SourceURL != "" && currentPost.SourceURL != currentPost.URL {
+			if err := claimPermalink(permalinkOwners, currentPost.SourceURL, currentPost.SourceFilePath, true); err != nil {
+				return err
+			}
+		}
 
 		aliasOwners := make(map[string]struct{})
 		for _, currentAlias := range currentPost.Aliases {
@@ -36,6 +40,17 @@ func validatePermalinkConflicts(posts []model.Post) error {
 			permalinkOwners[currentAlias] = permalinkOwner{sourceFilePath: currentPost.SourceFilePath, isAlias: true}
 		}
 	}
+	return nil
+}
+
+func claimPermalink(permalinkOwners map[string]permalinkOwner, permalink string, sourceFilePath string, isAlias bool) error {
+	if previousOwner, exists := permalinkOwners[permalink]; exists {
+		if isAlias || previousOwner.isAlias {
+			return fmt.Errorf("alias conflict: %s is used by both %s and %s", permalink, displaySourcePath(previousOwner.sourceFilePath), displaySourcePath(sourceFilePath))
+		}
+		return fmt.Errorf("permalink conflict: %s is used by both %s and %s", permalink, displaySourcePath(previousOwner.sourceFilePath), displaySourcePath(sourceFilePath))
+	}
+	permalinkOwners[permalink] = permalinkOwner{sourceFilePath: sourceFilePath, isAlias: isAlias}
 	return nil
 }
 

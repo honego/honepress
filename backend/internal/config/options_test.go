@@ -92,7 +92,7 @@ func TestLoadMigratesMissingConfigFields(t *testing.T) {
 		t.Fatalf("read migrated config failed: %v", err)
 	}
 	migratedConfig := string(configFileContent)
-	missingKeys := []string{"admin:", "username:", "password:", "comment:", "giscus:", "theme:", "default:", "font:"}
+	missingKeys := []string{"admin:", "username:", "password:", "comment:", "giscus:", "permalink:", "structure:", "theme:", "default:", "font:"}
 	for _, missingKey := range missingKeys {
 		if !strings.Contains(migratedConfig, missingKey) {
 			t.Fatalf("migrated config missing key %s in:\n%s", missingKey, migratedConfig)
@@ -100,6 +100,18 @@ func TestLoadMigratesMissingConfigFields(t *testing.T) {
 	}
 	if strings.Contains(migratedConfig, "username: admin") {
 		t.Fatalf("migrated config must not set a default admin username")
+	}
+}
+
+func TestLoadRejectsInvalidPermalinkStructure(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	invalidConfig := []byte("permalink:\n  structure: /?slug=%postname%\n")
+	if err := os.WriteFile(configPath, invalidConfig, 0644); err != nil {
+		t.Fatalf("write config failed: %v", err)
+	}
+
+	if _, err := Load(configPath); err == nil {
+		t.Fatalf("load should reject invalid permalink structure")
 	}
 }
 

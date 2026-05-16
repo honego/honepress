@@ -53,6 +53,7 @@ export interface SiteSettings {
   giscusRepoId: string;
   giscusCategory: string;
   giscusCategoryId: string;
+  permalinkStructure: string;
   themeDefault: "auto" | "light" | "dark";
   font: "default" | "douyin-sans";
 }

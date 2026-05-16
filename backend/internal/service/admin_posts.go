@@ -48,7 +48,12 @@ func (blogService *BlogService) GetPublicPost(postID string) (model.PublicPostDe
 		if currentPost.Draft {
 			continue
 		}
-		if currentPost.SourceFileName != normalizedPostID && currentPost.URL != normalizedPostID && !stringListContains(currentPost.Aliases, normalizedPostID) {
+		if currentPost.SourceFileName != normalizedPostID &&
+			currentPost.SourceURL != normalizedPostID &&
+			currentPost.Slug != normalizedPostID &&
+			currentPost.PostID != normalizedPostID &&
+			strings.Trim(currentPost.URL, "/") != normalizedPostID &&
+			!stringListContains(currentPost.Aliases, normalizedPostID) {
 			continue
 		}
 		return model.PublicPostDetail{
@@ -60,7 +65,7 @@ func (blogService *BlogService) GetPublicPost(postID string) (model.PublicPostDe
 			SEOTitle:       currentPost.SEOTitle,
 			SEODescription: currentPost.SEODescription,
 			URL:            currentPost.URL,
-			PublicURL:      "/" + currentPost.URL,
+			PublicURL:      publicPath(currentPost.URL),
 			Tags:           currentPost.Tags,
 			HTML:           string(currentPost.BodyHTML),
 		}, nil

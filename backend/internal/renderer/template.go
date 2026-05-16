@@ -30,9 +30,9 @@ func (templateRenderer *TemplateRenderer) RenderRSS(targetFilePath string, chann
 		Description: channelDescription,
 	}
 	for _, currentPost := range posts {
-		publicPath := pathPrefix + "/" + currentPost.URL
+		publicPath := pathPrefix + publicPostPath(currentPost.URL)
 		if pathPrefix == "" {
-			publicPath = "/" + currentPost.URL
+			publicPath = publicPostPath(currentPost.URL)
 		}
 		absolutePostURL := templateRenderer.options.AbsoluteURL(publicPath)
 		rssFeed.Items = append(rssFeed.Items, &feeds.RssItem{
@@ -76,6 +76,13 @@ func (templateRenderer *TemplateRenderer) RenderRedirect(targetFilePath string, 
 	absoluteTargetURL := templateRenderer.options.AbsoluteURL(targetPublicPath)
 	redirectHTML := "<!doctype html>\n<html lang=\"zh-CN\" data-theme=\"auto\">\n<head>\n<meta charset=\"utf-8\">\n<meta http-equiv=\"refresh\" content=\"0; url=" + htmlTemplate.HTMLEscapeString(targetPublicPath) + "\">\n<link rel=\"canonical\" href=\"" + htmlTemplate.HTMLEscapeString(absoluteTargetURL) + "\">\n<title>Page moved</title>\n</head>\n<body>\n<p>Page moved: <a href=\"" + htmlTemplate.HTMLEscapeString(targetPublicPath) + "\">continue</a></p>\n</body>\n</html>\n"
 	return filesystem.WriteFileCreatingDirectory(targetFilePath, []byte(redirectHTML), 0644)
+}
+
+func publicPostPath(postURL string) string {
+	if strings.HasPrefix(postURL, "?") {
+		return "/" + postURL
+	}
+	return "/" + strings.TrimPrefix(postURL, "/")
 }
 
 type sitemapURLSet struct {

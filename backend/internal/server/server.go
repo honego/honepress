@@ -20,6 +20,7 @@ import (
 	"github.com/honeok/honepress/internal/core"
 	"github.com/honeok/honepress/internal/model"
 	"github.com/honeok/honepress/internal/service"
+	"github.com/honeok/honepress/internal/validation"
 )
 
 // HTTP 服务
@@ -64,6 +65,7 @@ func (server *Server) routes() http.Handler {
 		apiRouter.Post("/logout", server.apiHandler(server.handleLogout))
 		apiRouter.Post("/refresh-token", server.apiHandler(server.handleRefreshToken))
 		apiRouter.Get("/site", server.apiHandler(server.handleGetPublicSite))
+		apiRouter.Get("/post", server.apiHandler(server.handleGetPublicPostByQuery))
 		apiRouter.Get("/posts", server.apiHandler(server.handleListPublicPosts))
 		apiRouter.Get("/posts/{postID}", server.apiHandler(server.handleGetPublicPost))
 
@@ -224,6 +226,15 @@ func (server *Server) serveStaticFile(responseWriter http.ResponseWriter, reques
 }
 
 func (server *Server) servePublic(responseWriter http.ResponseWriter, request *http.Request) {
+	if request.URL.Path == "/" {
+		if postID := strings.TrimSpace(request.URL.Query().Get("p")); postID != "" {
+			if normalizedPostID, err := validation.NormalizePostSlug(postID); err == nil {
+				if server.serveStaticFile(responseWriter, request, server.options.PublicDir, filepath.ToSlash(filepath.Join("p", normalizedPostID+".html"))) {
+					return
+				}
+			}
+		}
+	}
 	cleanRequestPath := path.Clean(strings.TrimPrefix(request.URL.Path, "/"))
 	if cleanRequestPath == "." || cleanRequestPath == "/" || strings.HasPrefix(cleanRequestPath, "..") {
 		http.FileServer(http.Dir(server.options.PublicDir)).ServeHTTP(responseWriter, request)
@@ -364,6 +375,21 @@ func (server *Server) handleListPublicPosts(responseWriter http.ResponseWriter, 
 
 func (server *Server) handleGetPublicPost(responseWriter http.ResponseWriter, request *http.Request) error {
 	postDetail, err := server.blogService.GetPublicPost(chi.URLParam(request, "postID"))
+	if err != nil {
+		return newResponseError(http.StatusNotFound, err)
+	}
+	return server.writeJSON(responseWriter, http.StatusOK, publicPostDetailResponse{Post: postDetail})
+}
+
+func (server *Server) handleGetPublicPostByQuery(responseWriter http.ResponseWriter, request *http.Request) error {
+	postID := strings.TrimSpace(request.URL.Query().Get("path"))
+	if postID == "" {
+		postID = strings.TrimSpace(request.URL.Query().Get("p"))
+	}
+	if postID == "" {
+		return newResponseErrorMessage(http.StatusBadRequest, "post path is required")
+	}
+	postDetail, err := server.blogService.GetPublicPost(postID)
 	if err != nil {
 		return newResponseError(http.StatusNotFound, err)
 	}

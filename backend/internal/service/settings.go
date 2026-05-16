@@ -6,6 +6,7 @@ import (
 
 	"github.com/honeok/honepress/internal/config"
 	"github.com/honeok/honepress/internal/model"
+	"github.com/honeok/honepress/internal/validation"
 )
 
 func (blogService *BlogService) GetSiteSettings() model.SiteSettings {
@@ -51,6 +52,9 @@ func validateSiteSettings(siteSettings model.SiteSettings) error {
 	}
 	if strings.TrimSpace(siteSettings.IconURL) != "" && !isSupportedIconURL(siteSettings.IconURL) {
 		return fmt.Errorf("site icon must be an http(s) URL or an absolute site path")
+	}
+	if err := validation.ValidatePermalinkStructure(siteSettings.PermalinkStructure); err != nil {
+		return err
 	}
 	adminUsername := strings.TrimSpace(siteSettings.AdminUsername)
 	adminPassword := strings.TrimSpace(siteSettings.AdminPassword)

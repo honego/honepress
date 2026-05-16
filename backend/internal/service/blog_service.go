@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	htmlTemplate "html/template"
 	"log"
 	"net/url"
@@ -66,6 +67,7 @@ func normalizeRuntimeOptions(options config.Options) config.Options {
 	if strings.TrimSpace(options.ThemeDefault) == "" {
 		options.ThemeDefault = "auto"
 	}
+	options.PermalinkStructure = validation.NormalizePermalinkStructure(options.PermalinkStructure)
 	switch strings.ToLower(strings.TrimSpace(options.Font)) {
 	case "douyin-sans":
 		options.Font = "douyin-sans"
@@ -194,7 +196,7 @@ func (blogService *BlogService) renderStaticMetadata(posts []model.Post) error {
 
 	sitemapPaths := []string{"/", "/archive.html"}
 	for _, currentPost := range posts {
-		sitemapPaths = append(sitemapPaths, "/"+currentPost.URL)
+		sitemapPaths = append(sitemapPaths, publicPath(currentPost.URL))
 	}
 	return metadataRenderer.RenderSitemap(filepath.Join(blogService.options.PublicDir, "sitemap.xml"), sitemapPaths)
 }
@@ -216,11 +218,16 @@ func (blogService *BlogService) renderStaticPostPages(posts []model.Post) error 
 
 	for _, currentPost := range posts {
 		postPageHTML := blogService.postShellWithSEO(string(postShellContent), currentPost)
-		if err := filesystem.WriteFileCreatingDirectory(filepath.Join(blogService.options.PublicDir, currentPost.URL), []byte(postPageHTML), 0644); err != nil {
+		if err := filesystem.WriteFileCreatingDirectory(filepath.Join(blogService.options.PublicDir, currentPost.OutputPath), []byte(postPageHTML), 0644); err != nil {
 			return fmt.Errorf("write static post page %s: %w", currentPost.URL, err)
 		}
+		if currentPost.SourceURL != "" && currentPost.SourceURL != currentPost.URL {
+			if err := metadataRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, currentPost.SourceURL), publicPath(currentPost.URL)); err != nil {
+				return err
+			}
+		}
 		for _, normalizedAlias := range currentPost.Aliases {
-			if err := metadataRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, normalizedAlias), "/"+currentPost.URL); err != nil {
+			if err := metadataRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, normalizedAlias), publicPath(currentPost.URL)); err != nil {
 				return err
 			}
 		}
@@ -299,7 +306,7 @@ func setHTMLAttribute(htmlTag string, attributeName string, attributeValue strin
 func (blogService *BlogService) postSEOHeadHTML(post model.Post) string {
 	seoTitle := postSEOTitle(post, blogService.options.Title)
 	seoDescription := postSEODescription(post)
-	canonicalURL := string(seoPublicURL(blogService.options, "/"+post.URL))
+	canonicalURL := string(seoPublicURL(blogService.options, publicPath(post.URL)))
 	siteTitle := siteName(blogService.options.Title)
 	seoImage := string(seoImageURL(blogService.options, blogService.options.SiteIconURL))
 	structuredData := string(postStructuredData(blogService.options, post))
@@ -376,6 +383,103 @@ func writeLink(htmlBuilder *strings.Builder, rel string, href string) {
 	htmlBuilder.WriteString(`" />` + "\n")
 }
 
+func (blogService *BlogService) postPublicURL(frontMatter model.PostFrontMatter, postSlug string, postID string, publishedAt time.Time) string {
+	structure := validation.NormalizePermalinkStructure(blogService.options.PermalinkStructure)
+	replacements := map[string]string{
+		"%year%":     publishedAt.Format("2006"),
+		"%monthnum%": publishedAt.Format("01"),
+		"%day%":      publishedAt.Format("02"),
+		"%hour%":     publishedAt.Format("15"),
+		"%minute%":   publishedAt.Format("04"),
+		"%second%":   publishedAt.Format("05"),
+		"%post_id%":  postID,
+		"%postname%": postSlug,
+		"%category%": firstCategorySlug(frontMatter.Tags),
+		"%author%":   "admin",
+	}
+	publicURL := structure
+	for tagName, tagValue := range replacements {
+		publicURL = strings.ReplaceAll(publicURL, tagName, tagValue)
+	}
+	publicURL = strings.TrimPrefix(publicURL, "/")
+	if strings.HasPrefix(publicURL, "?") {
+		return publicURL
+	}
+	return strings.TrimLeft(publicURL, "/")
+}
+
+func stablePostID(sourceFileName string) string {
+	checksum := crc32.ChecksumIEEE([]byte(sourceFileName))
+	if checksum == 0 {
+		return "1"
+	}
+	return fmt.Sprintf("%d", checksum)
+}
+
+func (blogService *BlogService) postOutputPath(publicURL string, postSlug string) string {
+	if strings.HasPrefix(publicURL, "?") {
+		queryValues, err := url.ParseQuery(strings.TrimPrefix(publicURL, "?"))
+		if err == nil {
+			if postID, err := validation.NormalizePostSlug(queryValues.Get("p")); err == nil {
+				return filepath.ToSlash(filepath.Join("p", postID+".html"))
+			}
+		}
+		return filepath.ToSlash(filepath.Join("p", postSlug+".html"))
+	}
+	trimmedPublicURL := strings.Trim(publicURL, "/")
+	if trimmedPublicURL == "" {
+		return filepath.ToSlash(filepath.Join(postSlug, "index.html"))
+	}
+	if strings.HasSuffix(publicURL, "/") || filepath.Ext(trimmedPublicURL) == "" {
+		return filepath.ToSlash(filepath.Join(trimmedPublicURL, "index.html"))
+	}
+	return filepath.ToSlash(trimmedPublicURL)
+}
+
+func publicPath(postURL string) string {
+	if strings.HasPrefix(postURL, "?") {
+		return "/" + postURL
+	}
+	return "/" + strings.TrimPrefix(postURL, "/")
+}
+
+func firstCategorySlug(tags []string) string {
+	for _, tag := range tags {
+		if slug := slugifyPermalinkPart(tag); slug != "" {
+			return slug
+		}
+	}
+	return "uncategorized"
+}
+
+func slugifyPermalinkPart(value string) string {
+	trimmedValue := strings.ToLower(strings.TrimSpace(value))
+	if trimmedValue == "" {
+		return ""
+	}
+	var slugBuilder strings.Builder
+	previousDash := false
+	for _, currentRune := range trimmedValue {
+		if currentRune >= 'a' && currentRune <= 'z' || currentRune >= '0' && currentRune <= '9' {
+			slugBuilder.WriteRune(currentRune)
+			previousDash = false
+			continue
+		}
+		if currentRune == '-' || currentRune == '_' {
+			if !previousDash {
+				slugBuilder.WriteRune('-')
+				previousDash = true
+			}
+			continue
+		}
+		if !previousDash {
+			slugBuilder.WriteRune('-')
+			previousDash = true
+		}
+	}
+	return strings.Trim(slugBuilder.String(), "-")
+}
+
 func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 	directoryEntries, err := os.ReadDir(blogService.options.PostsDir)
 	if err != nil {
@@ -409,6 +513,10 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 		if err != nil {
 			return nil, fmt.Errorf("normalize permalink for post at %s: %w", sourceFilePath, err)
 		}
+		postSlug, err := validation.NormalizePostSlugWithFallback(parsedFrontMatter.URL, directoryEntry.Name())
+		if err != nil {
+			return nil, fmt.Errorf("normalize post slug for post at %s: %w", sourceFilePath, err)
+		}
 
 		normalizedAliases := make([]string, 0, len(parsedFrontMatter.Aliases))
 		for _, rawAlias := range parsedFrontMatter.Aliases {
@@ -423,6 +531,8 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parse date for post at %s: %w", sourceFilePath, err)
 		}
+		postID := stablePostID(normalizedPermalink)
+		publicPostURL := blogService.postPublicURL(parsedFrontMatter, postSlug, postID, publishedAt)
 
 		var renderedPostHTML htmlTemplate.HTML
 		if !parsedFrontMatter.Draft {
@@ -444,7 +554,11 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			SEOTitle:       parsedFrontMatter.SEOTitle,
 			SEODescription: parsedFrontMatter.SEODescription,
 			Draft:          parsedFrontMatter.Draft,
-			URL:            normalizedPermalink,
+			SourceURL:      normalizedPermalink,
+			Slug:           postSlug,
+			PostID:         postID,
+			URL:            publicPostURL,
+			OutputPath:     blogService.postOutputPath(publicPostURL, postSlug),
 			Aliases:        normalizedAliases,
 			Tags:           parsedFrontMatter.Tags,
 			BodyMarkdown:   bodyMarkdownContent,
@@ -600,7 +714,7 @@ func addPublisher(document map[string]interface{}, options config.Options) {
 }
 
 func postStructuredData(options config.Options, post model.Post) htmlTemplate.JS {
-	postURL := options.AbsoluteURL("/" + post.URL)
+	postURL := options.AbsoluteURL(publicPath(post.URL))
 	document := map[string]interface{}{
 		"@context":         "https://schema.org",
 		"@type":            "BlogPosting",
@@ -665,7 +779,7 @@ func sortPostsByDateDescending(posts []model.Post) {
 func postsToSummaries(posts []model.Post) []model.PostSummary {
 	postSummaries := make([]model.PostSummary, 0, len(posts))
 	for _, currentPost := range posts {
-		publicURL := "/" + currentPost.URL
+		publicURL := publicPath(currentPost.URL)
 		postSummaries = append(postSummaries, model.PostSummary{
 			ID:          currentPost.SourceFileName,
 			Title:       currentPost.Title,

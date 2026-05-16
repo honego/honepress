@@ -33,7 +33,11 @@ type Post struct {
 	SEOTitle       string
 	SEODescription string
 	Draft          bool
+	SourceURL      string
+	Slug           string
+	PostID         string
 	URL            string
+	OutputPath     string
 	Aliases        []string
 	Tags           []string
 	BodyMarkdown   string

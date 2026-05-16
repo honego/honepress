@@ -13,6 +13,8 @@ export default function PostPage() {
   const postID = useMemo(() => {
     if (typeof router.query.id === "string") return router.query.id;
     if (typeof window === "undefined") return "";
+    const plainPostID = new URLSearchParams(window.location.search).get("p");
+    if (plainPostID) return plainPostID;
     const pathPostID = window.location.pathname.replace(/^\/+/, "");
     return pathPostID === "posts" || pathPostID === "posts.html" ? "" : pathPostID;
   }, [router.query.id]);
