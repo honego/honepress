@@ -2,7 +2,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { ArrowLeft, ExternalLink, FileText, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createPost, deletePost, fetchPost, fetchPosts, previewMarkdown, updatePost } from "@/api/posts";
 import { AdminLayout } from "@/components/admin-layout";
@@ -34,8 +34,8 @@ export default function PostsPage() {
   const [preview, setPreview] = useState("");
   const [message, setMessage] = useState("");
 
-  const tagsText = useMemo(() => editor.tags.join(", "), [editor.tags]);
-  const aliasesText = useMemo(() => editor.aliases.join(", "), [editor.aliases]);
+  const aliasesText = editor.aliases.join(", ");
+  const tagsText = editor.tags.join(", ");
 
   useEffect(() => {
     if (!isReady) return;
@@ -72,9 +72,7 @@ export default function PostsPage() {
     setPreview("");
     setIsEditing(true);
     setMessage("");
-    if (router.query.edit) {
-      void router.replace(router.pathname, undefined, { shallow: true });
-    }
+    clearEditQuery();
   }
 
   async function saveEditor() {
@@ -106,6 +104,10 @@ export default function PostsPage() {
     setEditor(createEmptyPost());
     setPreview("");
     setMessage("");
+    clearEditQuery();
+  }
+
+  function clearEditQuery() {
     if (router.query.edit) {
       void router.replace(router.pathname, undefined, { shallow: true });
     }
@@ -195,7 +197,7 @@ export default function PostsPage() {
                       placeholder="文章摘要"
                     />
                   </EditorField>
-                  <EditorField label="网页标签Emoji" className="lg:col-span-2">
+                  <EditorField label="网页标签 Emoji" className="lg:col-span-2">
                     <Input
                       value={editor.icon}
                       onChange={(event) => setField("icon", event.target.value)}

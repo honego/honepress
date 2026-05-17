@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { FileText, Home, LayoutDashboard, LogOut, Settings, Users } from "lucide-react";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { logoutAdmin } from "@/api/posts";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -65,12 +65,12 @@ export function AdminLayout({
               {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <a href="/" className={buttonVariants({ variant: "outline", size: "xs" })}>
-                <Home className="h-3.5 w-3.5" />
+              <a href="/" className={cn(buttonVariants({ variant: "outline", size: "xs" }), "text-sm")}>
+                <Home className="h-4 w-4" />
                 返回主页
               </a>
-              <Button variant="outline" size="xs" onClick={logout}>
-                <LogOut className="h-3.5 w-3.5" />
+              <Button variant="outline" size="xs" className="text-sm" onClick={logout}>
+                <LogOut className="h-4 w-4" />
                 退出
               </Button>
             </div>

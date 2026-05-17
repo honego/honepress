@@ -46,6 +46,13 @@ func TestMarkdownFileNameFromTitleAllowsChineseTitle(t *testing.T) {
 	}
 }
 
+func TestNormalizePermalinkStructureAddsLeadingSlash(t *testing.T) {
+	normalizedStructure := NormalizePermalinkStructure("%post_id%.html")
+	if normalizedStructure != "/%post_id%.html" {
+		t.Fatalf("structure mismatch: got %s", normalizedStructure)
+	}
+}
+
 func TestValidatePermalinkStructure(t *testing.T) {
 	testCases := []struct {
 		name      string
@@ -53,8 +60,10 @@ func TestValidatePermalinkStructure(t *testing.T) {
 		wantError bool
 	}{
 		{name: "default html", structure: "/%post_id%.html"},
+		{name: "custom without leading slash", structure: "%post_id%.html"},
 		{name: "date and post name", structure: "/%year%/%monthnum%/%day%/%postname%/"},
 		{name: "plain", structure: "/?p=%post_id%"},
+		{name: "all supported tags", structure: "%year%/%monthnum%/%day%/%hour%/%minute%/%second%/%category%/%postname%-%post_id%/"},
 		{name: "reject missing post token", structure: "/%year%/%monthnum%/", wantError: true},
 		{name: "reject unknown token", structure: "/%unknown%/%postname%/", wantError: true},
 		{name: "reject author token", structure: "/%author%/%postname%/", wantError: true},

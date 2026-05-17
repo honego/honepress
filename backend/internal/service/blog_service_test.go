@@ -5,8 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/honeok/honepress/internal/config"
+	"github.com/honeok/honepress/internal/model"
 )
 
 func withTestRuntimeFiles(t *testing.T, dataDirectoryPath string, testOptions config.Options) config.Options {
@@ -85,6 +87,33 @@ func TestPostFaviconHrefPrefersPostIcon(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPostPublicURLReplacesAllPermalinkTags(t *testing.T) {
+	blogService := NewBlogService(config.Options{
+		PermalinkStructure: "%year%/%monthnum%/%day%/%hour%/%minute%/%second%/%category%/%postname%-%post_id%/",
+	})
+	publishedAt := mustParsePostTime(t, "2026-05-18 03:20:45")
+
+	publicURL := blogService.postPublicURL(
+		model.PostFrontMatter{Tags: []string{"Ops Dev"}},
+		"sample-post",
+		"123",
+		publishedAt,
+	)
+
+	if publicURL != "2026/05/18/03/20/45/ops-dev/sample-post-123/" {
+		t.Fatalf("public URL mismatch: got %s", publicURL)
+	}
+}
+
+func mustParsePostTime(t *testing.T, value string) time.Time {
+	t.Helper()
+	parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", value, time.Local)
+	if err != nil {
+		t.Fatalf("parse time failed: %v", err)
+	}
+	return parsedTime
 }
 
 func TestRenderAllCopiesNextStaticFilesAndMetadata(t *testing.T) {

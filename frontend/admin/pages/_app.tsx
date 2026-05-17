@@ -2,10 +2,14 @@ import Head from "next/head";
 import type { AppProps } from "next/app";
 import { useEffect, useState } from "react";
 
+import {
+  adminFaviconChangeEventName,
+  defaultFaviconHref,
+  faviconHrefFromChangeEvent,
+  fetchSiteFaviconHref,
+  syncDocumentFavicon,
+} from "@/lib/favicon";
 import "@/styles/globals.css";
-
-const defaultFaviconHref = "/honepress-black.svg";
-const faviconChangeEventName = "honepress-admin-favicon-change";
 
 export default function App({ Component, pageProps }: AppProps) {
   const [faviconHref, setFaviconHref] = useState(defaultFaviconHref);
@@ -13,16 +17,14 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     let mounted = true;
     const handleFaviconChange = (event: Event) => {
-      const nextFaviconHref = faviconHrefFromEvent(event);
+      const nextFaviconHref = faviconHrefFromChangeEvent(event);
       setFaviconHref(nextFaviconHref);
       syncDocumentFavicon(nextFaviconHref);
     };
-    window.addEventListener(faviconChangeEventName, handleFaviconChange);
-    void fetch("/api/site", { credentials: "same-origin" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((responseBody: { site?: { iconUrl?: string } } | null) => {
+    window.addEventListener(adminFaviconChangeEventName, handleFaviconChange);
+    void fetchSiteFaviconHref()
+      .then((nextFaviconHref) => {
         if (!mounted) return;
-        const nextFaviconHref = responseBody?.site?.iconUrl?.trim() || defaultFaviconHref;
         setFaviconHref(nextFaviconHref);
         syncDocumentFavicon(nextFaviconHref);
       })
@@ -31,7 +33,7 @@ export default function App({ Component, pageProps }: AppProps) {
       });
     return () => {
       mounted = false;
-      window.removeEventListener(faviconChangeEventName, handleFaviconChange);
+      window.removeEventListener(adminFaviconChangeEventName, handleFaviconChange);
     };
   }, []);
 
@@ -43,22 +45,4 @@ export default function App({ Component, pageProps }: AppProps) {
       <Component {...pageProps} />
     </>
   );
-}
-
-function faviconHrefFromEvent(event: Event): string {
-  const iconUrl = (event as CustomEvent<string>).detail;
-  return typeof iconUrl === "string" ? iconUrl.trim() || defaultFaviconHref : defaultFaviconHref;
-}
-
-function syncDocumentFavicon(href: string) {
-  if (typeof document === "undefined" || !href) return;
-  let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-  if (!favicon) {
-    favicon = document.createElement("link");
-    favicon.rel = "icon";
-    document.head.appendChild(favicon);
-  }
-  if (favicon.getAttribute("href") !== href) {
-    favicon.setAttribute("href", href);
-  }
 }

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import type { PublicSiteSettings } from "../lib/api";
+import { defaultFaviconHref } from "../lib/favicon";
 
 type ThemeMode = "auto" | "light" | "dark";
 type IconName = "house" | "log-in" | "map" | "moon" | "rss" | "sun";
@@ -37,7 +38,7 @@ export function SiteHead({
   const pageTitle = title ?? (siteDescription ? `${siteTitle} - ${siteDescription}` : siteTitle);
   const pageDescription = description ?? siteDescription;
   const resolvedFaviconHref =
-    faviconHref === null ? "" : faviconHref?.trim() || site?.iconUrl?.trim() || "/honepress-black.svg";
+    faviconHref === null ? "" : faviconHref?.trim() || site?.iconUrl?.trim() || defaultFaviconHref;
 
   return (
     <Head>
@@ -74,7 +75,7 @@ export function SiteLayout({
 }) {
   const { theme, toggleTheme } = useTheme(site);
   const siteTitle = siteName(site);
-  const siteIcon = site?.iconUrl?.trim() || "/honepress-black.svg";
+  const siteIcon = site?.iconUrl?.trim() || defaultFaviconHref;
   const themeIcon = useThemeIcon(theme);
 
   return (
