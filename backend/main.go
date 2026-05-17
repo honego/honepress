@@ -7,6 +7,7 @@ import (
 
 	"github.com/honeok/honepress/internal/bootstrap"
 	"github.com/honeok/honepress/internal/config"
+	"github.com/honeok/honepress/internal/core"
 	"github.com/honeok/honepress/internal/server"
 	"github.com/honeok/honepress/internal/service"
 )
@@ -18,6 +19,8 @@ func main() {
 }
 
 func run() error {
+	printVersion()
+
 	configPath, err := config.ResolveConfigPath(os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("parse config path: %w", err)
@@ -47,4 +50,10 @@ func run() error {
 		return fmt.Errorf("start server: %w", err)
 	}
 	return nil
+}
+
+func printVersion() {
+	for _, statement := range core.VersionStatement() {
+		fmt.Println(statement)
+	}
 }

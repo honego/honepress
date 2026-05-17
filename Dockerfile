@@ -25,9 +25,12 @@ RUN mkdir -p /src/dist/theme \
 FROM golang:1.26-alpine AS build-backend
 WORKDIR /go/src/github.com/honeok/honepress
 ENV CGO_ENABLED=0
-COPY backend .
+COPY . /go/src/github.com/honeok/honepress
+WORKDIR /go/src/github.com/honeok/honepress/backend
 RUN set -ex \
-    && go build -v -trimpath -ldflags="-s -w -buildid=" \
+    && apk add --no-cache git \
+    && COMMIT="$(git rev-parse --short HEAD)" \
+    && go build -v -trimpath -ldflags="-X github.com/honeok/honepress/internal/core.Build=$COMMIT -s -w -buildid=" \
         -o /go/bin/honepress main.go
 
 FROM alpine:3.23.4
