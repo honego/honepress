@@ -49,10 +49,22 @@ export default function PostsPage() {
 
   useEffect(() => {
     if (!isEditing) return;
+    const markdownBody = editor.body;
+    if (markdownBody.trim() === "") {
+      setPreview("");
+      return;
+    }
+    let isCurrentPreview = true;
     const timer = window.setTimeout(async () => {
-      setPreview(await previewMarkdown(editor.body).catch((error) => `<p>${readError(error)}</p>`));
+      const nextPreview = await previewMarkdown(markdownBody).catch((error) => `<p>${readError(error)}</p>`);
+      if (isCurrentPreview) {
+        setPreview(nextPreview);
+      }
     }, 250);
-    return () => window.clearTimeout(timer);
+    return () => {
+      isCurrentPreview = false;
+      window.clearTimeout(timer);
+    };
   }, [editor.body, isEditing]);
 
   async function loadPosts(nextPage = page) {

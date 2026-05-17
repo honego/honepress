@@ -55,6 +55,10 @@ func (blogService *BlogService) GetPublicPost(postID string) (model.PublicPostDe
 			strings.Trim(currentPost.URL, "/") != normalizedPostID {
 			continue
 		}
+		renderedPostHTML, err := blogService.markdownRenderer.Render(currentPost.BodyMarkdown)
+		if err != nil {
+			return model.PublicPostDetail{}, fmt.Errorf("render post at %s: %w", currentPost.SourceFilePath, err)
+		}
 		return model.PublicPostDetail{
 			ID:             currentPost.SourceFileName,
 			Title:          currentPost.Title,
@@ -67,7 +71,7 @@ func (blogService *BlogService) GetPublicPost(postID string) (model.PublicPostDe
 			URL:            currentPost.URL,
 			PublicURL:      publicPath(currentPost.URL),
 			Tags:           currentPost.Tags,
-			HTML:           string(currentPost.BodyHTML),
+			HTML:           string(renderedPostHTML),
 		}, nil
 	}
 	return model.PublicPostDetail{}, fmt.Errorf("post not found: %s", normalizedPostID)

@@ -30,6 +30,17 @@ type BlogService struct {
 	renderMutex      sync.Mutex
 }
 
+type parsedPostDocument struct {
+	sourceFileName      string
+	sourceFilePath      string
+	frontMatter         model.PostFrontMatter
+	bodyMarkdownContent string
+}
+
+type scanPostsOptions struct {
+	renderHTML bool
+}
+
 // 创建博客服务
 func NewBlogService(options config.Options) *BlogService {
 	options = normalizeRuntimeOptions(options)
@@ -120,7 +131,7 @@ func (blogService *BlogService) renderAllWithoutLock() error {
 		return err
 	}
 
-	posts, err := blogService.scanPosts()
+	posts, err := blogService.scanPostsWithOptions(scanPostsOptions{renderHTML: true})
 	if err != nil {
 		return err
 	}
@@ -180,9 +191,10 @@ func (blogService *BlogService) renderStaticPostPages(posts []model.Post) error 
 	if err != nil {
 		return fmt.Errorf("read Next post shell at %s: %w", postShellFilePath, err)
 	}
+	postShellHTML := string(postShellContent)
 
 	for _, currentPost := range posts {
-		postPageHTML := blogService.postShellWithSEO(string(postShellContent), currentPost)
+		postPageHTML := blogService.postShellWithSEO(postShellHTML, currentPost)
 		if err := filesystem.WriteFileCreatingDirectory(filepath.Join(blogService.options.PublicDir, currentPost.OutputPath), []byte(postPageHTML), 0644); err != nil {
 			return fmt.Errorf("write static post page %s: %w", currentPost.URL, err)
 		}
@@ -379,26 +391,39 @@ func publicPath(postURL string) string {
 	return "/" + strings.TrimPrefix(postURL, "/")
 }
 
-func (blogService *BlogService) usedStoredPostIDs(directoryEntries []os.DirEntry) (map[int]string, error) {
+func (blogService *BlogService) readPostDocuments(directoryEntries []os.DirEntry) ([]parsedPostDocument, map[int]string, error) {
+	postDocuments := make([]parsedPostDocument, 0, len(directoryEntries))
 	usedPostIDs := make(map[int]string)
 	for _, directoryEntry := range directoryEntries {
 		if directoryEntry.IsDir() || !strings.EqualFold(filepath.Ext(directoryEntry.Name()), ".md") {
 			continue
 		}
+		if err := validation.ValidateMarkdownFileName(directoryEntry.Name()); err != nil {
+			return nil, nil, err
+		}
 		sourceFilePath := filepath.Join(blogService.options.PostsDir, directoryEntry.Name())
 		sourceMarkdownContent, err := os.ReadFile(sourceFilePath)
 		if err != nil {
-			return nil, fmt.Errorf("read post at %s: %w", sourceFilePath, err)
+			return nil, nil, fmt.Errorf("read post at %s: %w", sourceFilePath, err)
 		}
-		parsedFrontMatter, _, err := renderer.ParsePostDocument(directoryEntry.Name(), sourceMarkdownContent)
+		parsedFrontMatter, bodyMarkdownContent, err := renderer.ParsePostDocument(directoryEntry.Name(), sourceMarkdownContent)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		if err := validation.ValidateRequiredPostFields(parsedFrontMatter.Title, parsedFrontMatter.Date); err != nil {
+			return nil, nil, fmt.Errorf("validate post at %s: %w", sourceFilePath, err)
 		}
 		if postID, hasPostID := postIDFromPermalink(parsedFrontMatter.URL); hasPostID {
 			usedPostIDs[postID] = sourceFilePath
 		}
+		postDocuments = append(postDocuments, parsedPostDocument{
+			sourceFileName:      directoryEntry.Name(),
+			sourceFilePath:      sourceFilePath,
+			frontMatter:         parsedFrontMatter,
+			bodyMarkdownContent: bodyMarkdownContent,
+		})
 	}
-	return usedPostIDs, nil
+	return postDocuments, usedPostIDs, nil
 }
 
 func (blogService *BlogService) postURLForFrontMatter(rawURL string, sourceFilePath string, usedPostIDs map[int]string) (string, string, error) {
@@ -416,72 +441,57 @@ func (blogService *BlogService) postURLForFrontMatter(rawURL string, sourceFileP
 }
 
 func (blogService *BlogService) scanPosts() ([]model.Post, error) {
+	return blogService.scanPostsWithOptions(scanPostsOptions{})
+}
+
+func (blogService *BlogService) scanPostsWithOptions(options scanPostsOptions) ([]model.Post, error) {
 	directoryEntries, err := os.ReadDir(blogService.options.PostsDir)
 	if err != nil {
 		return nil, fmt.Errorf("read posts directory: %w", err)
 	}
 
-	posts := make([]model.Post, 0, len(directoryEntries))
-	usedPostIDs, err := blogService.usedStoredPostIDs(directoryEntries)
+	postDocuments, usedPostIDs, err := blogService.readPostDocuments(directoryEntries)
 	if err != nil {
 		return nil, err
 	}
+	posts := make([]model.Post, 0, len(postDocuments))
 	claimedPostIDs := make(map[int]string)
-	for _, directoryEntry := range directoryEntries {
-		if directoryEntry.IsDir() || !strings.EqualFold(filepath.Ext(directoryEntry.Name()), ".md") {
-			continue
-		}
-		if err := validation.ValidateMarkdownFileName(directoryEntry.Name()); err != nil {
-			return nil, err
-		}
+	for _, postDocument := range postDocuments {
+		parsedFrontMatter := postDocument.frontMatter
 
-		sourceFilePath := filepath.Join(blogService.options.PostsDir, directoryEntry.Name())
-		sourceMarkdownContent, err := os.ReadFile(sourceFilePath)
-		if err != nil {
-			return nil, fmt.Errorf("read post at %s: %w", sourceFilePath, err)
-		}
-
-		parsedFrontMatter, bodyMarkdownContent, err := renderer.ParsePostDocument(directoryEntry.Name(), sourceMarkdownContent)
-		if err != nil {
-			return nil, err
-		}
-		if err := validation.ValidateRequiredPostFields(parsedFrontMatter.Title, parsedFrontMatter.Date); err != nil {
-			return nil, fmt.Errorf("validate post at %s: %w", sourceFilePath, err)
-		}
-
-		normalizedPermalink, sourceURL, err := blogService.postURLForFrontMatter(parsedFrontMatter.URL, sourceFilePath, usedPostIDs)
+		normalizedPermalink, sourceURL, err := blogService.postURLForFrontMatter(parsedFrontMatter.URL, postDocument.sourceFilePath, usedPostIDs)
 		if err != nil {
 			return nil, err
 		}
 		postSlug, err := validation.NormalizePostSlug(normalizedPermalink)
 		if err != nil {
-			return nil, fmt.Errorf("normalize post slug for post at %s: %w", sourceFilePath, err)
+			return nil, fmt.Errorf("normalize post slug for post at %s: %w", postDocument.sourceFilePath, err)
 		}
 
 		publishedAt, err := validation.ParsePostDate(parsedFrontMatter.Date)
 		if err != nil {
-			return nil, fmt.Errorf("parse date for post at %s: %w", sourceFilePath, err)
+			return nil, fmt.Errorf("parse date for post at %s: %w", postDocument.sourceFilePath, err)
 		}
 		if postIDNumber, hasPostID := postIDFromPermalink(normalizedPermalink); hasPostID {
 			if previousSourceFilePath, exists := claimedPostIDs[postIDNumber]; exists {
-				return nil, fmt.Errorf("post id conflict: %d is used by both %s and %s", postIDNumber, displaySourcePath(previousSourceFilePath), displaySourcePath(sourceFilePath))
+				return nil, fmt.Errorf("post id conflict: %d is used by both %s and %s", postIDNumber, displaySourcePath(previousSourceFilePath), displaySourcePath(postDocument.sourceFilePath))
 			}
-			claimedPostIDs[postIDNumber] = sourceFilePath
+			claimedPostIDs[postIDNumber] = postDocument.sourceFilePath
 		}
 		postID := strings.TrimSuffix(normalizedPermalink, ".html")
 		publicPostURL := normalizedPermalink
 
 		var renderedPostHTML htmlTemplate.HTML
-		if !parsedFrontMatter.Draft {
-			renderedPostHTML, err = blogService.markdownRenderer.Render(bodyMarkdownContent)
+		if options.renderHTML && !parsedFrontMatter.Draft {
+			renderedPostHTML, err = blogService.markdownRenderer.Render(postDocument.bodyMarkdownContent)
 			if err != nil {
-				return nil, fmt.Errorf("render post at %s: %w", sourceFilePath, err)
+				return nil, fmt.Errorf("render post at %s: %w", postDocument.sourceFilePath, err)
 			}
 		}
 
 		post := model.Post{
-			SourceFileName: directoryEntry.Name(),
-			SourceFilePath: sourceFilePath,
+			SourceFileName: postDocument.sourceFileName,
+			SourceFilePath: postDocument.sourceFilePath,
 			Title:          parsedFrontMatter.Title,
 			Icon:           parsedFrontMatter.Icon,
 			Thumbnail:      parsedFrontMatter.Thumbnail,
@@ -497,7 +507,7 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			URL:            publicPostURL,
 			OutputPath:     postOutputPath(publicPostURL),
 			Tags:           parsedFrontMatter.Tags,
-			BodyMarkdown:   bodyMarkdownContent,
+			BodyMarkdown:   postDocument.bodyMarkdownContent,
 			BodyHTML:       renderedPostHTML,
 		}
 		posts = append(posts, post)
