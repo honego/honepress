@@ -15,21 +15,7 @@ var (
 	publicSlugPattern         = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 )
 
-const DefaultPermalinkStructure = "/?p=%post_id%"
-
-var allowedPermalinkTags = map[string]struct{}{
-	"%year%":     {},
-	"%monthnum%": {},
-	"%day%":      {},
-	"%hour%":     {},
-	"%minute%":   {},
-	"%second%":   {},
-	"%post_id%":  {},
-	"%postname%": {},
-	"%category%": {},
-}
-
-// 把后台输入的固定链接归一成最终输出文件名
+// 把后台输入的旧 URL 归一成最终输出文件名
 func NormalizePermalink(rawPermalink string) (string, error) {
 	trimmedPermalink := strings.TrimSpace(rawPermalink)
 	if trimmedPermalink == "" {
@@ -59,7 +45,7 @@ func NormalizePermalink(rawPermalink string) (string, error) {
 	return trimmedPermalink, nil
 }
 
-// 使用文件名兜底归一固定链接
+// 使用文件名兜底归一旧 URL
 func NormalizePermalinkWithFallback(rawPermalink string, sourceFileName string) (string, error) {
 	if strings.TrimSpace(rawPermalink) != "" {
 		return NormalizePermalink(rawPermalink)
@@ -104,52 +90,6 @@ func NormalizePostSlugWithFallback(rawPermalink string, sourceFileName string) (
 	return NormalizePostSlug(strings.TrimSuffix(sourceFileName, fileExtensionName))
 }
 
-func NormalizePermalinkStructure(rawStructure string) string {
-	trimmedStructure := strings.TrimSpace(rawStructure)
-	if trimmedStructure == "" {
-		return DefaultPermalinkStructure
-	}
-	switch trimmedStructure {
-	case "plain":
-		return "/?p=%post_id%"
-	case "date":
-		return "/%year%/%monthnum%/%day%/%postname%/"
-	case "month":
-		return "/%year%/%monthnum%/%postname%/"
-	case "numeric":
-		return "/archives/%post_id%"
-	case "postname":
-		return "/%postname%/"
-	}
-	if !strings.HasPrefix(trimmedStructure, "/") {
-		trimmedStructure = "/" + trimmedStructure
-	}
-	return trimmedStructure
-}
-
-func ValidatePermalinkStructure(rawStructure string) error {
-	structure := NormalizePermalinkStructure(rawStructure)
-	if strings.Contains(structure, `\`) || strings.Contains(structure, "..") {
-		return fmt.Errorf("permalink structure must not contain path traversal")
-	}
-	if strings.ContainsAny(structure, " \t\r\n") {
-		return fmt.Errorf("permalink structure must not contain whitespace")
-	}
-	if !strings.Contains(structure, "%post_id%") && !strings.Contains(structure, "%postname%") {
-		return fmt.Errorf("permalink structure must contain %%post_id%% or %%postname%%")
-	}
-	if strings.Contains(structure, "?") && structure != "/?p=%post_id%" {
-		return fmt.Errorf("query permalink structure must be /?p=%%post_id%%")
-	}
-
-	for _, match := range regexp.MustCompile(`%[A-Za-z0-9_]+%`).FindAllString(structure, -1) {
-		if _, exists := allowedPermalinkTags[match]; !exists {
-			return fmt.Errorf("unsupported permalink tag: %s", match)
-		}
-	}
-	return nil
-}
-
 // 校验 Markdown 文件名
 func ValidateMarkdownFileName(markdownFileName string) error {
 	trimmedFileName := strings.TrimSpace(markdownFileName)
@@ -177,7 +117,7 @@ func ValidateMarkdownFileName(markdownFileName string) error {
 	return nil
 }
 
-// 根据固定链接生成 Markdown 文件名
+// 根据旧 URL 生成 Markdown 文件名
 func MarkdownFileNameFromPermalink(normalizedPermalink string) (string, error) {
 	if _, err := NormalizePermalink(normalizedPermalink); err != nil {
 		return "", err

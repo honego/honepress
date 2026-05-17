@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"hash/crc32"
 	htmlTemplate "html/template"
 	"log"
 	"net/url"
@@ -11,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -67,7 +67,6 @@ func normalizeRuntimeOptions(options config.Options) config.Options {
 	if strings.TrimSpace(options.ThemeDefault) == "" {
 		options.ThemeDefault = "auto"
 	}
-	options.PermalinkStructure = validation.NormalizePermalinkStructure(options.PermalinkStructure)
 	switch strings.ToLower(strings.TrimSpace(options.Font)) {
 	case "douyin-sans":
 		options.Font = "douyin-sans"
@@ -189,11 +188,6 @@ func (blogService *BlogService) renderStaticPostPages(posts []model.Post) error 
 		}
 		if currentPost.SourceURL != "" && currentPost.SourceURL != currentPost.URL {
 			if err := metadataRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, currentPost.SourceURL), publicPath(currentPost.URL)); err != nil {
-				return err
-			}
-		}
-		for _, normalizedAlias := range currentPost.Aliases {
-			if err := metadataRenderer.RenderRedirect(filepath.Join(blogService.options.PublicDir, normalizedAlias), publicPath(currentPost.URL)); err != nil {
 				return err
 			}
 		}
@@ -349,56 +343,33 @@ func writeLink(htmlBuilder *strings.Builder, rel string, href string) {
 	htmlBuilder.WriteString(`" />` + "\n")
 }
 
-func (blogService *BlogService) postPublicURL(frontMatter model.PostFrontMatter, postSlug string, postID string, publishedAt time.Time) string {
-	structure := validation.NormalizePermalinkStructure(blogService.options.PermalinkStructure)
-	replacements := map[string]string{
-		"%year%":     publishedAt.Format("2006"),
-		"%monthnum%": publishedAt.Format("01"),
-		"%day%":      publishedAt.Format("02"),
-		"%hour%":     publishedAt.Format("15"),
-		"%minute%":   publishedAt.Format("04"),
-		"%second%":   publishedAt.Format("05"),
-		"%post_id%":  postID,
-		"%postname%": postSlug,
-		"%category%": firstCategorySlug(frontMatter.Tags),
-	}
-	publicURL := structure
-	for tagName, tagValue := range replacements {
-		publicURL = strings.ReplaceAll(publicURL, tagName, tagValue)
-	}
-	publicURL = strings.TrimPrefix(publicURL, "/")
-	if strings.HasPrefix(publicURL, "?") {
-		return publicURL
-	}
-	return strings.TrimLeft(publicURL, "/")
+func postPublicURL(postID int) string {
+	return strconv.Itoa(postID) + ".html"
 }
 
-func stablePostID(sourceFileName string) string {
-	checksum := crc32.ChecksumIEEE([]byte(sourceFileName))
-	if checksum == 0 {
-		return "1"
-	}
-	return fmt.Sprintf("%d", checksum)
-}
-
-func (blogService *BlogService) postOutputPath(publicURL string, postSlug string) string {
-	if strings.HasPrefix(publicURL, "?") {
-		queryValues, err := url.ParseQuery(strings.TrimPrefix(publicURL, "?"))
-		if err == nil {
-			if postID, err := validation.NormalizePostSlug(queryValues.Get("p")); err == nil {
-				return filepath.ToSlash(filepath.Join("p", postID+".html"))
-			}
-		}
-		return filepath.ToSlash(filepath.Join("p", postSlug+".html"))
-	}
+func postOutputPath(publicURL string) string {
 	trimmedPublicURL := strings.Trim(publicURL, "/")
 	if trimmedPublicURL == "" {
-		return filepath.ToSlash(filepath.Join(postSlug, "index.html"))
-	}
-	if strings.HasSuffix(publicURL, "/") || filepath.Ext(trimmedPublicURL) == "" {
-		return filepath.ToSlash(filepath.Join(trimmedPublicURL, "index.html"))
+		return "1.html"
 	}
 	return filepath.ToSlash(trimmedPublicURL)
+}
+
+func postIDFromPermalink(permalink string) (int, bool) {
+	normalizedPermalink, err := validation.NormalizePermalink(permalink)
+	if err != nil {
+		return 0, false
+	}
+	postID, err := strconv.Atoi(strings.TrimSuffix(normalizedPermalink, ".html"))
+	return postID, err == nil && postID > 0
+}
+
+func nextSequentialPostID(usedPostIDs map[int]string) int {
+	for postID := 1; ; postID++ {
+		if _, exists := usedPostIDs[postID]; !exists {
+			return postID
+		}
+	}
 }
 
 func publicPath(postURL string) string {
@@ -408,41 +379,40 @@ func publicPath(postURL string) string {
 	return "/" + strings.TrimPrefix(postURL, "/")
 }
 
-func firstCategorySlug(tags []string) string {
-	for _, tag := range tags {
-		if slug := slugifyPermalinkPart(tag); slug != "" {
-			return slug
+func (blogService *BlogService) usedStoredPostIDs(directoryEntries []os.DirEntry) (map[int]string, error) {
+	usedPostIDs := make(map[int]string)
+	for _, directoryEntry := range directoryEntries {
+		if directoryEntry.IsDir() || !strings.EqualFold(filepath.Ext(directoryEntry.Name()), ".md") {
+			continue
+		}
+		sourceFilePath := filepath.Join(blogService.options.PostsDir, directoryEntry.Name())
+		sourceMarkdownContent, err := os.ReadFile(sourceFilePath)
+		if err != nil {
+			return nil, fmt.Errorf("read post at %s: %w", sourceFilePath, err)
+		}
+		parsedFrontMatter, _, err := renderer.ParsePostDocument(directoryEntry.Name(), sourceMarkdownContent)
+		if err != nil {
+			return nil, err
+		}
+		if postID, hasPostID := postIDFromPermalink(parsedFrontMatter.URL); hasPostID {
+			usedPostIDs[postID] = sourceFilePath
 		}
 	}
-	return "uncategorized"
+	return usedPostIDs, nil
 }
 
-func slugifyPermalinkPart(value string) string {
-	trimmedValue := strings.ToLower(strings.TrimSpace(value))
-	if trimmedValue == "" {
-		return ""
+func (blogService *BlogService) postURLForFrontMatter(rawURL string, sourceFilePath string, usedPostIDs map[int]string) (string, string, error) {
+	if strings.TrimSpace(rawURL) != "" {
+		normalizedURL, err := validation.NormalizePermalink(rawURL)
+		if err != nil {
+			return "", "", fmt.Errorf("normalize permanent URL for post at %s: %w", sourceFilePath, err)
+		}
+		return normalizedURL, normalizedURL, nil
 	}
-	var slugBuilder strings.Builder
-	previousDash := false
-	for _, currentRune := range trimmedValue {
-		if currentRune >= 'a' && currentRune <= 'z' || currentRune >= '0' && currentRune <= '9' {
-			slugBuilder.WriteRune(currentRune)
-			previousDash = false
-			continue
-		}
-		if currentRune == '-' || currentRune == '_' {
-			if !previousDash {
-				slugBuilder.WriteRune('-')
-				previousDash = true
-			}
-			continue
-		}
-		if !previousDash {
-			slugBuilder.WriteRune('-')
-			previousDash = true
-		}
-	}
-	return strings.Trim(slugBuilder.String(), "-")
+
+	postID := nextSequentialPostID(usedPostIDs)
+	usedPostIDs[postID] = sourceFilePath
+	return postPublicURL(postID), "", nil
 }
 
 func (blogService *BlogService) scanPosts() ([]model.Post, error) {
@@ -452,6 +422,11 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 	}
 
 	posts := make([]model.Post, 0, len(directoryEntries))
+	usedPostIDs, err := blogService.usedStoredPostIDs(directoryEntries)
+	if err != nil {
+		return nil, err
+	}
+	claimedPostIDs := make(map[int]string)
 	for _, directoryEntry := range directoryEntries {
 		if directoryEntry.IsDir() || !strings.EqualFold(filepath.Ext(directoryEntry.Name()), ".md") {
 			continue
@@ -474,30 +449,27 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			return nil, fmt.Errorf("validate post at %s: %w", sourceFilePath, err)
 		}
 
-		normalizedPermalink, err := validation.NormalizePermalinkWithFallback(parsedFrontMatter.URL, directoryEntry.Name())
+		normalizedPermalink, sourceURL, err := blogService.postURLForFrontMatter(parsedFrontMatter.URL, sourceFilePath, usedPostIDs)
 		if err != nil {
-			return nil, fmt.Errorf("normalize permalink for post at %s: %w", sourceFilePath, err)
+			return nil, err
 		}
-		postSlug, err := validation.NormalizePostSlugWithFallback(parsedFrontMatter.URL, directoryEntry.Name())
+		postSlug, err := validation.NormalizePostSlug(normalizedPermalink)
 		if err != nil {
 			return nil, fmt.Errorf("normalize post slug for post at %s: %w", sourceFilePath, err)
-		}
-
-		normalizedAliases := make([]string, 0, len(parsedFrontMatter.Aliases))
-		for _, rawAlias := range parsedFrontMatter.Aliases {
-			normalizedAlias, err := validation.NormalizePermalink(rawAlias)
-			if err != nil {
-				return nil, fmt.Errorf("normalize alias for post at %s: %w", sourceFilePath, err)
-			}
-			normalizedAliases = append(normalizedAliases, normalizedAlias)
 		}
 
 		publishedAt, err := validation.ParsePostDate(parsedFrontMatter.Date)
 		if err != nil {
 			return nil, fmt.Errorf("parse date for post at %s: %w", sourceFilePath, err)
 		}
-		postID := stablePostID(normalizedPermalink)
-		publicPostURL := blogService.postPublicURL(parsedFrontMatter, postSlug, postID, publishedAt)
+		if postIDNumber, hasPostID := postIDFromPermalink(normalizedPermalink); hasPostID {
+			if previousSourceFilePath, exists := claimedPostIDs[postIDNumber]; exists {
+				return nil, fmt.Errorf("post id conflict: %d is used by both %s and %s", postIDNumber, displaySourcePath(previousSourceFilePath), displaySourcePath(sourceFilePath))
+			}
+			claimedPostIDs[postIDNumber] = sourceFilePath
+		}
+		postID := strings.TrimSuffix(normalizedPermalink, ".html")
+		publicPostURL := normalizedPermalink
 
 		var renderedPostHTML htmlTemplate.HTML
 		if !parsedFrontMatter.Draft {
@@ -519,12 +491,11 @@ func (blogService *BlogService) scanPosts() ([]model.Post, error) {
 			SEOTitle:       parsedFrontMatter.SEOTitle,
 			SEODescription: parsedFrontMatter.SEODescription,
 			Draft:          parsedFrontMatter.Draft,
-			SourceURL:      normalizedPermalink,
+			SourceURL:      sourceURL,
 			Slug:           postSlug,
 			PostID:         postID,
 			URL:            publicPostURL,
-			OutputPath:     blogService.postOutputPath(publicPostURL, postSlug),
-			Aliases:        normalizedAliases,
+			OutputPath:     postOutputPath(publicPostURL),
 			Tags:           parsedFrontMatter.Tags,
 			BodyMarkdown:   bodyMarkdownContent,
 			BodyHTML:       renderedPostHTML,

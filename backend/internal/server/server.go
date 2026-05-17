@@ -229,7 +229,7 @@ func (server *Server) servePublic(responseWriter http.ResponseWriter, request *h
 	if request.URL.Path == "/" {
 		if postID := strings.TrimSpace(request.URL.Query().Get("p")); postID != "" {
 			if normalizedPostID, err := validation.NormalizePostSlug(postID); err == nil {
-				if server.serveStaticFile(responseWriter, request, server.options.PublicDir, filepath.ToSlash(filepath.Join("p", normalizedPostID+".html"))) {
+				if server.serveStaticFile(responseWriter, request, server.options.PublicDir, normalizedPostID+".html") {
 					return
 				}
 			}

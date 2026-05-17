@@ -57,8 +57,7 @@ icon: "☘️"
 date: "%s"
 description: "欢迎使用 HonePress。"
 draft: false
-url: "hello.html"
-aliases: []
+url: "1.html"
 tags:
   - HonePress
 ---

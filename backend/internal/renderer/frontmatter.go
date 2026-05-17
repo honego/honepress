@@ -19,7 +19,6 @@ type postFrontMatterYAML struct {
 	SEODescription string   `yaml:"seoDescription,omitempty"`
 	Draft          bool     `yaml:"draft"`
 	URL            string   `yaml:"url"`
-	Aliases        []string `yaml:"aliases"`
 	Tags           []string `yaml:"tags"`
 }
 
@@ -44,7 +43,6 @@ func ParsePostDocument(sourceFileName string, markdownContent []byte) (model.Pos
 		SEODescription: strings.TrimSpace(decodedFrontMatter.SEODescription),
 		Draft:          decodedFrontMatter.Draft,
 		URL:            strings.TrimSpace(decodedFrontMatter.URL),
-		Aliases:        normalizeStringList(decodedFrontMatter.Aliases),
 		Tags:           normalizeStringList(decodedFrontMatter.Tags),
 	}
 
@@ -62,7 +60,6 @@ func BuildPostDocument(frontMatter model.PostFrontMatter, bodyMarkdownContent st
 		SEODescription: frontMatter.SEODescription,
 		Draft:          frontMatter.Draft,
 		URL:            frontMatter.URL,
-		Aliases:        frontMatter.Aliases,
 		Tags:           frontMatter.Tags,
 	})
 	if err != nil {

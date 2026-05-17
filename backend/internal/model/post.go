@@ -16,7 +16,6 @@ type PostFrontMatter struct {
 	SEODescription string   `yaml:"seoDescription,omitempty"`
 	Draft          bool     `yaml:"draft"`
 	URL            string   `yaml:"url"`
-	Aliases        []string `yaml:"aliases"`
 	Tags           []string `yaml:"tags"`
 }
 
@@ -38,7 +37,6 @@ type Post struct {
 	PostID         string
 	URL            string
 	OutputPath     string
-	Aliases        []string
 	Tags           []string
 	BodyMarkdown   string
 	BodyHTML       template.HTML
@@ -70,7 +68,6 @@ type PostDetail struct {
 	SEODescription string   `json:"seoDescription"`
 	Draft          bool     `json:"draft"`
 	URL            string   `json:"url"`
-	Aliases        []string `json:"aliases"`
 	Tags           []string `json:"tags"`
 	Body           string   `json:"body"`
 }
@@ -102,7 +99,6 @@ type SavePostRequest struct {
 	SEODescription string   `json:"seoDescription"`
 	Draft          bool     `json:"draft"`
 	URL            string   `json:"url"`
-	Aliases        []string `json:"aliases"`
 	Tags           []string `json:"tags"`
 	Body           string   `json:"body"`
 }

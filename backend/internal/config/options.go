@@ -14,19 +14,15 @@ import (
 
 	"github.com/honeok/honepress/internal/core"
 	"github.com/honeok/honepress/internal/model"
-	"github.com/honeok/honepress/internal/validation"
 )
-
-const legacyPermalinkStructure = "/%postname%.html"
 
 // config.yaml 结构
 type Config struct {
-	Data      DataConfig      `yaml:"data"`
-	Admin     AdminConfig     `yaml:"admin"`
-	Site      SiteConfig      `yaml:"site"`
-	Comment   CommentConfig   `yaml:"comment"`
-	Permalink PermalinkConfig `yaml:"permalink"`
-	Theme     ThemeConfig     `yaml:"theme"`
+	Data    DataConfig    `yaml:"data"`
+	Admin   AdminConfig   `yaml:"admin"`
+	Site    SiteConfig    `yaml:"site"`
+	Comment CommentConfig `yaml:"comment"`
+	Theme   ThemeConfig   `yaml:"theme"`
 }
 
 // 数据目录
@@ -61,11 +57,6 @@ type GiscusConfig struct {
 	CategoryID string `yaml:"categoryID"`
 }
 
-// 固定链接配置
-type PermalinkConfig struct {
-	Structure string `yaml:"structure"`
-}
-
 // 前台默认主题
 type ThemeConfig struct {
 	Default string `yaml:"default"`
@@ -74,25 +65,24 @@ type ThemeConfig struct {
 
 // 运行配置
 type Options struct {
-	ConfigPath         string
-	Config             Config
-	Title              string
-	Description        string
-	SiteIconURL        string
-	ThemeDefault       string
-	Font               string
-	DataDir            string
-	ContentDir         string
-	PostsDir           string
-	PublicDir          string
-	AssetsDir          string
-	AdminDistDir       string
-	ThemeDistDir       string
-	TemplateDir        string
-	AdminUsername      string
-	AdminPassword      string
-	Comment            CommentOptions
-	PermalinkStructure string
+	ConfigPath    string
+	Config        Config
+	Title         string
+	Description   string
+	SiteIconURL   string
+	ThemeDefault  string
+	Font          string
+	DataDir       string
+	ContentDir    string
+	PostsDir      string
+	PublicDir     string
+	AssetsDir     string
+	AdminDistDir  string
+	ThemeDistDir  string
+	TemplateDir   string
+	AdminUsername string
+	AdminPassword string
+	Comment       CommentOptions
 }
 
 // 评论运行配置
@@ -164,9 +154,6 @@ func Load(configPath string) (Options, error) {
 		return Options{}, fmt.Errorf("decode config at %s: %w", absoluteConfigPath, err)
 	}
 	NormalizeConfig(&loadedConfig)
-	if err := validation.ValidatePermalinkStructure(loadedConfig.Permalink.Structure); err != nil {
-		return Options{}, fmt.Errorf("invalid permalink structure: %w", err)
-	}
 
 	loadedOptions := OptionsFromConfig(absoluteConfigPath, loadedConfig)
 	if loadedOptions.AdminPassword == "" {
@@ -203,9 +190,6 @@ func DefaultConfig() Config {
 				CategoryID: "",
 			},
 		},
-		Permalink: PermalinkConfig{
-			Structure: validation.DefaultPermalinkStructure,
-		},
 		Theme: ThemeConfig{
 			Default: "auto",
 			Font:    "default",
@@ -216,9 +200,6 @@ func DefaultConfig() Config {
 // 写入配置文件
 func WriteConfig(configPath string, config Config) error {
 	NormalizeConfig(&config)
-	if err := validation.ValidatePermalinkStructure(config.Permalink.Structure); err != nil {
-		return fmt.Errorf("invalid permalink structure: %w", err)
-	}
 	configDirectoryPath := filepath.Dir(configPath)
 	if err := os.MkdirAll(configDirectoryPath, 0755); err != nil {
 		return fmt.Errorf("create config directory at %s: %w", configDirectoryPath, err)
@@ -303,12 +284,7 @@ func migrateConfigContent(configFileContent []byte) ([]byte, bool, error) {
 	markChanged(ensureConfigScalar(giscusConfig, "category", defaultConfig.Comment.Giscus.Category, "!!str"))
 	markChanged(ensureConfigScalar(giscusConfig, "categoryID", defaultConfig.Comment.Giscus.CategoryID, "!!str"))
 
-	permalinkConfig, permalinkChanged, err := ensureConfigMapping(configRoot, "permalink")
-	if err != nil {
-		return nil, false, err
-	}
-	markChanged(permalinkChanged)
-	markChanged(ensureConfigScalar(permalinkConfig, "structure", legacyPermalinkStructure, "!!str"))
+	markChanged(removeConfigField(configRoot, "permalink"))
 
 	themeConfig, themeChanged, err := ensureConfigMapping(configRoot, "theme")
 	if err != nil {
@@ -397,6 +373,16 @@ func configMappingValue(mappingNode *yaml.Node, key string) *yaml.Node {
 	return nil
 }
 
+func removeConfigField(mappingNode *yaml.Node, key string) bool {
+	for contentIndex := 0; contentIndex+1 < len(mappingNode.Content); contentIndex += 2 {
+		if mappingNode.Content[contentIndex].Value == key {
+			mappingNode.Content = append(mappingNode.Content[:contentIndex], mappingNode.Content[contentIndex+2:]...)
+			return true
+		}
+	}
+	return false
+}
+
 func configKeyNode(key string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
 }
@@ -409,24 +395,23 @@ func OptionsFromConfig(configPath string, config Config) Options {
 	contentDirectory := filepath.Join(dataDirectory, "content")
 
 	return Options{
-		ConfigPath:         configPath,
-		Config:             config,
-		Title:              config.Site.Title,
-		Description:        config.Site.Description,
-		SiteIconURL:        config.Site.IconURL,
-		ThemeDefault:       config.Theme.Default,
-		Font:               config.Theme.Font,
-		DataDir:            dataDirectory,
-		ContentDir:         contentDirectory,
-		PostsDir:           filepath.Join(contentDirectory, "posts"),
-		PublicDir:          filepath.Join(dataDirectory, "public"),
-		AssetsDir:          filepath.Join(dataDirectory, "assets"),
-		AdminDistDir:       filepath.Join("dist", "admin"),
-		ThemeDistDir:       filepath.Join("dist", "theme"),
-		TemplateDir:        filepath.Join("frontend", "theme", "templates"),
-		AdminUsername:      config.Admin.Username,
-		AdminPassword:      config.Admin.Password,
-		PermalinkStructure: config.Permalink.Structure,
+		ConfigPath:    configPath,
+		Config:        config,
+		Title:         config.Site.Title,
+		Description:   config.Site.Description,
+		SiteIconURL:   config.Site.IconURL,
+		ThemeDefault:  config.Theme.Default,
+		Font:          config.Theme.Font,
+		DataDir:       dataDirectory,
+		ContentDir:    contentDirectory,
+		PostsDir:      filepath.Join(contentDirectory, "posts"),
+		PublicDir:     filepath.Join(dataDirectory, "public"),
+		AssetsDir:     filepath.Join(dataDirectory, "assets"),
+		AdminDistDir:  filepath.Join("dist", "admin"),
+		ThemeDistDir:  filepath.Join("dist", "theme"),
+		TemplateDir:   filepath.Join("frontend", "theme", "templates"),
+		AdminUsername: config.Admin.Username,
+		AdminPassword: config.Admin.Password,
 		Comment: CommentOptions{
 			Enabled:          config.Comment.Enabled,
 			GiscusRepo:       config.Comment.Giscus.Repo,
@@ -447,7 +432,6 @@ func NormalizeConfig(config *Config) {
 	config.Site.Description = strings.TrimSpace(config.Site.Description)
 	config.Site.IconURL = strings.TrimSpace(config.Site.IconURL)
 	normalizeGiscusConfig(&config.Comment.Giscus)
-	config.Permalink.Structure = validation.NormalizePermalinkStructure(config.Permalink.Structure)
 	config.Theme.Default = normalizeThemeDefault(config.Theme.Default)
 	config.Theme.Font = normalizeThemeFont(config.Theme.Font)
 }
@@ -464,7 +448,6 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 	config.Comment.Giscus.RepoID = strings.TrimSpace(siteSettings.GiscusRepoID)
 	config.Comment.Giscus.Category = strings.TrimSpace(siteSettings.GiscusCategory)
 	config.Comment.Giscus.CategoryID = strings.TrimSpace(siteSettings.GiscusCategoryID)
-	config.Permalink.Structure = validation.NormalizePermalinkStructure(siteSettings.PermalinkStructure)
 	config.Theme.Default = normalizeThemeDefault(siteSettings.ThemeDefault)
 	config.Theme.Font = normalizeThemeFont(siteSettings.Font)
 	NormalizeConfig(&config)
@@ -474,19 +457,18 @@ func ApplySiteSettings(config Config, siteSettings model.SiteSettings) Config {
 // 生成后台站点设置
 func SiteSettingsFromOptions(options Options) model.SiteSettings {
 	return model.SiteSettings{
-		Title:              options.Title,
-		Description:        options.Description,
-		IconURL:            options.SiteIconURL,
-		AdminUsername:      options.AdminUsername,
-		AdminPassword:      options.AdminPassword,
-		CommentEnabled:     options.Comment.Enabled,
-		GiscusRepo:         options.Comment.GiscusRepo,
-		GiscusRepoID:       options.Comment.GiscusRepoID,
-		GiscusCategory:     options.Comment.GiscusCategory,
-		GiscusCategoryID:   options.Comment.GiscusCategoryID,
-		PermalinkStructure: options.PermalinkStructure,
-		ThemeDefault:       options.ThemeDefault,
-		Font:               options.Font,
+		Title:            options.Title,
+		Description:      options.Description,
+		IconURL:          options.SiteIconURL,
+		AdminUsername:    options.AdminUsername,
+		AdminPassword:    options.AdminPassword,
+		CommentEnabled:   options.Comment.Enabled,
+		GiscusRepo:       options.Comment.GiscusRepo,
+		GiscusRepoID:     options.Comment.GiscusRepoID,
+		GiscusCategory:   options.Comment.GiscusCategory,
+		GiscusCategoryID: options.Comment.GiscusCategoryID,
+		ThemeDefault:     options.ThemeDefault,
+		Font:             options.Font,
 	}
 }
 

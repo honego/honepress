@@ -34,7 +34,7 @@ export default function PostsPage() {
   const [preview, setPreview] = useState("");
   const [message, setMessage] = useState("");
 
-  const aliasesText = editor.aliases.join(", ");
+  const permalinkText = permalinkInputValue(editor.url);
   const tagsText = editor.tags.join(", ");
 
   useEffect(() => {
@@ -197,6 +197,17 @@ export default function PostsPage() {
                       placeholder="文章摘要"
                     />
                   </EditorField>
+                  <EditorField label="永久链接" className="lg:col-span-2">
+                    <div className="flex min-w-0 items-center rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring">
+                      <Input
+                        className="min-w-0 flex-1 border-0 px-3 focus-visible:ring-0"
+                        value={permalinkText}
+                        onChange={(event) => setField("url", permalinkURLFromInput(event.target.value))}
+                        placeholder="1"
+                      />
+                      <span className="border-l border-input px-2 text-sm text-muted-foreground">.html</span>
+                    </div>
+                  </EditorField>
                   <EditorField label="网页标签 Emoji" className="lg:col-span-2">
                     <Input
                       value={editor.icon}
@@ -204,7 +215,7 @@ export default function PostsPage() {
                       placeholder="☘️"
                     />
                   </EditorField>
-                  <EditorField label="标签" className="lg:col-span-3">
+                  <EditorField label="标签" className="lg:col-span-4">
                     <Input
                       value={tagsText}
                       onChange={(event) => setField("tags", parseDelimitedText(event.target.value))}
@@ -225,14 +236,7 @@ export default function PostsPage() {
                       placeholder="SEO 描述"
                     />
                   </EditorField>
-                  <EditorField label="别名链接" className="lg:col-span-5">
-                    <Input
-                      value={aliasesText}
-                      onChange={(event) => setField("aliases", parseDelimitedText(event.target.value))}
-                      placeholder="多个别名用英文逗号分隔"
-                    />
-                  </EditorField>
-                  <label className="flex items-center gap-2 text-sm font-medium lg:col-span-3 lg:self-end lg:pb-2">
+                  <label className="flex items-center gap-2 text-sm font-medium lg:col-span-4 lg:self-end lg:pb-2">
                     <input
                       checked={editor.draft}
                       onChange={(event) => setField("draft", event.target.checked)}
@@ -384,8 +388,7 @@ function createEmptyPost(): PostDetail {
     seoTitle: "",
     seoDescription: "",
     draft: false,
-    url: generatedInternalURL(now),
-    aliases: [],
+    url: "",
     tags: [],
     body: "",
   };
@@ -396,14 +399,11 @@ function normalizePost(post: PostDetail): PostDetail {
     ...post,
     icon: post.icon ?? "",
     thumbnail: post.thumbnail ?? "",
-    aliases: post.aliases ?? [],
     tags: post.tags ?? [],
   };
 }
 
 function buildSaveRequest(post: PostDetail): SavePostRequest {
-  const internalURL = post.url.trim() || generatedInternalURL();
-
   return {
     id: post.id,
     title: post.title,
@@ -414,23 +414,28 @@ function buildSaveRequest(post: PostDetail): SavePostRequest {
     seoTitle: post.seoTitle,
     seoDescription: post.seoDescription,
     draft: post.draft,
-    url: internalURL,
-    aliases: post.aliases,
+    url: post.url.trim(),
     tags: post.tags,
     body: post.body,
   };
+}
+
+function permalinkInputValue(url: string): string {
+  return url.trim().replace(/\.html$/i, "");
+}
+
+function permalinkURLFromInput(value: string): string {
+  const trimmedValue = value
+    .trim()
+    .replace(/^\/+/, "")
+    .replace(/\.html$/i, "");
+  return trimmedValue ? `${trimmedValue}.html` : "";
 }
 
 function currentDateTime(now = new Date()): string {
   return `${now.getFullYear()}-${datePart(now.getMonth() + 1)}-${datePart(now.getDate())} ${datePart(
     now.getHours(),
   )}:${datePart(now.getMinutes())}:${datePart(now.getSeconds())}`;
-}
-
-function generatedInternalURL(now = new Date()): string {
-  return `post-${now.getFullYear()}${datePart(now.getMonth() + 1)}${datePart(now.getDate())}${datePart(
-    now.getHours(),
-  )}${datePart(now.getMinutes())}${datePart(now.getSeconds())}.html`;
 }
 
 function datePart(value: number): string {

@@ -52,8 +52,7 @@ func (blogService *BlogService) GetPublicPost(postID string) (model.PublicPostDe
 			currentPost.SourceURL != normalizedPostID &&
 			currentPost.Slug != normalizedPostID &&
 			currentPost.PostID != normalizedPostID &&
-			strings.Trim(currentPost.URL, "/") != normalizedPostID &&
-			!stringListContains(currentPost.Aliases, normalizedPostID) {
+			strings.Trim(currentPost.URL, "/") != normalizedPostID {
 			continue
 		}
 		return model.PublicPostDetail{
@@ -74,55 +73,36 @@ func (blogService *BlogService) GetPublicPost(postID string) (model.PublicPostDe
 	return model.PublicPostDetail{}, fmt.Errorf("post not found: %s", normalizedPostID)
 }
 
-func stringListContains(values []string, targetValue string) bool {
-	for _, value := range values {
-		if value == targetValue {
-			return true
-		}
-	}
-	return false
-}
-
 // 读取单篇文章
 func (blogService *BlogService) GetPost(sourceFileName string) (model.PostDetail, error) {
 	if err := validation.ValidateMarkdownFileName(sourceFileName); err != nil {
 		return model.PostDetail{}, err
 	}
 
-	sourceFilePath, err := filesystem.SafeJoin(blogService.options.PostsDir, sourceFileName)
+	posts, err := blogService.scanPosts()
 	if err != nil {
 		return model.PostDetail{}, err
 	}
-	sourceMarkdownContent, err := os.ReadFile(sourceFilePath)
-	if err != nil {
-		return model.PostDetail{}, fmt.Errorf("read post: %w", err)
+	for _, currentPost := range posts {
+		if currentPost.SourceFileName != sourceFileName {
+			continue
+		}
+		return model.PostDetail{
+			ID:             currentPost.SourceFileName,
+			Title:          currentPost.Title,
+			Icon:           currentPost.Icon,
+			Thumbnail:      currentPost.Thumbnail,
+			Date:           currentPost.DateText,
+			Description:    currentPost.Description,
+			SEOTitle:       currentPost.SEOTitle,
+			SEODescription: currentPost.SEODescription,
+			Draft:          currentPost.Draft,
+			URL:            currentPost.URL,
+			Tags:           currentPost.Tags,
+			Body:           currentPost.BodyMarkdown,
+		}, nil
 	}
-
-	frontMatter, bodyMarkdownContent, err := renderer.ParsePostDocument(sourceFileName, sourceMarkdownContent)
-	if err != nil {
-		return model.PostDetail{}, err
-	}
-
-	normalizedPermalink, err := validation.NormalizePermalinkWithFallback(frontMatter.URL, sourceFileName)
-	if err != nil {
-		return model.PostDetail{}, err
-	}
-
-	return model.PostDetail{
-		ID:             sourceFileName,
-		Title:          frontMatter.Title,
-		Icon:           frontMatter.Icon,
-		Thumbnail:      frontMatter.Thumbnail,
-		Date:           frontMatter.Date,
-		Description:    frontMatter.Description,
-		SEOTitle:       frontMatter.SEOTitle,
-		SEODescription: frontMatter.SEODescription,
-		Draft:          frontMatter.Draft,
-		URL:            normalizedPermalink,
-		Aliases:        frontMatter.Aliases,
-		Tags:           frontMatter.Tags,
-		Body:           bodyMarkdownContent,
-	}, nil
+	return model.PostDetail{}, fmt.Errorf("post not found: %s", sourceFileName)
 }
 
 // 新建文章
@@ -134,6 +114,11 @@ func (blogService *BlogService) CreatePost(savePostRequest model.SavePostRequest
 	if err != nil {
 		return model.PostDetail{}, err
 	}
+	nextPostURL, err := blogService.nextAvailablePostURL()
+	if err != nil {
+		return model.PostDetail{}, err
+	}
+	frontMatter.URL = nextPostURL
 
 	sourceFileName, err := blogService.availableMarkdownFileNameForTitle(frontMatter.Title, "")
 	if err != nil {
@@ -170,6 +155,13 @@ func (blogService *BlogService) UpdatePost(sourceFileName string, savePostReques
 	previousFileContent, err := os.ReadFile(sourceFilePath)
 	if err != nil {
 		return model.PostDetail{}, fmt.Errorf("read existing post: %w", err)
+	}
+	if strings.TrimSpace(frontMatter.URL) == "" {
+		currentPostURL, err := blogService.postURLForSource(sourceFileName)
+		if err != nil {
+			return model.PostDetail{}, err
+		}
+		frontMatter.URL = currentPostURL
 	}
 
 	targetFileName, err := blogService.availableMarkdownFileNameForTitle(frontMatter.Title, sourceFileName)
@@ -224,33 +216,44 @@ func (blogService *BlogService) DeletePost(sourceFileName string) error {
 	return nil
 }
 
+func (blogService *BlogService) nextAvailablePostURL() (string, error) {
+	posts, err := blogService.scanPosts()
+	if err != nil {
+		return "", err
+	}
+	usedPostIDs := make(map[int]string)
+	for _, currentPost := range posts {
+		if postID, hasPostID := postIDFromPermalink(currentPost.URL); hasPostID {
+			usedPostIDs[postID] = currentPost.SourceFilePath
+		}
+	}
+	return postPublicURL(nextSequentialPostID(usedPostIDs)), nil
+}
+
+func (blogService *BlogService) postURLForSource(sourceFileName string) (string, error) {
+	posts, err := blogService.scanPosts()
+	if err != nil {
+		return "", err
+	}
+	for _, currentPost := range posts {
+		if currentPost.SourceFileName == sourceFileName {
+			return currentPost.URL, nil
+		}
+	}
+	return "", fmt.Errorf("post not found: %s", sourceFileName)
+}
+
 func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.PostFrontMatter, string, error) {
 	if err := validation.ValidateRequiredPostFields(savePostRequest.Title, savePostRequest.Date); err != nil {
 		return model.PostFrontMatter{}, "", err
 	}
-	normalizedPermalink, err := validation.NormalizePermalink(savePostRequest.URL)
-	if err != nil {
-		return model.PostFrontMatter{}, "", err
-	}
-
-	normalizedAliases := make([]string, 0, len(savePostRequest.Aliases))
-	aliasOwners := make(map[string]struct{})
-	for _, rawAlias := range savePostRequest.Aliases {
-		if strings.TrimSpace(rawAlias) == "" {
-			continue
-		}
-		normalizedAlias, err := validation.NormalizePermalink(rawAlias)
+	normalizedPermalink := strings.TrimSpace(savePostRequest.URL)
+	if normalizedPermalink != "" {
+		var err error
+		normalizedPermalink, err = validation.NormalizePermalink(normalizedPermalink)
 		if err != nil {
 			return model.PostFrontMatter{}, "", err
 		}
-		if normalizedAlias == normalizedPermalink {
-			return model.PostFrontMatter{}, "", fmt.Errorf("alias permalink must differ from post permalink: %s", normalizedAlias)
-		}
-		if _, exists := aliasOwners[normalizedAlias]; exists {
-			return model.PostFrontMatter{}, "", fmt.Errorf("duplicate alias permalink: %s", normalizedAlias)
-		}
-		aliasOwners[normalizedAlias] = struct{}{}
-		normalizedAliases = append(normalizedAliases, normalizedAlias)
 	}
 
 	frontMatter := model.PostFrontMatter{
@@ -263,7 +266,6 @@ func normalizeSavePostRequest(savePostRequest model.SavePostRequest) (model.Post
 		SEODescription: strings.TrimSpace(savePostRequest.SEODescription),
 		Draft:          savePostRequest.Draft,
 		URL:            normalizedPermalink,
-		Aliases:        normalizedAliases,
 		Tags:           normalizeTags(savePostRequest.Tags),
 	}
 

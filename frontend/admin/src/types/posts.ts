@@ -21,7 +21,6 @@ export interface PostDetail {
   seoDescription: string;
   draft: boolean;
   url: string;
-  aliases: string[];
   tags: string[];
   body: string;
 }
@@ -37,7 +36,6 @@ export interface SavePostRequest {
   seoDescription: string;
   draft: boolean;
   url: string;
-  aliases: string[];
   tags: string[];
   body: string;
 }
@@ -53,7 +51,6 @@ export interface SiteSettings {
   giscusRepoId: string;
   giscusCategory: string;
   giscusCategoryId: string;
-  permalinkStructure: string;
   themeDefault: "auto" | "light" | "dark";
   font: "default" | "douyin-sans";
 }

@@ -19,7 +19,7 @@ func TestGenerateDefaultPostIfEmptyCreatesFirstPost(t *testing.T) {
 		t.Fatalf("read default post failed: %v", err)
 	}
 	defaultPostText := string(defaultPostContent)
-	for _, expectedSnippet := range []string{`title: "世界你好"`, `url: "hello.html"`, "欢迎使用 HonePress"} {
+	for _, expectedSnippet := range []string{`title: "世界你好"`, `url: "1.html"`, "欢迎使用 HonePress"} {
 		if !strings.Contains(defaultPostText, expectedSnippet) {
 			t.Fatalf("default post missing %q in:\n%s", expectedSnippet, defaultPostText)
 		}

@@ -47,9 +47,6 @@ func TestLoadGeneratesDefaultConfig(t *testing.T) {
 	if loadedOptions.Font != "default" {
 		t.Fatalf("default font mismatch: got %s, want default", loadedOptions.Font)
 	}
-	if loadedOptions.PermalinkStructure != "/?p=%post_id%" {
-		t.Fatalf("default permalink mismatch: got %s, want /?p=%%post_id%%", loadedOptions.PermalinkStructure)
-	}
 	if _, err := os.Stat(configPath); err != nil {
 		t.Fatalf("config file was not generated: %v", err)
 	}
@@ -95,7 +92,7 @@ func TestLoadMigratesMissingConfigFields(t *testing.T) {
 		t.Fatalf("read migrated config failed: %v", err)
 	}
 	migratedConfig := string(configFileContent)
-	missingKeys := []string{"admin:", "username:", "password:", "comment:", "giscus:", "permalink:", "structure:", "theme:", "default:", "font:"}
+	missingKeys := []string{"admin:", "username:", "password:", "comment:", "giscus:", "theme:", "default:", "font:"}
 	for _, missingKey := range missingKeys {
 		if !strings.Contains(migratedConfig, missingKey) {
 			t.Fatalf("migrated config missing key %s in:\n%s", missingKey, migratedConfig)
@@ -104,20 +101,8 @@ func TestLoadMigratesMissingConfigFields(t *testing.T) {
 	if strings.Contains(migratedConfig, "username: admin") {
 		t.Fatalf("migrated config must not set a default admin username")
 	}
-	if loadedOptions.PermalinkStructure != legacyPermalinkStructure || !strings.Contains(migratedConfig, legacyPermalinkStructure) {
-		t.Fatalf("migrated config should preserve legacy permalink behavior with %s in:\n%s", legacyPermalinkStructure, migratedConfig)
-	}
-}
-
-func TestLoadRejectsInvalidPermalinkStructure(t *testing.T) {
-	configPath := filepath.Join(t.TempDir(), "config.yaml")
-	invalidConfig := []byte("permalink:\n  structure: /?slug=%postname%\n")
-	if err := os.WriteFile(configPath, invalidConfig, 0644); err != nil {
-		t.Fatalf("write config failed: %v", err)
-	}
-
-	if _, err := Load(configPath); err == nil {
-		t.Fatalf("load should reject invalid permalink structure")
+	if strings.Contains(migratedConfig, "permalink:") {
+		t.Fatalf("migrated config must remove deprecated permalink settings in:\n%s", migratedConfig)
 	}
 }
 

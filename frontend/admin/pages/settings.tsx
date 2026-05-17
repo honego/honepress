@@ -16,51 +16,23 @@ import type { SiteSettings } from "@/types/posts";
 export default function SettingsPage() {
   const isReady = useAdminSession();
   const [settings, setSettings] = useState<SiteSettings>(emptySettings());
-  const [customPermalinkStructure, setCustomPermalinkStructure] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!isReady) return;
-    void fetchSettings().then((nextSettings) => {
-      setSettings(nextSettings);
-      setCustomPermalinkStructure(customPermalinkDisplayValue(nextSettings.permalinkStructure));
-    });
+    void fetchSettings().then(setSettings);
   }, [isReady]);
 
   async function save() {
     try {
       const response = await updateSettings(settings);
       setSettings(response.settings);
-      setCustomPermalinkStructure(customPermalinkDisplayValue(response.settings.permalinkStructure));
       notifyAdminFaviconChange(response.settings.iconUrl);
       setMessage("配置已保存。");
     } catch (error) {
       setMessage(`保存失败：${error instanceof Error ? error.message : "请求失败。"}`);
     }
   }
-
-  function setPermalinkStructure(structure: string) {
-    setSettings((currentSettings) => ({ ...currentSettings, permalinkStructure: structure }));
-  }
-
-  function setCustomPermalinkValue(structure: string) {
-    setCustomPermalinkStructure(structure);
-    setPermalinkStructure(structure);
-  }
-
-  function selectPresetPermalinkStructure(structure: string) {
-    setCustomPermalinkStructure("");
-    setPermalinkStructure(structure);
-  }
-
-  function appendPermalinkTag(tag: string) {
-    const currentStructure = isCustomPermalink(settings.permalinkStructure) ? customPermalinkStructure : "";
-    setCustomPermalinkValue(currentStructure + tag);
-  }
-
-  const selectedPermalink = permalinkOptions.find((option) => option.structure === settings.permalinkStructure);
-  const isCustomSelected = !selectedPermalink;
-  const customStructure = isCustomSelected ? customPermalinkStructure : "";
 
   return (
     <>
@@ -120,62 +92,6 @@ export default function SettingsPage() {
                   <option value="douyin-sans">抖音美好体</option>
                 </Select>
               </Field>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>固定链接结构</CardTitle>
-              <CardDescription>全站文章链接会按这里的结构重新生成。</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-5">
-              {permalinkOptions.map((option) => (
-                <label className="grid gap-2 text-sm" key={option.structure}>
-                  <span className="flex items-center gap-2 font-medium">
-                    <input
-                      type="radio"
-                      checked={settings.permalinkStructure === option.structure}
-                      onChange={() => selectPresetPermalinkStructure(option.structure)}
-                    />
-                    {option.label}
-                  </span>
-                  <code className="max-w-full overflow-x-auto whitespace-nowrap rounded bg-muted px-2 py-1 text-xs font-normal text-muted-foreground">
-                    {option.example}
-                  </code>
-                </label>
-              ))}
-              <label className="grid gap-2 text-sm">
-                <span className="flex items-center gap-2 font-medium">
-                  <input
-                    type="radio"
-                    checked={isCustomSelected}
-                    onChange={() => setPermalinkStructure(customPermalinkStructure)}
-                  />
-                  自定义结构
-                </span>
-                <Input
-                  className="min-w-0"
-                  value={customStructure}
-                  onChange={(event) => setCustomPermalinkValue(event.target.value)}
-                  onFocus={() => setPermalinkStructure(customPermalinkStructure)}
-                  placeholder="%post_id%.html"
-                />
-              </label>
-              <div className="grid gap-2">
-                <span className="text-sm text-muted-foreground">可用标签：</span>
-                <div className="flex flex-wrap gap-2">
-                  {permalinkTags.map((tag) => (
-                    <button
-                      type="button"
-                      className="rounded-md border border-input px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
-                      key={tag}
-                      onClick={() => appendPermalinkTag(tag)}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -251,39 +167,7 @@ function emptySettings(): SiteSettings {
     giscusRepoId: "",
     giscusCategory: "",
     giscusCategoryId: "",
-    permalinkStructure: "/?p=%post_id%",
     themeDefault: "auto",
     font: "default",
   };
-}
-
-const permalinkOptions = [
-  { label: "朴素", structure: "/?p=%post_id%", example: "/?p=123" },
-  { label: "日期和名称型", structure: "/%year%/%monthnum%/%day%/%postname%/", example: "/2026/05/16/sample-post/" },
-  { label: "月份和名称型", structure: "/%year%/%monthnum%/%postname%/", example: "/2026/05/sample-post/" },
-  { label: "数字型", structure: "/archives/%post_id%", example: "/archives/123" },
-  { label: "文章名", structure: "/%postname%/", example: "/sample-post/" },
-];
-
-const permalinkTags = [
-  "%year%",
-  "%monthnum%",
-  "%day%",
-  "%hour%",
-  "%minute%",
-  "%second%",
-  "%post_id%",
-  "%postname%",
-  "%category%",
-];
-
-function isCustomPermalink(structure: string): boolean {
-  return !permalinkOptions.some((option) => option.structure === structure);
-}
-
-function customPermalinkDisplayValue(structure: string): string {
-  if (!isCustomPermalink(structure)) {
-    return "";
-  }
-  return structure.trim().replace(/^\/+/, "");
 }
