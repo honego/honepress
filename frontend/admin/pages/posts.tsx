@@ -255,7 +255,6 @@ export default function PostsPage() {
                   </div>
                   <div className="grid min-h-[640px] xl:grid-cols-2">
                     <div className="min-w-0 border-b xl:border-b-0 xl:border-r">
-                      <div className="border-b px-4 py-2 text-xs font-medium text-muted-foreground lg:px-6">编辑</div>
                       <Textarea
                         className="min-h-[520px] resize-y rounded-none border-0 font-mono text-[13px] leading-6 shadow-none focus-visible:ring-0 xl:min-h-[640px]"
                         value={editor.body}
@@ -264,7 +263,6 @@ export default function PostsPage() {
                       />
                     </div>
                     <div className="min-w-0">
-                      <div className="border-b px-4 py-2 text-xs font-medium text-muted-foreground lg:px-6">预览</div>
                       <div
                         className="prose-preview min-h-[520px] overflow-auto break-words p-4 xl:min-h-[640px] xl:p-6"
                         dangerouslySetInnerHTML={{ __html: preview }}
