@@ -9,6 +9,7 @@ export default function PostPage() {
   const [post, setPost] = useState<PublicPostDetail | null>(null);
   const [site, setSite] = useState<PublicSiteSettings | null>(null);
   const [error, setError] = useState("");
+  const [initialFaviconHref] = useState(readCurrentFavicon);
 
   const postID = useMemo(() => {
     if (typeof router.query.id === "string") return router.query.id;
@@ -21,22 +22,34 @@ export default function PostPage() {
 
   useEffect(() => {
     let mounted = true;
-    async function load() {
-      if (!postID) return;
-      try {
-        const [loadedPost, loadedSite] = await Promise.all([fetchPost(postID), fetchSite()]);
-        if (!mounted) return;
-        setPost(loadedPost);
-        setSite(loadedSite);
-      } catch (loadError) {
-        if (mounted) setError(loadError instanceof Error ? loadError.message : "Load failed");
-      }
+    if (router.isReady && postID) {
+      setError("");
+      void fetchPost(postID)
+        .then((loadedPost) => {
+          if (!mounted) return;
+          setPost(loadedPost);
+          syncDocumentFavicon(postFaviconHref(loadedPost.icon));
+        })
+        .catch((loadError) => {
+          if (mounted) setError(loadError instanceof Error ? loadError.message : "Load failed");
+        });
+      void fetchSite()
+        .then((loadedSite) => {
+          if (mounted) setSite(loadedSite);
+        })
+        .catch((loadError) => {
+          if (mounted) setError(loadError instanceof Error ? loadError.message : "Load failed");
+        });
     }
-    if (router.isReady) void load();
     return () => {
       mounted = false;
     };
   }, [postID, router.isReady]);
+
+  useEffect(() => {
+    if (!post) return;
+    syncDocumentFavicon(postFaviconHref(post.icon, site?.iconUrl));
+  }, [post, site?.iconUrl]);
 
   useEffect(() => {
     if (!post || !site?.commentEnabled) return;
@@ -66,6 +79,7 @@ export default function PostPage() {
   const siteTitle = siteName(site);
   const pageTitle = post ? postPageTitle(post, siteTitle) : siteTitle;
   const pageDescription = post ? postPageDescription(post) : site?.description;
+  const faviconHref = post ? postFaviconHref(post.icon, site?.iconUrl) : initialFaviconHref;
 
   function goBack() {
     if (window.history.length > 1) {
@@ -82,6 +96,7 @@ export default function PostPage() {
         title={pageTitle}
         description={pageDescription}
         canonicalPath={post?.publicUrl}
+        faviconHref={faviconHref}
         type="article"
       />
       <SiteLayout site={site} pageClassName="page-post">
@@ -128,4 +143,44 @@ function postPageDescription(post: PublicPostDetail): string {
   const customDescription = post.seoDescription.trim();
   if (customDescription) return customDescription;
   return post.description.trim() || post.title.trim();
+}
+
+function postFaviconHref(postIcon?: string, siteIconUrl?: string): string {
+  const trimmedPostIcon = postIcon?.trim() ?? "";
+  if (isIconUrl(trimmedPostIcon)) return trimmedPostIcon;
+  if (trimmedPostIcon) return emojiFaviconHref(trimmedPostIcon);
+  return siteIconUrl?.trim() || "/honepress-black.svg";
+}
+
+function isIconUrl(icon: string): boolean {
+  return icon.startsWith("http://") || icon.startsWith("https://") || icon.startsWith("/");
+}
+
+function emojiFaviconHref(emoji: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50%" y="50%" style="dominant-baseline:central;text-anchor:middle;font-size:86px;">${escapeHTML(
+    emoji,
+  )}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function syncDocumentFavicon(href: string) {
+  if (typeof document === "undefined" || !href) return;
+  let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  if (!favicon) {
+    favicon = document.createElement("link");
+    favicon.rel = "icon";
+    document.head.appendChild(favicon);
+  }
+  if (favicon.getAttribute("href") !== href) {
+    favicon.setAttribute("href", href);
+  }
+}
+
+function readCurrentFavicon(): string | null {
+  if (typeof document === "undefined") return null;
+  return document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.getAttribute("href") || null;
+}
+
+function escapeHTML(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }

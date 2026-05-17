@@ -702,6 +702,9 @@ func postStructuredData(options config.Options, post model.Post) htmlTemplate.JS
 }
 
 func postFaviconHref(postIcon string, siteIconURL string) htmlTemplate.URL {
+	if isSupportedIconURL(postIcon) {
+		return faviconHref(postIcon)
+	}
 	if emojiHref := emojiFaviconHref(postIcon); emojiHref != "" {
 		return emojiHref
 	}

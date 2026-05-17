@@ -22,19 +22,22 @@ export function SiteHead({
   title,
   description,
   canonicalPath,
+  faviconHref,
   type = "website",
 }: {
   site: PublicSiteSettings | null;
   title?: string;
   description?: string;
   canonicalPath?: string;
+  faviconHref?: string | null;
   type?: "website" | "article";
 }) {
   const siteTitle = siteName(site);
   const siteDescription = site?.description?.trim() ?? "";
   const pageTitle = title ?? (siteDescription ? `${siteTitle} - ${siteDescription}` : siteTitle);
   const pageDescription = description ?? siteDescription;
-  const faviconHref = site?.iconUrl?.trim() || "/honepress-black.svg";
+  const resolvedFaviconHref =
+    faviconHref === null ? "" : faviconHref?.trim() || site?.iconUrl?.trim() || "/honepress-black.svg";
 
   return (
     <Head>
@@ -51,7 +54,7 @@ export function SiteHead({
       <meta name="twitter:title" content={pageTitle} />
       {pageDescription ? <meta name="twitter:description" content={pageDescription} /> : null}
       {site?.iconUrl ? <meta name="twitter:image" content={site.iconUrl} /> : null}
-      <link rel="icon" href={faviconHref} />
+      {resolvedFaviconHref ? <link rel="icon" href={resolvedFaviconHref} /> : null}
       <link rel="alternate" type="application/rss+xml" title={siteTitle} href="/rss.xml" />
       {site?.font === "douyin-sans" ? (
         <link rel="preload" href="/fonts/DouyinSansBold.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />

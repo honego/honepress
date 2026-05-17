@@ -26,6 +26,7 @@ export default function SettingsPage() {
     try {
       const response = await updateSettings(settings);
       setSettings(response.settings);
+      notifyAdminFaviconChange(response.settings.iconUrl);
       setMessage("配置已保存。");
     } catch (error) {
       setMessage(`保存失败：${error instanceof Error ? error.message : "请求失败。"}`);
@@ -242,6 +243,10 @@ function emptySettings(): SiteSettings {
     themeDefault: "auto",
     font: "default",
   };
+}
+
+function notifyAdminFaviconChange(iconUrl: string) {
+  window.dispatchEvent(new CustomEvent("honepress-admin-favicon-change", { detail: iconUrl }));
 }
 
 const permalinkOptions = [

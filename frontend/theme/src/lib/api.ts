@@ -14,6 +14,7 @@ export interface PostSummary {
 export interface PublicPostDetail {
   id: string;
   title: string;
+  icon: string;
   thumbnail: string;
   date: string;
   description: string;

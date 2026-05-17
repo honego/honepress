@@ -78,6 +78,7 @@ type PostDetail struct {
 type PublicPostDetail struct {
 	ID             string   `json:"id"`
 	Title          string   `json:"title"`
+	Icon           string   `json:"icon"`
 	Thumbnail      string   `json:"thumbnail"`
 	Date           string   `json:"date"`
 	Description    string   `json:"description"`

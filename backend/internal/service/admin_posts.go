@@ -59,6 +59,7 @@ func (blogService *BlogService) GetPublicPost(postID string) (model.PublicPostDe
 		return model.PublicPostDetail{
 			ID:             currentPost.SourceFileName,
 			Title:          currentPost.Title,
+			Icon:           currentPost.Icon,
 			Thumbnail:      currentPost.Thumbnail,
 			Date:           currentPost.DateText,
 			Description:    currentPost.Description,

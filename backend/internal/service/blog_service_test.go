@@ -40,6 +40,53 @@ func withTestRuntimeFiles(t *testing.T, dataDirectoryPath string, testOptions co
 	return testOptions
 }
 
+func TestPostFaviconHrefPrefersPostIcon(t *testing.T) {
+	testCases := []struct {
+		name        string
+		postIcon    string
+		siteIconURL string
+		want        string
+		contains    string
+	}{
+		{
+			name:        "post icon URL overrides site icon",
+			postIcon:    "https://cdn.example.com/post-icon.svg",
+			siteIconURL: "/site-icon.svg",
+			want:        "https://cdn.example.com/post-icon.svg",
+		},
+		{
+			name:        "post absolute icon path overrides site icon",
+			postIcon:    "/post-icon.svg",
+			siteIconURL: "/site-icon.svg",
+			want:        "/post-icon.svg",
+		},
+		{
+			name:        "post emoji renders SVG favicon",
+			postIcon:    "☘️",
+			siteIconURL: "/site-icon.svg",
+			contains:    "data:image/svg+xml,",
+		},
+		{
+			name:        "empty post icon falls back to site icon",
+			postIcon:    "",
+			siteIconURL: "/site-icon.svg",
+			want:        "/site-icon.svg",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got := string(postFaviconHref(testCase.postIcon, testCase.siteIconURL))
+			if testCase.want != "" && got != testCase.want {
+				t.Fatalf("favicon href mismatch: got %q, want %q", got, testCase.want)
+			}
+			if testCase.contains != "" && !strings.Contains(got, testCase.contains) {
+				t.Fatalf("favicon href should contain %q, got %q", testCase.contains, got)
+			}
+		})
+	}
+}
+
 func TestRenderAllCopiesNextStaticFilesAndMetadata(t *testing.T) {
 	dataDirectoryPath := t.TempDir()
 
@@ -225,6 +272,7 @@ func TestPublicPostAPIsUsePublishedPostsOnly(t *testing.T) {
 	postFiles := map[string]string{
 		"published.md": `---
 title: "Published Post"
+icon: "☘️"
 date: "2026-05-04 12:00:00"
 description: "public content"
 draft: false
@@ -272,6 +320,9 @@ Draft body.`,
 	}
 	if !strings.Contains(publicPost.HTML, "<strong>Published</strong>") {
 		t.Fatalf("public post HTML did not render markdown: %s", publicPost.HTML)
+	}
+	if publicPost.Icon != "☘️" {
+		t.Fatalf("public post should expose article icon: %q", publicPost.Icon)
 	}
 	if strings.Contains(publicPost.HTML, "title:") {
 		t.Fatalf("public post HTML must not contain front matter")
